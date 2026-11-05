@@ -16,14 +16,18 @@ from flask import current_app
 
 from app.extensions import get_firestore_client
 from app.models import ValidationError
+from app.repositories.devices_repo import UserDeviceRepository
 
 logger = logging.getLogger(__name__)
 
 
 def register_user_fcm_token(
-    user_id: str, fcm_token: str, platform: str = "flutter"
+    user_id: str,
+    fcm_token: str,
+    platform: str = "flutter",
+    device_id: str | None = None,
 ) -> dict[str, Any]:
-    """Store or update a user's Firebase Cloud Messaging token in Cloud Firestore."""
+    """Store or update a user's FCM device record in `users/{userId}/devices`."""
     cleaned_token = (fcm_token or "").strip()
     if not cleaned_token:
         raise ValidationError("'fcm_token' is required.")
@@ -31,25 +35,33 @@ def register_user_fcm_token(
     cleaned_platform = (platform or "flutter").strip().lower()
     now_iso = datetime.now(timezone.utc).isoformat()
 
+    device_repo = UserDeviceRepository()
+    device_record = device_repo.upsert_device(
+        user_id=user_id,
+        device_id=device_id,
+        fcm_token=cleaned_token,
+        platform=cleaned_platform,
+        enabled=True,
+    )
+    active_devices = device_repo.list_devices(user_id=user_id, enabled_only=True)
+    tokens = [d["fcm_token"] for d in active_devices if d.get("fcm_token")]
+
     db = get_firestore_client()
     users_collection = current_app.config["FIRESTORE_COLLECTION_USERS"]
     user_ref = db.collection(users_collection).document(user_id)
-    doc = user_ref.get()
+    user_ref.set(
+        {
+            "user_id": user_id,
+            "fcm_tokens": tokens,
+            "last_platform": cleaned_platform,
+            "updated_at": now_iso,
+        },
+        merge=True,
+    )
 
-    existing_data = (doc.to_dict() or {}) if doc.exists else {}
-    tokens: list[str] = list(existing_data.get("fcm_tokens") or [])
-    if cleaned_token not in tokens:
-        tokens.append(cleaned_token)
-
-    record = {
-        "user_id": user_id,
-        "fcm_tokens": tokens,
-        "last_platform": cleaned_platform,
-        "updated_at": now_iso,
-    }
-    user_ref.set(record, merge=True)
     return {
         "user_id": user_id,
+        "device_id": device_record["device_id"],
         "token_count": len(tokens),
         "platform": cleaned_platform,
         "updated_at": now_iso,
@@ -57,7 +69,17 @@ def register_user_fcm_token(
 
 
 def get_user_fcm_tokens(user_id: str) -> list[str]:
-    """Retrieve registered FCM tokens for a user from Cloud Firestore."""
+    """Retrieve registered FCM tokens for a user from `users/{userId}/devices`."""
+    device_repo = UserDeviceRepository()
+    devices = device_repo.list_devices(user_id=user_id, enabled_only=True)
+    subcollection_tokens = [
+        str(d["fcm_token"]).strip()
+        for d in devices
+        if str(d.get("fcm_token") or "").strip()
+    ]
+    if subcollection_tokens:
+        return list(dict.fromkeys(subcollection_tokens))
+
     db = get_firestore_client()
     users_collection = current_app.config["FIRESTORE_COLLECTION_USERS"]
     doc = db.collection(users_collection).document(user_id).get()

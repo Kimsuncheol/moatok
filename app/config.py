@@ -25,11 +25,23 @@ class Config:
     FIRESTORE_DATABASE: str = os.getenv("FIRESTORE_DATABASE", "(default)")
 
     # Firestore collections
+    FIRESTORE_COLLECTION_SOURCES: str = os.getenv(
+        "FIRESTORE_COLLECTION_SOURCES", "sources"
+    )
+    FIRESTORE_COLLECTION_ARTICLES: str = os.getenv(
+        "FIRESTORE_COLLECTION_ARTICLES", "articles"
+    )
+    FIRESTORE_COLLECTION_SHARE_MESSAGES: str = os.getenv(
+        "FIRESTORE_COLLECTION_SHARE_MESSAGES", "share_messages"
+    )
     FIRESTORE_COLLECTION_MESSAGES: str = os.getenv(
         "FIRESTORE_COLLECTION_MESSAGES", "shareable_messages"
     )
     FIRESTORE_COLLECTION_USERS: str = os.getenv(
         "FIRESTORE_COLLECTION_USERS", "users"
+    )
+    FIRESTORE_SUBCOLLECTION_DEVICES: str = os.getenv(
+        "FIRESTORE_SUBCOLLECTION_DEVICES", "devices"
     )
 
     # Optional internal API key for scheduled jobs or content ingestion pipelines

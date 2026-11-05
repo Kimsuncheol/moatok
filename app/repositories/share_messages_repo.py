@@ -1,0 +1,296 @@
+"""Firestore repository for the `share_messages` collection."""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from datetime import datetime
+from typing import Any
+
+from flask import current_app, has_app_context
+from google.cloud import firestore
+
+from app.extensions import get_firestore_client
+from app.models import VALID_MESSAGE_STATUSES, ValidationError
+from app.repositories.firestore_utils import (
+    RecordDict,
+    assert_no_forbidden_secrets,
+    ensure_utc_datetime,
+    generate_share_message_id,
+    normalize_url,
+    utc_now,
+)
+
+
+class ShareMessageRepository:
+    """Repository managing prepared share messages in the `share_messages` collection.
+
+    Uses deterministic document IDs derived from `article_id` together with
+    Firestore transactions so concurrent or repeated formatting jobs never
+    create duplicate share messages for the same article.
+    """
+
+    def __init__(
+        self,
+        db: Any | None = None,
+        collection_name: str | None = None,
+    ) -> None:
+        self._db = db
+        self._collection_name = collection_name
+
+    @property
+    def db(self) -> Any:
+        return self._db if self._db is not None else get_firestore_client()
+
+    @property
+    def collection_name(self) -> str:
+        if self._collection_name:
+            return self._collection_name
+        if has_app_context():
+            return current_app.config.get(
+                "FIRESTORE_COLLECTION_SHARE_MESSAGES", "share_messages"
+            )
+        return "share_messages"
+
+    def _collection(self) -> Any:
+        return self.db.collection(self.collection_name)
+
+    @staticmethod
+    def _to_record(doc_id: str, data: Mapping[str, Any]) -> RecordDict:
+        record = RecordDict(data)
+        record["id"] = doc_id
+        return record
+
+    def _build_document(
+        self,
+        *,
+        article_id: str,
+        title: str,
+        body: str,
+        target_url: str,
+        status: str = "ready_to_share",
+        created_at: datetime | str | None = None,
+        updated_at: datetime | str | None = None,
+        extra: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        if extra:
+            assert_no_forbidden_secrets(extra)
+
+        cleaned_article_id = str(article_id or "").strip()
+        if not cleaned_article_id:
+            raise ValidationError("Share message 'article_id' is required.")
+
+        cleaned_title = str(title or "").strip()
+        if not cleaned_title:
+            raise ValidationError("Share message 'title' is required.")
+
+        cleaned_body = str(body or "").strip()
+        if not cleaned_body:
+            raise ValidationError("Share message 'body' is required.")
+
+        normalized_target_url = normalize_url(target_url, field_name="target_url")
+
+        cleaned_status = str(status or "ready_to_share").strip()
+        if cleaned_status not in VALID_MESSAGE_STATUSES:
+            raise ValidationError(
+                f"Invalid share message status '{cleaned_status}'. "
+                f"Must be one of: {sorted(VALID_MESSAGE_STATUSES)}"
+            )
+
+        now = utc_now()
+        utc_created = (
+            ensure_utc_datetime(created_at, field_name="created_at", allow_none=False)
+            if created_at is not None
+            else now
+        )
+        utc_updated = (
+            ensure_utc_datetime(updated_at, field_name="updated_at", allow_none=False)
+            if updated_at is not None
+            else utc_created
+        )
+
+        doc = {
+            "article_id": cleaned_article_id,
+            "title": cleaned_title,
+            "body": cleaned_body,
+            "target_url": normalized_target_url,
+            "status": cleaned_status,
+            "created_at": utc_created,
+            "updated_at": utc_updated,
+        }
+        assert_no_forbidden_secrets(doc)
+        return doc
+
+    def create_or_get_with_status(
+        self,
+        data: Mapping[str, Any] | None = None,
+        *,
+        article_id: str | None = None,
+        title: str | None = None,
+        body: str | None = None,
+        target_url: str | None = None,
+        status: str | None = None,
+        created_at: datetime | str | None = None,
+        creation_time: datetime | str | None = None,
+        updated_at: datetime | str | None = None,
+        update_time: datetime | str | None = None,
+    ) -> tuple[RecordDict, bool]:
+        """Atomically create a share message for an article in a transaction or return existing.
+
+        Returns:
+            Tuple of (share_message_record, created_bool).
+        """
+        raw: dict[str, Any] = dict(data) if data is not None else {}
+        assert_no_forbidden_secrets(raw)
+
+        resolved_article_id = (
+            article_id if article_id is not None else raw.get("article_id", "")
+        )
+        resolved_title = title if title is not None else raw.get("title", "")
+        resolved_body = body if body is not None else raw.get("body", "")
+        resolved_target_url = (
+            target_url if target_url is not None else raw.get("target_url", "")
+        )
+        resolved_status = (
+            status
+            if status is not None
+            else raw.get("status", "ready_to_share")
+        )
+        resolved_created = (
+            created_at
+            if created_at is not None
+            else (
+                creation_time
+                if creation_time is not None
+                else raw.get("created_at", raw.get("creation_time"))
+            )
+        )
+        resolved_updated = (
+            updated_at
+            if updated_at is not None
+            else (
+                update_time
+                if update_time is not None
+                else raw.get("updated_at", raw.get("update_time"))
+            )
+        )
+
+        doc_data = self._build_document(
+            article_id=resolved_article_id,
+            title=resolved_title,
+            body=resolved_body,
+            target_url=resolved_target_url,
+            status=resolved_status,
+            created_at=resolved_created,
+            updated_at=resolved_updated,
+            extra=raw,
+        )
+
+        deterministic_id = generate_share_message_id(doc_data["article_id"])
+        doc_ref = self._collection().document(deterministic_id)
+
+        @firestore.transactional
+        def _txn_create(transaction: Any) -> tuple[RecordDict, bool]:
+            snapshot = doc_ref.get(transaction=transaction)
+            if snapshot.exists:
+                existing = snapshot.to_dict() or {}
+                return self._to_record(snapshot.id, existing), False
+            transaction.create(doc_ref, doc_data)
+            return self._to_record(deterministic_id, doc_data), True
+
+        transaction = self.db.transaction()
+        return _txn_create(transaction)
+
+    def create(
+        self,
+        data: Mapping[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> RecordDict:
+        """Create a share message for an article (idempotent across repeated/concurrent runs)."""
+        record, _ = self.create_or_get_with_status(data, **kwargs)
+        return record
+
+    create_or_get = create
+    save = create
+
+    def get(self, message_id: str) -> RecordDict | None:
+        """Retrieve a share message by its document ID."""
+        cleaned_id = (message_id or "").strip()
+        if not cleaned_id:
+            return None
+        doc = self._collection().document(cleaned_id).get()
+        if not doc.exists:
+            return None
+        return self._to_record(doc.id, doc.to_dict() or {})
+
+    get_by_id = get
+
+    def get_by_article_id(self, article_id: str) -> RecordDict | None:
+        """Retrieve the share message for a given `article_id` via deterministic ID lookup."""
+        deterministic_id = generate_share_message_id(article_id)
+        return self.get(deterministic_id)
+
+    def list_messages(
+        self,
+        *,
+        status: str | None = None,
+        limit: int = 50,
+    ) -> list[RecordDict]:
+        """List share messages, optionally filtered by `status`."""
+        query: Any = self._collection()
+        if status:
+            cleaned_status = status.strip()
+            if cleaned_status not in VALID_MESSAGE_STATUSES:
+                raise ValidationError(
+                    f"Invalid status '{cleaned_status}'. "
+                    f"Must be one of: {sorted(VALID_MESSAGE_STATUSES)}"
+                )
+            query = query.where("status", "==", cleaned_status)
+
+        docs = query.limit(max(1, min(limit, 500))).stream()
+        results = [self._to_record(doc.id, doc.to_dict() or {}) for doc in docs]
+        results.sort(
+            key=lambda item: item.get("created_at") or datetime.min,
+            reverse=True,
+        )
+        return results
+
+    def update_status(
+        self,
+        message_id: str,
+        status: str,
+        updated_at: datetime | str | None = None,
+    ) -> RecordDict | None:
+        """Atomically update a share message's status and UTC `updated_at` timestamp."""
+        cleaned_id = (message_id or "").strip()
+        if not cleaned_id:
+            return None
+
+        cleaned_status = str(status or "").strip()
+        if cleaned_status not in VALID_MESSAGE_STATUSES:
+            raise ValidationError(
+                f"Invalid share message status '{cleaned_status}'. "
+                f"Must be one of: {sorted(VALID_MESSAGE_STATUSES)}"
+            )
+
+        utc_updated = (
+            ensure_utc_datetime(updated_at, field_name="updated_at")
+            if updated_at is not None
+            else utc_now()
+        )
+        doc_ref = self._collection().document(cleaned_id)
+
+        @firestore.transactional
+        def _txn_update(transaction: Any) -> RecordDict | None:
+            snapshot = doc_ref.get(transaction=transaction)
+            if not snapshot.exists:
+                return None
+            existing = snapshot.to_dict() or {}
+            updates = {
+                "status": cleaned_status,
+                "updated_at": utc_updated,
+            }
+            transaction.update(doc_ref, updates)
+            existing.update(updates)
+            return self._to_record(snapshot.id, existing)
+
+        return _txn_update(self.db.transaction())

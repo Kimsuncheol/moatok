@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any
+import threading
+from typing import Any, Callable
 import uuid
 from firebase_admin import auth as firebase_auth
+from google.api_core.exceptions import AlreadyExists
 import pytest
 
 from app import create_app
@@ -25,88 +27,204 @@ class FakeDocumentSnapshot:
 
 
 class FakeDocumentReference:
-    def __init__(self, store: dict[str, dict[str, Any]], doc_id: str | None = None):
+    def __init__(
+        self,
+        client: FakeFirestoreClient,
+        collection_path: str,
+        store: dict[str, dict[str, Any]],
+        doc_id: str | None = None,
+    ):
+        self._client = client
+        self._collection_path = collection_path
         self._store = store
         self.id = doc_id or f"doc-{uuid.uuid4().hex[:10]}"
 
-    def set(self, data: dict[str, Any], merge: bool = False) -> None:
-        if merge and self.id in self._store:
-            merged = self._store[self.id].copy()
-            merged.update(data)
-            self._store[self.id] = merged
-        else:
+    @property
+    def path(self) -> str:
+        return f"{self._collection_path}/{self.id}"
+
+    def collection(self, name: str) -> FakeCollection:
+        sub_path = f"{self.path}/{name}"
+        return self._client.collection(sub_path)
+
+    def create(self, data: dict[str, Any]) -> None:
+        with self._client._lock:
+            if self.id in self._store:
+                raise AlreadyExists(f"Document {self.path} already exists")
             self._store[self.id] = data.copy()
 
-    def update(self, updates: dict[str, Any]) -> None:
-        if self.id not in self._store:
-            raise KeyError(f"Document {self.id} does not exist")
-        self._store[self.id].update(updates)
+    def set(self, data: dict[str, Any], merge: bool = False) -> None:
+        with self._client._lock:
+            if merge and self.id in self._store:
+                merged = self._store[self.id].copy()
+                merged.update(data)
+                self._store[self.id] = merged
+            else:
+                self._store[self.id] = data.copy()
 
-    def get(self) -> FakeDocumentSnapshot:
-        return FakeDocumentSnapshot(self.id, self._store.get(self.id))
+    def update(self, updates: dict[str, Any]) -> None:
+        with self._client._lock:
+            if self.id not in self._store:
+                raise KeyError(f"Document {self.path} does not exist")
+            self._store[self.id].update(updates)
+
+    def delete(self) -> None:
+        with self._client._lock:
+            self._store.pop(self.id, None)
+
+    def get(self, transaction: Any = None) -> FakeDocumentSnapshot:
+        with self._client._lock:
+            return FakeDocumentSnapshot(self.id, self._store.get(self.id))
 
 
 class FakeQuery:
     def __init__(
         self,
+        client: FakeFirestoreClient,
         store: dict[str, dict[str, Any]],
         filters: list[tuple[str, str, Any]] | None = None,
         limit_val: int | None = None,
     ):
+        self._client = client
         self._store = store
         self._filters = filters or []
         self._limit = limit_val
 
     def where(self, field: str, op: str, value: Any) -> FakeQuery:
         return FakeQuery(
+            self._client,
             self._store,
             filters=[*self._filters, (field, op, value)],
             limit_val=self._limit,
         )
 
     def limit(self, count: int) -> FakeQuery:
-        return FakeQuery(self._store, filters=self._filters, limit_val=count)
+        return FakeQuery(
+            self._client,
+            self._store,
+            filters=self._filters,
+            limit_val=count,
+        )
 
     def stream(self) -> list[FakeDocumentSnapshot]:
-        snapshots: list[FakeDocumentSnapshot] = []
-        for doc_id, data in self._store.items():
-            matched = True
-            for field, op, val in self._filters:
-                if op == "==" and data.get(field) != val:
-                    matched = False
-                    break
-            if matched:
-                snapshots.append(FakeDocumentSnapshot(doc_id, data))
-        if self._limit is not None:
-            snapshots = snapshots[: self._limit]
-        return snapshots
+        with self._client._lock:
+            snapshots: list[FakeDocumentSnapshot] = []
+            for doc_id, data in self._store.items():
+                matched = True
+                for field, op, val in self._filters:
+                    if op == "==" and data.get(field) != val:
+                        matched = False
+                        break
+                if matched:
+                    snapshots.append(FakeDocumentSnapshot(doc_id, data))
+            if self._limit is not None:
+                snapshots = snapshots[: self._limit]
+            return snapshots
 
 
 class FakeCollection:
-    def __init__(self, store: dict[str, dict[str, Any]]):
+    def __init__(
+        self,
+        client: FakeFirestoreClient,
+        path: str,
+        store: dict[str, dict[str, Any]],
+    ):
+        self._client = client
+        self._path = path
         self._store = store
 
     def document(self, doc_id: str | None = None) -> FakeDocumentReference:
-        return FakeDocumentReference(self._store, doc_id=doc_id)
+        return FakeDocumentReference(
+            self._client, self._path, self._store, doc_id=doc_id
+        )
 
     def where(self, field: str, op: str, value: Any) -> FakeQuery:
-        return FakeQuery(self._store).where(field, op, value)
+        return FakeQuery(self._client, self._store).where(field, op, value)
 
     def limit(self, count: int) -> FakeQuery:
-        return FakeQuery(self._store, limit_val=count)
+        return FakeQuery(self._client, self._store, limit_val=count)
 
     def stream(self) -> list[FakeDocumentSnapshot]:
-        return FakeQuery(self._store).stream()
+        return FakeQuery(self._client, self._store).stream()
+
+
+class FakeTransaction:
+    """In-memory transaction compatible with `@google.cloud.firestore.transactional`."""
+
+    def __init__(self, client: FakeFirestoreClient, max_attempts: int = 5):
+        self._client = client
+        self._max_attempts = max_attempts
+        self._read_only = False
+        self._id = b"fake-txn-id"
+        self._staged_ops: list[Callable[[], None]] = []
+        self._lock_held = False
+
+    def _clean_up(self) -> None:
+        self._staged_ops.clear()
+        if self._lock_held:
+            self._client._lock.release()
+            self._lock_held = False
+
+    def _begin(self, retry_id: bytes | None = None) -> None:
+        self._client._lock.acquire()
+        self._lock_held = True
+        self._staged_ops.clear()
+
+    def _commit(self) -> list[Any]:
+        try:
+            for op in self._staged_ops:
+                op()
+            self._staged_ops.clear()
+            return []
+        finally:
+            if self._lock_held:
+                self._client._lock.release()
+                self._lock_held = False
+
+    def _rollback(self) -> None:
+        self._staged_ops.clear()
+        if self._lock_held:
+            self._client._lock.release()
+            self._lock_held = False
+
+    def get(self, ref: FakeDocumentReference) -> FakeDocumentSnapshot:
+        return ref.get(transaction=self)
+
+    def create(self, reference: FakeDocumentReference, document_data: dict[str, Any]) -> None:
+        data_copy = document_data.copy()
+        self._staged_ops.append(lambda: reference.create(data_copy))
+
+    def set(
+        self,
+        reference: FakeDocumentReference,
+        document_data: dict[str, Any],
+        merge: bool = False,
+    ) -> None:
+        data_copy = document_data.copy()
+        self._staged_ops.append(lambda: reference.set(data_copy, merge=merge))
+
+    def update(self, reference: FakeDocumentReference, field_updates: dict[str, Any]) -> None:
+        updates_copy = field_updates.copy()
+        self._staged_ops.append(lambda: reference.update(updates_copy))
+
+    def delete(self, reference: FakeDocumentReference) -> None:
+        self._staged_ops.append(reference.delete)
 
 
 class FakeFirestoreClient:
     def __init__(self):
         self.collections: dict[str, dict[str, dict[str, Any]]] = {}
+        self._lock = threading.RLock()
 
     def collection(self, name: str) -> FakeCollection:
-        if name not in self.collections:
-            self.collections[name] = {}
-        return FakeCollection(self.collections[name])
+        with self._lock:
+            if name not in self.collections:
+                self.collections[name] = {}
+            return FakeCollection(self, name, self.collections[name])
+
+    def transaction(self, **kwargs: Any) -> FakeTransaction:
+        max_attempts = int(kwargs.get("max_attempts", 5))
+        return FakeTransaction(self, max_attempts=max_attempts)
 
 
 @pytest.fixture()

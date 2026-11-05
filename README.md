@@ -24,6 +24,13 @@ A production-oriented Python **Flask** backend that collects and formats content
 │   ├── config.py                   # Environment-based configuration (dev, testing, prod)
 │   ├── extensions.py               # Firebase Admin & Firestore initialization via ADC
 │   ├── models.py                   # Data models & payload validation
+│   ├── repositories/
+│   │   ├── __init__.py             # Repository exports
+│   │   ├── firestore_utils.py      # UTC timestamp normalization, deterministic IDs & secret guards
+│   │   ├── sources_repo.py         # `sources` collection repository
+│   │   ├── articles_repo.py        # `articles` collection repository (transactional deduplication)
+│   │   ├── share_messages_repo.py  # `share_messages` collection repository (transactional deduplication)
+│   │   └── devices_repo.py         # `users/{userId}/devices` subcollection repository
 │   ├── routes/
 │   │   ├── health.py               # Public GET /health endpoint
 │   │   ├── admin.py                # GET /api/v1/auth/me & /api/v1/admin/* endpoints
@@ -35,6 +42,7 @@ A production-oriented Python **Flask** backend that collects and formats content
 ├── tests/
 │   ├── conftest.py                 # Pytest fixtures & in-memory Firestore/Firebase mocks
 │   ├── test_auth.py                # Auth, expired/invalid tokens, admin custom claims & role-spoofing tests
+│   ├── test_repositories.py        # Firestore repository, UTC, deduplication & secret-rejection tests
 │   ├── test_health.py              # Public health endpoint tests
 │   └── test_content_and_notifications.py
 ├── .dockerignore
