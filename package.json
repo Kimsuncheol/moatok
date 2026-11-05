@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "npm --prefix frontend run dev",
     "build": "npm --prefix frontend run build",
-    "test": "npm --prefix frontend test"
+    "build:prod": "npm --prefix frontend run build:prod",
+    "test": "npm --prefix frontend test",
+    "deploy:hosting": "npm --prefix frontend run build:prod && firebase deploy --only hosting"
   }
 }

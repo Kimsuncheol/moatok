@@ -49,6 +49,7 @@ A production-oriented platform comprising:
 │       ├── source_service.py            # Source CRUD orchestration & validation
 │       └── url_validator.py             # Domain allowlist, SSRF IP/DNS checks, redirect, timeout & size guards
 ├── frontend/                       # Mobile-First Vue 3 PWA (TypeScript, Vite, Pinia)
+│   ├── .env.production.example     # Production environment variables template
 │   ├── public/                     # Static assets, Web App Manifest & icons (PNG & SVG)
 │   │   ├── apple-touch-icon.png    # 180x180 iOS Home Screen touch icon
 │   │   ├── favicon.png             # 32x32 local PNG favicon
@@ -65,7 +66,7 @@ A production-oriented platform comprising:
 │   │   ├── services/               # API, Firebase & Kakao Share services
 │   │   ├── stores/                 # Pinia stores (theme, auth, messages, notifications)
 │   │   └── views/                  # PendingView, HistoryView, SettingsView, MessageDetailView
-│   ├── tests/                      # Vitest unit & component tests (53 tests)
+│   ├── tests/                      # Vitest unit & component tests (69 tests across 16 files)
 │   ├── package.json
 │   ├── vite.config.ts              # Vite config with VitePWA & Workbox zero-cache policy
 │   └── README.md
@@ -83,9 +84,13 @@ A production-oriented platform comprising:
 │   └── test_content_and_notifications.py
 ├── .dockerignore
 ├── .env.example
+├── .firebaserc                     # Firebase CLI project alias configuration
 ├── .gitignore
+├── DEPLOYMENT_FIREBASE.md          # Firebase Hosting deployment guide & 8-point real-device test checklist
 ├── Dockerfile
+├── firebase.json                   # Firebase Hosting configuration (public: frontend/dist, SPA rewrites, cache headers)
 ├── gunicorn.conf.py                # Gunicorn production configuration (respects PORT)
+├── package.json                    # Root build and deployment scripts
 ├── requirements.txt
 └── wsgi.py                         # WSGI entrypoint for Gunicorn
 ```
@@ -622,7 +627,53 @@ This test plan covers the full lifecycle across **Collection**, **Deduplication*
 1. **Optional Admin Review / Edit**:
    - Admin sends `PATCH /api/v1/admin/share-messages/<id>` while `status == "pending"` to refine `title` or `body`.
    - **Expected**: `200 OK` with updated content validated against length limits.
-2. **Flutter Share Preview & User-Initiated KakaoTalk Share**:
-   - When the user taps the FCM notification in the Flutter app, the app calls `GET /api/v1/messages/<share_message_id>` with the user's Firebase ID token to display the share preview.
-   - After the user explicitly completes sharing via the KakaoTalk Flutter SDK / native share sheet, the Flutter app calls `POST /api/v1/messages/<share_message_id>/mark-shared` with `{"share_channel": "kakaotalk_flutter_sdk"}`.
+2. **Flutter / PWA Share Preview & User-Initiated KakaoTalk Share**:
+   - When the user taps the FCM notification or opens the PWA (`frontend/`), the app calls `GET /api/v1/messages/<share_message_id>` with the user's Firebase ID token to display the share preview.
+   - After the user explicitly completes sharing via the KakaoTalk Web/Flutter SDK / native share sheet, the app calls `POST /api/v1/messages/<share_message_id>/mark-shared` with `{"share_channel": "kakaotalk_web_sdk"}` (or `"kakaotalk_flutter_sdk"`).
    - **Expected**: `200 OK`; document transitions to `status: "shared"`, `kakao_shared: true`, `shared_by_user_id: "<uid>"`, and `shared_by_user_at: "<ISO-8601 UTC timestamp>"`.
+
+---
+
+## Firebase Hosting Deployment (Vue 3 PWA)
+
+For full step-by-step instructions and technical reference, see **[DEPLOYMENT_FIREBASE.md](DEPLOYMENT_FIREBASE.md)**.
+
+### 1. Build and Deploy
+```bash
+# Build production bundle with TypeScript type checks
+npm run build:prod
+
+# Deploy static PWA assets and routing configuration to Firebase Hosting
+npm run deploy:hosting
+# or: firebase deploy --only hosting
+```
+
+### 2. SPA Route Fallback & Cache-Control Policy ([`firebase.json`](firebase.json))
+- **SPA Rewrites**: `{"source": "**", "destination": "/index.html"}` guarantees that direct visits or refreshes on `/messages/:id`, `/history`, and `/settings` resolve through Vue Router rather than returning 404 from the CDN.
+- **Service Worker Updates**: `/sw.js` is served with `Cache-Control: no-cache, no-store, must-revalidate` to ensure mobile clients immediately fetch updated service worker scripts.
+- **Static Assets**: `/assets/**` are generated with content hashes and cached with `public, max-age=31536000, immutable`.
+
+### 3. Environment-Specific API Configuration
+- Configured in `frontend/.env.production` (see `frontend/.env.production.example`).
+- **Option A (Direct Cloud Run URL)**: `VITE_API_BASE_URL=https://moatok-backend-your-project-id.asia-northeast3.run.app`
+- **Option B (Same-Origin Rewrite)**: Set `VITE_API_BASE_URL=` and route `/api/**` to Cloud Run directly in `firebase.json`.
+
+### 4. Kakao Developers Console Web Site Domain Registration (`KOE101` Prevention)
+The official Kakao JavaScript SDK verifies that all template link parameters (`webUrl`, `mobileWebUrl`) belong to registered domains. Register the deployed domain under **[내 애플리케이션] > [앱 설정] > [플랫폼] > [Web] > [사이트 도메인]**:
+- `https://<your-project-id>.web.app`
+- `https://<your-project-id>.firebaseapp.com`
+- Any custom production domains (e.g., `https://moatok.example.com`)
+
+### 5. Firebase Authentication Authorized Domains
+Ensure your deployment domains are listed under **[Firebase Console] > [Authentication] > [Settings] > [Authorized domains]** to authorize Google Sign-in and redirect/popup handlers.
+
+### 6. Real-Device Test Checklist (Android & iOS)
+Follow the 8-point physical device verification plan detailed in [DEPLOYMENT_FIREBASE.md](DEPLOYMENT_FIREBASE.md):
+1. **Open deployed PWA over HTTPS** (`https://<project-id>.web.app`).
+2. **Add to Home Screen** (Android Chrome install banner / iOS Safari Share > "Add to Home Screen").
+3. **Sign in** (Email, Google, or Anonymous) and verify ID token attachment (`Authorization: Bearer <token>`).
+4. **Receive a test push notification** (noting that iOS Web Push strictly requires Home Screen installation on iOS 16.4+).
+5. **Open a share message** (verify deep-linking, details rendering, and SPA refresh fallback).
+6. **Launch KakaoTalk sharing** (verify Kakao SDK initialization without `KOE101`, or graceful fallback).
+7. **Check Open Chat room selection in KakaoTalk** (confirm selection on physical mobile device).
+8. **Confirm delivery information received by backend** (verify `POST /api/v1/messages/:id/share-attempt` telemetry vs `POST /api/v1/messages/:id/mark-shared` user-confirmed status decoupling).

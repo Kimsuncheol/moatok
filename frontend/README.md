@@ -319,7 +319,7 @@ Open `http://localhost:5173` in your browser or mobile emulator. Vite proxies `/
 
 ### 3. Run Automated Frontend Tests
 
-Runs all 53 unit & component tests across AppearanceToggle, apiClient, authStore, BottomNav, MessageCard, MessageDetailView, PendingView, stores, Kakao sharing, PWA manifest, and ReloadPrompt:
+Runs all 69 unit & component tests across 16 test files (AppearanceToggle, apiClient, authStore, BottomNav, HistoryView, MessageCard, MessageDetailView, messagesStore, NotificationBanner, PendingView, pwaManifest, ReloadPrompt, SettingsView, ShareModal, themeStore, and firebaseHosting):
 
 ```bash
 npm test
@@ -338,3 +338,47 @@ Preview the production build locally:
 ```bash
 npm run preview
 ```
+
+---
+
+## Firebase Hosting Deployment & Production Configuration
+
+See the complete guide in [DEPLOYMENT_FIREBASE.md](../DEPLOYMENT_FIREBASE.md).
+
+### 1. Build & Deploy Commands
+```bash
+# In frontend/ or project root
+npm run build:prod
+firebase deploy --only hosting
+```
+
+### 2. SPA Route Fallback & Cache Headers
+Configured in root [`firebase.json`](../firebase.json):
+- **SPA Rewrite**: `{"source": "**", "destination": "/index.html"}` guarantees that deep links like `/messages/:id` and page reloads never return 404.
+- **Service Worker Cache Control**: `/sw.js` is served with `Cache-Control: no-cache, no-store, must-revalidate` so mobile clients receive new PWA builds promptly without getting stuck on stale workers.
+- **Static Assets**: `/assets/**` are cached with `Cache-Control: public, max-age=31536000, immutable`.
+
+### 3. Environment-Specific API URL Configuration
+Configure `frontend/.env.production`:
+- **Direct Cloud Run**: `VITE_API_BASE_URL=https://moatok-backend-your-project-id.asia-northeast3.run.app`
+- **Same-Origin Rewrite**: Set `VITE_API_BASE_URL=` and add a `/api/**` rewrite in `firebase.json`.
+
+### 4. Kakao Developers Console Domain Registration (`KOE101` Prevention)
+Register the deployed domains under **[Kakao Developers] > [내 애플리케이션] > [앱 설정] > [플랫폼] > [Web] > [사이트 도메인]**:
+- `https://your-gcp-project-id.web.app`
+- `https://your-gcp-project-id.firebaseapp.com`
+- Any custom domain (e.g. `https://moatok.example.com`)
+
+### 5. Firebase Authentication Authorized Domains
+Ensure all production domains are registered under **[Firebase Console] > [Authentication] > [Settings] > [Authorized domains]**.
+
+### 6. Real-Device Test Checklist (Android & iOS)
+Follow the 8-stage verification plan in [DEPLOYMENT_FIREBASE.md](../DEPLOYMENT_FIREBASE.md):
+1. Open deployed PWA over HTTPS (`https://<project-id>.web.app`).
+2. Add to Home Screen (Android Chrome install / iOS Safari Web Clip).
+3. Sign in (Email, Google, or Anonymous) and verify ID token attachment.
+4. Receive a test push notification (note iOS 16.4+ Home Screen standalone requirement).
+5. Open a share message via deep link and verify SPA refresh resilience.
+6. Launch KakaoTalk sharing via Kakao JS SDK or fallback.
+7. Verify destination selection in KakaoTalk (Open Chat room, group chat, 1:1).
+8. Confirm backend delivery information (telemetry vs user-confirmed decoupling).
