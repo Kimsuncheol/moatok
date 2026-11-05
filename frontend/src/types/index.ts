@@ -56,3 +56,14 @@ export interface UserProfile {
   role: 'user' | 'admin' | string
   is_admin: boolean
 }
+
+export type AuthSignInMethod = 'email' | 'anonymous' | 'google' | 'custom'
+
+export type AuthStatus = 'loading' | 'authenticated' | 'signed_out' | 'expired' | 'error'
+
+export interface SignInCredentials {
+  method?: AuthSignInMethod
+  email?: string
+  password?: string
+  token?: string
+}

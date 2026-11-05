@@ -3,12 +3,20 @@ import { ref, onMounted } from 'vue'
 import AppearanceToggle from '@/components/AppearanceToggle.vue'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useAuthStore } from '@/stores/auth'
+import type { AuthSignInMethod } from '@/types'
 
 const notifStore = useNotificationsStore()
 const authStore = useAuthStore()
 
 const backendStatus = ref<'checking' | 'healthy' | 'unreachable'>('checking')
 const isRequestingNotif = ref(false)
+
+// Authentication form state
+const selectedMethod = ref<AuthSignInMethod>(authStore.preferredSignInMethod)
+const authEmail = ref('')
+const authPassword = ref('')
+const authMode = ref<'login' | 'signup'>('login')
+const authSubmitting = ref(false)
 
 async function checkBackendHealth() {
   backendStatus.value = 'checking'
@@ -31,6 +39,52 @@ async function requestNotification() {
   } finally {
     isRequestingNotif.value = false
   }
+}
+
+async function handleEmailAuth() {
+  if (!authEmail.value || !authPassword.value) return
+  authSubmitting.value = true
+  try {
+    if (authMode.value === 'login') {
+      await authStore.loginWithEmail(authEmail.value, authPassword.value)
+    } else {
+      await authStore.signupWithEmail(authEmail.value, authPassword.value)
+    }
+    authEmail.value = ''
+    authPassword.value = ''
+  } catch {
+    // Error is captured in authStore.error
+  } finally {
+    authSubmitting.value = false
+  }
+}
+
+async function handleGuestAuth() {
+  authSubmitting.value = true
+  try {
+    await authStore.loginAsGuest()
+  } finally {
+    authSubmitting.value = false
+  }
+}
+
+async function handleGoogleAuth() {
+  authSubmitting.value = true
+  try {
+    await authStore.loginWithGoogle()
+  } catch {
+    // Error is captured in authStore.error
+  } finally {
+    authSubmitting.value = false
+  }
+}
+
+async function handleRefreshSession() {
+  await authStore.refreshSession()
+}
+
+async function handleLogout() {
+  await authStore.logout()
 }
 
 onMounted(() => {
@@ -186,34 +240,211 @@ onMounted(() => {
     <section class="settings-card">
       <div class="card-title-row">
         <h3 class="card-title">사용자 인증 (Firebase Auth)</h3>
-        <span class="status-indicator" :class="authStore.user || authStore.profile ? 'active' : 'inactive'">
-          {{ authStore.user || authStore.profile ? '인증됨' : '게스트' }}
+        <span
+          class="status-indicator"
+          :class="{
+            active: authStore.isAuthenticated,
+            inactive: !authStore.isAuthenticated && !authStore.sessionExpired,
+            expired: authStore.sessionExpired
+          }"
+        >
+          {{
+            authStore.sessionExpired
+              ? '세션 만료'
+              : authStore.isLoading
+              ? '확인 중'
+              : authStore.isAuthenticated
+              ? (authStore.isAdmin ? '관리자 (Admin)' : '인증됨')
+              : '미인증 (게스트)'
+          }}
         </span>
       </div>
 
-      <div v-if="authStore.profile" class="user-info-box">
+      <!-- Expired Session Alert Banner -->
+      <div v-if="authStore.sessionExpired" class="auth-alert expired-alert">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-body">
+          <strong>세션이 만료되었습니다</strong>
+          <p>보안을 위해 다시 로그인해주세요.</p>
+        </div>
+      </div>
+
+      <!-- Error Alert Banner -->
+      <div v-if="authStore.error" class="auth-alert error-alert">
+        <div class="alert-icon">✕</div>
+        <div class="alert-body">
+          <p>{{ authStore.error }}</p>
+        </div>
+        <button
+          type="button"
+          class="alert-dismiss-btn"
+          aria-label="오류 메시지 닫기"
+          @click="authStore.clearError"
+        >
+          ✕
+        </button>
+      </div>
+
+      <!-- Loading State -->
+      <div v-if="authStore.isLoading && !authStore.isAuthenticated" class="auth-loading-box">
+        <div class="loading-spinner"></div>
+        <span class="loading-text">인증 상태를 확인하고 있습니다...</span>
+      </div>
+
+      <!-- Authenticated User Profile -->
+      <div v-else-if="authStore.isAuthenticated && authStore.profile" class="user-info-box">
         <div class="detail-row">
           <span class="detail-label">사용자 UID:</span>
           <span class="detail-value font-mono ellipsis">{{ authStore.profile.uid }}</span>
         </div>
         <div class="detail-row">
+          <span class="detail-label">이메일 계정:</span>
+          <span class="detail-value">{{ authStore.userEmail || '익명 게스트 계정' }}</span>
+        </div>
+        <div class="detail-row">
           <span class="detail-label">계정 권한:</span>
-          <span class="detail-value">
-            {{ authStore.profile.is_admin ? '관리자 (Admin)' : '일반 사용자' }}
+          <span class="detail-value" :class="{ 'admin-badge': authStore.isAdmin }">
+            {{ authStore.isAdmin ? '관리자 (Admin Custom Claim)' : '일반 사용자' }}
           </span>
         </div>
-        <button type="button" class="logout-btn" @click="authStore.logout">
-          로그아웃
-        </button>
+
+        <div class="auth-actions-row">
+          <button
+            type="button"
+            class="refresh-token-btn"
+            :disabled="authStore.isLoading"
+            @click="handleRefreshSession"
+          >
+            토큰 갱신
+          </button>
+          <button
+            type="button"
+            class="logout-btn"
+            :disabled="authStore.isLoading"
+            @click="handleLogout"
+          >
+            로그아웃
+          </button>
+        </div>
       </div>
 
-      <div v-else class="guest-box">
+      <!-- Signed-Out Form with Configurable Methods -->
+      <div v-else class="auth-form-box">
         <p class="setting-caption">
-          로그인 없이 게스트 모드로 브리핑을 검토하거나 Firebase 익명 로그인을 진행할 수 있습니다.
+          로그인하여 브리핑을 검토하고 보호된 백엔드 API에 접근합니다.
         </p>
-        <button type="button" class="setting-action-btn" @click="authStore.loginAsGuest">
-          게스트 로그인 (익명 인증)
-        </button>
+
+        <!-- Method Selector -->
+        <div class="auth-method-selector">
+          <button
+            type="button"
+            class="method-btn"
+            :class="{ active: selectedMethod === 'email' }"
+            @click="selectedMethod = 'email'"
+          >
+            이메일 로그인
+          </button>
+          <button
+            type="button"
+            class="method-btn"
+            :class="{ active: selectedMethod === 'anonymous' }"
+            @click="selectedMethod = 'anonymous'"
+          >
+            게스트 (익명)
+          </button>
+          <button
+            type="button"
+            class="method-btn"
+            :class="{ active: selectedMethod === 'google' }"
+            @click="selectedMethod = 'google'"
+          >
+            Google
+          </button>
+        </div>
+
+        <!-- 1. Email / Password Authentication -->
+        <form
+          v-if="selectedMethod === 'email'"
+          class="email-auth-form"
+          @submit.prevent="handleEmailAuth"
+        >
+          <div class="form-group">
+            <label for="auth-email-input" class="form-label">이메일</label>
+            <input
+              id="auth-email-input"
+              v-model="authEmail"
+              type="email"
+              required
+              autocomplete="username"
+              placeholder="user@example.com"
+              class="form-input"
+              :disabled="authSubmitting || authStore.isLoading"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="auth-password-input" class="form-label">비밀번호</label>
+            <input
+              id="auth-password-input"
+              v-model="authPassword"
+              type="password"
+              required
+              minlength="6"
+              autocomplete="current-password"
+              placeholder="6자 이상 비밀번호"
+              class="form-input"
+              :disabled="authSubmitting || authStore.isLoading"
+            />
+          </div>
+
+          <div class="form-buttons-row">
+            <button
+              type="submit"
+              class="auth-primary-btn"
+              :disabled="authSubmitting || authStore.isLoading"
+            >
+              {{ authSubmitting ? '처리 중...' : authMode === 'login' ? '로그인' : '회원가입' }}
+            </button>
+            <button
+              type="button"
+              class="auth-sub-btn"
+              :disabled="authSubmitting || authStore.isLoading"
+              @click="authMode = authMode === 'login' ? 'signup' : 'login'"
+            >
+              {{ authMode === 'login' ? '새 계정 회원가입' : '기존 계정 로그인' }}
+            </button>
+          </div>
+        </form>
+
+        <!-- 2. Anonymous / Guest Sign-in -->
+        <div v-else-if="selectedMethod === 'anonymous'" class="anonymous-auth-box">
+          <p class="setting-caption">
+            별도 가입 없이 익명 계정으로 즉시 브리핑을 검토하고 카카오톡 공유를 시작할 수 있습니다.
+          </p>
+          <button
+            type="button"
+            class="auth-primary-btn"
+            :disabled="authSubmitting || authStore.isLoading"
+            @click="handleGuestAuth"
+          >
+            {{ authSubmitting ? '처리 중...' : '게스트로 시작하기 (익명 인증)' }}
+          </button>
+        </div>
+
+        <!-- 3. Google Sign-in -->
+        <div v-else-if="selectedMethod === 'google'" class="google-auth-box">
+          <p class="setting-caption">
+            Google 계정으로 안전하게 Firebase 인증을 수행합니다.
+          </p>
+          <button
+            type="button"
+            class="auth-primary-btn"
+            :disabled="authSubmitting || authStore.isLoading"
+            @click="handleGoogleAuth"
+          >
+            {{ authSubmitting ? '처리 중...' : 'Google 계정으로 로그인' }}
+          </button>
+        </div>
       </div>
     </section>
 
@@ -518,5 +749,224 @@ onMounted(() => {
   background-color: var(--bg-surface-elevated);
   padding: 2px 4px;
   border-radius: 4px;
+}
+
+.status-indicator.expired {
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-primary);
+  border: 1px dashed var(--border-strong);
+}
+
+.auth-alert {
+  padding: 10px 12px;
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.auth-alert.expired-alert {
+  background-color: var(--bg-surface-elevated);
+  border: 1px dashed var(--border-strong);
+  color: var(--text-primary);
+}
+
+.auth-alert.error-alert {
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+}
+
+.alert-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.alert-body {
+  flex: 1;
+}
+
+.alert-dismiss-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 4px;
+}
+
+.alert-dismiss-btn:hover {
+  color: var(--text-primary);
+}
+
+.auth-loading-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px;
+  background-color: var(--bg-surface-elevated);
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.loading-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border-subtle);
+  border-top-color: var(--accent-action);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.admin-badge {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.auth-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.refresh-token-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background-color: var(--bg-surface-elevated);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.refresh-token-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.auth-form-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-method-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  background-color: var(--bg-surface-elevated);
+  border-radius: 8px;
+  padding: 3px;
+  border: 1px solid var(--border-subtle);
+}
+
+.method-btn {
+  padding: 6px 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.method-btn.active {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.email-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.form-input {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+}
+
+.form-input:focus {
+  border-color: var(--border-strong);
+}
+
+.form-buttons-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.auth-primary-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  background-color: var(--accent-action);
+  color: var(--accent-action-text);
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.auth-primary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-sub-btn {
+  background: none;
+  border: none;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  text-align: center;
+}
+
+.auth-sub-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.anonymous-auth-box,
+.google-auth-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 </style>

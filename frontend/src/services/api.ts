@@ -1,57 +1,145 @@
 import type { ShareMessage, UserProfile } from '@/types'
 
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL ||
-  (typeof window !== 'undefined' && window.location?.origin
-    ? window.location.origin
-    : 'http://localhost:8080')
-).replace(/\/$/, '')
+export class ApiError extends Error {
+  status: number
+  code?: string
+  details?: any
 
-let tokenProvider: (() => Promise<string | null>) | null = null
+  constructor(status: number, message: string, code?: string, details?: any) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.code = code
+    this.details = details
+  }
+}
 
-export function setTokenProvider(provider: () => Promise<string | null>) {
+export type TokenProvider = (forceRefresh?: boolean) => Promise<string | null>
+export type SessionExpiredHandler = (error: ApiError) => void
+
+let customBaseUrl: string | null = null
+let tokenProvider: TokenProvider | null = null
+let sessionExpiredHandler: SessionExpiredHandler | null = null
+
+export function getApiBaseUrl(): string {
+  if (customBaseUrl !== null) {
+    return customBaseUrl
+  }
+  const envUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim()
+  if (envUrl) {
+    return envUrl.replace(/\/+$/, '')
+  }
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin.replace(/\/+$/, '')
+  }
+  return 'http://localhost:8080'
+}
+
+export function setApiBaseUrl(url: string | null) {
+  customBaseUrl = url !== null ? url.trim().replace(/\/+$/, '') : null
+}
+
+export function setTokenProvider(provider: TokenProvider | null) {
   tokenProvider = provider
 }
 
+export function setOnSessionExpired(handler: SessionExpiredHandler | null) {
+  sessionExpiredHandler = handler
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`
+  const baseUrl = getApiBaseUrl()
+  const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+  const url = `${baseUrl}${path}`
   const headers = new Headers(options.headers || {})
 
   if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json')
   }
 
+  let hadToken = false
   if (tokenProvider) {
     try {
-      const token = await tokenProvider()
+      const token = await tokenProvider(false)
       if (token) {
         headers.set('Authorization', `Bearer ${token}`)
+        hadToken = true
       }
     } catch (e) {
       console.warn('Failed to retrieve auth token for request', e)
     }
   }
 
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     ...options,
     headers
   })
 
+  // Handle expired sessions and retry on 401 when a token provider is available
+  if (response.status === 401 && tokenProvider) {
+    let isExpiredOrUnauthorized = false
+    try {
+      const clone = response.clone()
+      const errorJson = await clone.json()
+      if (errorJson?.code === 'token_expired' || errorJson?.code === 'invalid_token' || hadToken) {
+        isExpiredOrUnauthorized = true
+      }
+    } catch {
+      if (hadToken) isExpiredOrUnauthorized = true
+    }
+
+    if (isExpiredOrUnauthorized) {
+      try {
+        const refreshedToken = await tokenProvider(true)
+        if (refreshedToken) {
+          headers.set('Authorization', `Bearer ${refreshedToken}`)
+          response = await fetch(url, {
+            ...options,
+            headers
+          })
+        }
+      } catch (refreshErr) {
+        console.warn('Token force-refresh attempt failed:', refreshErr)
+      }
+    }
+  }
+
   if (!response.ok) {
     let errorDetail = response.statusText
+    let errorCode: string | undefined
+    let errorJson: any = null
+
     try {
-      const errorJson = await response.json()
+      errorJson = await response.json()
       errorDetail = errorJson.message || errorJson.error || response.statusText
+      errorCode = errorJson.code
     } catch {
-      // ignore json parse error
+      // response body was not valid JSON
     }
-    throw new Error(`API Error [${response.status}]: ${errorDetail}`)
+
+    const apiError = new ApiError(
+      response.status,
+      `API Error [${response.status}]: ${errorDetail}`,
+      errorCode,
+      errorJson
+    )
+
+    if (response.status === 401) {
+      sessionExpiredHandler?.(apiError)
+    }
+
+    throw apiError
   }
 
   return response.json() as Promise<T>
 }
 
 export const api = {
+  getApiBaseUrl,
+  setApiBaseUrl,
+  setTokenProvider,
+  setOnSessionExpired,
+
   async getProfile(): Promise<{ user: UserProfile }> {
     return request<{ user: UserProfile }>('/api/v1/auth/me')
   },
@@ -61,7 +149,6 @@ export const api = {
   },
 
   async getHistoryMessages(limit = 50): Promise<{ messages: ShareMessage[]; count: number }> {
-    // Fetches messages with status shared or shared_by_user
     return request<{ messages: ShareMessage[]; count: number }>(`/api/v1/messages?status=shared&limit=${limit}`)
   },
 
