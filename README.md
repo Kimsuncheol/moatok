@@ -65,7 +65,7 @@ A production-oriented platform comprising:
 │   │   ├── services/               # API, Firebase & Kakao Share services
 │   │   ├── stores/                 # Pinia stores (theme, auth, messages, notifications)
 │   │   └── views/                  # PendingView, HistoryView, SettingsView, MessageDetailView
-│   ├── tests/                      # Vitest unit & component tests (49 tests)
+│   ├── tests/                      # Vitest unit & component tests (53 tests)
 │   ├── package.json
 │   ├── vite.config.ts              # Vite config with VitePWA & Workbox zero-cache policy
 │   └── README.md

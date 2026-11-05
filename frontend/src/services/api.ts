@@ -170,6 +170,16 @@ export const api = {
     })
   },
 
+  async updateShareMessage(
+    messageId: string,
+    payload: { title?: string; body?: string; target_url?: string; status?: string }
+  ): Promise<{ share_message: ShareMessage }> {
+    return request<{ share_message: ShareMessage }>(`/api/v1/admin/share-messages/${encodeURIComponent(messageId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  },
+
   async registerFcmDevice(payload: {
     fcm_token: string
     device_id?: string

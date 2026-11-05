@@ -187,5 +187,14 @@ describe('API Client & Token Interceptor', () => {
       device_id: 'dev_iphone',
       platform: 'ios'
     })
+
+    await api.updateShareMessage('smsg_100', {
+      body: '수정된 브리핑 문구'
+    })
+    expect(capturedUrl).toBe('http://test-api.example.com/api/v1/admin/share-messages/smsg_100')
+    expect(capturedMethod).toBe('PATCH')
+    expect(JSON.parse(capturedBody)).toEqual({
+      body: '수정된 브리핑 문구'
+    })
   })
 })

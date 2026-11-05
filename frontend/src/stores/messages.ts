@@ -196,6 +196,36 @@ export const useMessagesStore = defineStore('messages', () => {
     return foundMsg
   }
 
+  async function updateMessage(
+    messageId: string,
+    payload: { title?: string; body?: string }
+  ): Promise<ShareMessage | null> {
+    try {
+      const res = await api.updateShareMessage(messageId, payload)
+      const updated = res.share_message || res
+      if (updated) {
+        const pIdx = pendingMessages.value.findIndex((m) => m.id === messageId)
+        if (pIdx !== -1) {
+          pendingMessages.value[pIdx] = { ...pendingMessages.value[pIdx], ...updated }
+        }
+
+        const hIdx = historyMessages.value.findIndex((m) => m.id === messageId)
+        if (hIdx !== -1) {
+          historyMessages.value[hIdx] = { ...historyMessages.value[hIdx], ...updated }
+        }
+
+        if (selectedMessage.value?.id === messageId) {
+          selectedMessage.value = { ...selectedMessage.value, ...updated }
+        }
+        return updated
+      }
+    } catch (err: any) {
+      console.warn('Backend update-message call failed:', err)
+      throw err
+    }
+    return null
+  }
+
   return {
     pendingMessages,
     historyMessages,
@@ -209,6 +239,7 @@ export const useMessagesStore = defineStore('messages', () => {
     fetchPending,
     fetchById,
     markAsShared,
+    updateMessage,
     clearError
   }
 })
