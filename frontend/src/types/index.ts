@@ -43,6 +43,9 @@ export interface ShareMessage {
   shared_by_user_id?: string | null
   shared_by_user_at?: string | null
   last_share_channel?: string | null
+  share_attempt_count?: number
+  last_share_attempt_at?: string | null
+  last_share_attempt_channel?: string | null
   notification_attempts?: number
   last_notification_status?: string | null
   last_notified_at?: string | null

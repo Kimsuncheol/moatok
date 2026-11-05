@@ -1,15 +1,32 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import AppearanceToggle from '@/components/AppearanceToggle.vue'
+import { ref, computed, onMounted } from 'vue'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useAuthStore } from '@/stores/auth'
-import type { AuthSignInMethod } from '@/types'
+import { useThemeStore } from '@/stores/theme'
+import type { AppearanceMode, AuthSignInMethod } from '@/types'
 
 const notifStore = useNotificationsStore()
 const authStore = useAuthStore()
+const themeStore = useThemeStore()
 
 const backendStatus = ref<'checking' | 'healthy' | 'unreachable'>('checking')
 const isRequestingNotif = ref(false)
+const notifFeedback = ref<string | null>(null)
+
+// Platform detection for PWA guidance
+const detectedPlatform = computed<'android' | 'ios' | 'desktop'>(() => {
+  if (typeof navigator === 'undefined') return 'desktop'
+  const ua = navigator.userAgent || ''
+  if (/iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+    return 'ios'
+  }
+  if (/Android/.test(ua)) {
+    return 'android'
+  }
+  return 'desktop'
+})
+
+const activePlatformTab = ref<'android' | 'ios' | 'desktop'>('desktop')
 
 // Authentication form state
 const selectedMethod = ref<AuthSignInMethod>(authStore.preferredSignInMethod)
@@ -17,6 +34,35 @@ const authEmail = ref('')
 const authPassword = ref('')
 const authMode = ref<'login' | 'signup'>('login')
 const authSubmitting = ref(false)
+
+// Appearance modes list
+interface AppearanceOption {
+  mode: AppearanceMode
+  name: string
+  desc: string
+  icon: string
+}
+
+const appearanceOptions: AppearanceOption[] = [
+  {
+    mode: 'system',
+    name: '시스템 설정 (System)',
+    desc: '기기 운영체제의 다크/라이트 모드 설정에 자동으로 동기화됩니다.',
+    icon: '⚙️'
+  },
+  {
+    mode: 'light',
+    name: '라이트 모드 (Light)',
+    desc: '밝고 선명한 단색 고대비 모노크롬 테마입니다.',
+    icon: '☀️'
+  },
+  {
+    mode: 'dark',
+    name: '다크 모드 (Dark)',
+    desc: '눈의 피로를 줄이고 배터리를 절약하는 트루 블랙 OLED 최적화 테마입니다.',
+    icon: '🌙'
+  }
+]
 
 async function checkBackendHealth() {
   backendStatus.value = 'checking'
@@ -32,10 +78,18 @@ async function checkBackendHealth() {
   }
 }
 
-async function requestNotification() {
+async function handleRequestNotification() {
   isRequestingNotif.value = true
+  notifFeedback.value = null
   try {
-    await notifStore.requestPermissionAndRegister()
+    const success = await notifStore.requestPermissionAndRegister()
+    if (success) {
+      notifFeedback.value = '✓ 푸시 알림 권한이 허용되고 기기가 성공적으로 등록되었습니다.'
+    } else if (notifStore.permission === 'denied') {
+      notifFeedback.value = '브라우저 설정에서 알림이 차단되어 있습니다. 브라우저 사이트 설정에서 권한을 허용해주세요.'
+    } else {
+      notifFeedback.value = '알림 권한이 설정되지 않았거나 현재 환경에서 Web Push가 지원되지 않습니다.'
+    }
   } finally {
     isRequestingNotif.value = false
   }
@@ -79,17 +133,15 @@ async function handleGoogleAuth() {
   }
 }
 
-async function handleRefreshSession() {
-  await authStore.refreshSession()
-}
-
 async function handleLogout() {
   await authStore.logout()
 }
 
 onMounted(() => {
+  activePlatformTab.value = detectedPlatform.value
   checkBackendHealth()
   authStore.init()
+  notifStore.checkPermission()
 })
 </script>
 
@@ -97,149 +149,234 @@ onMounted(() => {
   <div class="settings-view">
     <section class="view-header">
       <h2 class="view-title">환경 설정</h2>
-      <p class="view-desc">화면 모드, 알림 권한, 사용자 인증 및 공유 정책을 관리합니다.</p>
+      <p class="view-desc">화면 모드, 알림 권한, PWA 앱 설치 및 사용자 계정을 관리합니다.</p>
     </section>
 
-    <!-- 1. Appearance Mode (Segmented Control - NO dropdown!) -->
-    <section class="settings-card">
+    <!-- 1. Appearance Modes as a List (NO dropdown!) -->
+    <section class="settings-card" aria-labelledby="appearance-heading">
       <div class="card-title-row">
-        <h3 class="card-title">화면 테마 (Appearance)</h3>
-        <span class="info-badge">단색 모노크롬</span>
+        <h3 id="appearance-heading" class="card-title">화면 테마 모드 (Appearance)</h3>
+        <span class="info-badge">모노크롬 테마</span>
       </div>
       <p class="setting-caption">
-        시스템 설정에 맞추거나 라이트/다크 모드를 수동으로 전환합니다.
+        시스템 설정에 맞추거나 라이트/다크 모드를 목록에서 선택하여 전환합니다.
       </p>
-      <div class="toggle-container">
-        <AppearanceToggle />
-      </div>
+
+      <ul class="appearance-mode-list" role="radiogroup" aria-label="화면 테마 모드 목록">
+        <li
+          v-for="item in appearanceOptions"
+          :key="item.mode"
+          class="appearance-mode-item"
+          :class="{ selected: themeStore.mode === item.mode }"
+          role="radio"
+          :aria-checked="themeStore.mode === item.mode"
+          tabindex="0"
+          @click="themeStore.setMode(item.mode)"
+          @keydown.space.prevent="themeStore.setMode(item.mode)"
+          @keydown.enter.prevent="themeStore.setMode(item.mode)"
+        >
+          <div class="mode-info">
+            <div class="mode-title-row">
+              <span class="mode-icon" aria-hidden="true">{{ item.icon }}</span>
+              <strong class="mode-name">{{ item.name }}</strong>
+              <span v-if="themeStore.mode === item.mode" class="current-badge">적용 중</span>
+            </div>
+            <p class="mode-desc">{{ item.desc }}</p>
+          </div>
+          <div class="mode-radio-indicator" aria-hidden="true">
+            <span v-if="themeStore.mode === item.mode" class="radio-dot" />
+          </div>
+        </li>
+      </ul>
     </section>
 
-    <!-- 2. KakaoTalk Sharing Policy (Architectural Boundary) -->
-    <section class="settings-card highlight-card">
+    <!-- 2. Push Notifications (Permission Status & Enable Action) -->
+    <section class="settings-card" aria-labelledby="notif-heading">
       <div class="card-title-row">
-        <h3 class="card-title">카카오톡 공유 정책 안내</h3>
-        <span class="notice-tag">필독</span>
-      </div>
-      <div class="policy-content">
-        <p class="policy-lead">
-          <strong>Moatok은 카카오톡 채팅방에 자동으로 게시하지 않습니다.</strong>
-        </p>
-        <ul class="policy-list">
-          <li>
-            <strong>사용자 주도 전송:</strong> 카카오 플랫폼 운영 정책 및 계정 안전을 위해, 사용자가 직접 내용을 검토한 후 대상 오픈채팅방이나 친구를 선택하여 공유하는 방식을 준수합니다.
-          </li>
-          <li>
-            <strong>안전한 백엔드 역할:</strong> Python Flask 백엔드는 RSS 수집, 사실 기반 요약 포맷팅, Firestore 중복 방지 저장 및 PWA 푸시 알림까지만 자동으로 수행합니다.
-          </li>
-          <li>
-            <strong>무단 스크래핑/오토스팸 방지:</strong> 카카오톡 엑세스 토큰이나 서비스 계정 키를 Firestore에 저장하지 않습니다.
-          </li>
-        </ul>
-      </div>
-    </section>
-
-    <!-- 3. Push Notifications (FCM) -->
-    <section class="settings-card">
-      <div class="card-title-row">
-        <h3 class="card-title">푸시 알림 (Firebase Cloud Messaging)</h3>
-        <span class="status-indicator" :class="notifStore.permission === 'granted' ? 'active' : 'inactive'">
-          {{ notifStore.permission === 'granted' ? '활성' : '미허용' }}
+        <h3 id="notif-heading" class="card-title">푸시 알림 (Push Notifications)</h3>
+        <span
+          class="status-indicator"
+          :class="{
+            active: notifStore.permission === 'granted',
+            denied: notifStore.permission === 'denied',
+            inactive: notifStore.permission === 'default'
+          }"
+        >
+          {{
+            notifStore.permission === 'granted'
+              ? '허용됨 (Active)'
+              : notifStore.permission === 'denied'
+              ? '차단됨 (Denied)'
+              : '미설정 (Default)'
+          }}
         </span>
       </div>
+
       <p class="setting-caption">
-        백엔드 스케줄러가 새 브리핑을 수집했을 때 모바일 기기로 알림을 받습니다.
+        백엔드 스케줄러가 새 브리핑을 수집했을 때 모바일 기기로 푸시 알림을 수신합니다.
       </p>
 
+      <!-- Notification Permission Details -->
       <div class="notif-details">
         <div class="detail-row">
-          <span class="detail-label">브라우저 알림 권한:</span>
-          <span class="detail-value font-mono">{{ notifStore.permission }}</span>
+          <span class="detail-label">브라우저 알림 권한 상태:</span>
+          <span class="detail-value font-mono font-semibold">
+            {{ notifStore.permission }}
+            <span v-if="notifStore.permission === 'granted'"> (알림 수신 가능)</span>
+            <span v-else-if="notifStore.permission === 'denied'"> (브라우저에서 차단됨)</span>
+            <span v-else> (권한 요청 필요)</span>
+          </span>
         </div>
         <div class="detail-row">
+          <span class="detail-label">Web Push API 지원 여부:</span>
+          <span class="detail-value">
+            {{ notifStore.isSupported ? '지원됨' : '미지원 (iOS는 홈 화면 설치 필요)' }}
+          </span>
+        </div>
+        <div v-if="notifStore.deviceId" class="detail-row">
           <span class="detail-label">등록된 기기 ID:</span>
           <span class="detail-value font-mono ellipsis">{{ notifStore.deviceId }}</span>
         </div>
       </div>
 
-      <button
-        v-if="notifStore.permission !== 'granted'"
-        type="button"
-        class="setting-action-btn"
-        :disabled="isRequestingNotif"
-        @click="requestNotification"
-      >
-        {{ isRequestingNotif ? '권한 요청 중...' : '푸시 알림 권한 허용하기' }}
-      </button>
+      <!-- Feedback Banner -->
+      <div v-if="notifFeedback" class="notif-feedback-box" role="status" aria-live="polite">
+        {{ notifFeedback }}
+      </div>
+
+      <!-- Action to Enable Notifications when supported -->
+      <div class="notif-action-area">
+        <button
+          v-if="notifStore.isSupported && notifStore.permission !== 'granted'"
+          type="button"
+          class="setting-action-btn"
+          :disabled="isRequestingNotif"
+          @click="handleRequestNotification"
+        >
+          {{ isRequestingNotif ? '권한 요청 중...' : '푸시 알림 권한 허용하기' }}
+        </button>
+
+        <button
+          v-else-if="notifStore.isSupported && notifStore.permission === 'granted'"
+          type="button"
+          class="setting-sub-btn"
+          :disabled="isRequestingNotif"
+          @click="handleRequestNotification"
+        >
+          {{ isRequestingNotif ? '등록 갱신 중...' : '알림 기기 등록 재확인' }}
+        </button>
+
+        <!-- Guidance if permission is denied -->
+        <div v-if="notifStore.permission === 'denied'" class="denied-guidance-box">
+          <span class="warning-icon">⚠️</span>
+          <p class="denied-text">
+            브라우저에서 알림 권한이 차단되어 있습니다. 주소창 좌측의 설정/자물쇠 아이콘을 탭하여 알림 권한을 <strong>'허용'</strong>으로 변경해주세요.
+          </p>
+        </div>
+
+        <!-- Guidance if unsupported (e.g. iOS Safari tab) -->
+        <div v-if="!notifStore.isSupported" class="unsupported-guidance-box">
+          <span class="warning-icon">ℹ️</span>
+          <p class="unsupported-text">
+            현재 실행 환경에서는 Web Push가 지원되지 않습니다. <strong>iOS 기기의 경우 아래 'PWA 앱 설치 안내'에 따라 Safari에서 '홈 화면에 추가'한 후 홈 화면 아이콘으로 실행</strong>하시면 알림을 활성화할 수 있습니다.
+          </p>
+        </div>
+      </div>
     </section>
 
-    <!-- 4. PWA Installation & Platform Instructions (Android & iOS) -->
-    <section class="settings-card">
+    <!-- 3. Platform-Specific PWA Installation Guidance -->
+    <section class="settings-card" aria-labelledby="pwa-guide-heading">
       <div class="card-title-row">
-        <h3 class="card-title">PWA 앱 설치 안내 (Android / iOS)</h3>
+        <h3 id="pwa-guide-heading" class="card-title">PWA 앱 설치 안내 (Platform Guide)</h3>
         <span class="info-badge">PWA 가이드</span>
       </div>
       <p class="setting-caption">
-        모아톡을 홈 화면에 앱 형태로 설치하여 전체화면 실행과 푸시 알림을 활성화할 수 있습니다.
+        모아톡을 홈 화면에 앱 형태로 설치하여 독립형 전체화면 실행과 원활한 푸시 알림을 경험하세요.
       </p>
 
-      <div class="install-guides">
-        <div class="platform-guide">
-          <div class="platform-header">
-            <span class="platform-icon">🤖</span>
-            <strong class="platform-name">Android (Chrome / Samsung Internet)</strong>
+      <!-- Platform Selection Tabs -->
+      <nav class="platform-tabs" aria-label="기기별 설치 안내 선택">
+        <button
+          type="button"
+          class="platform-tab-btn"
+          :class="{ active: activePlatformTab === 'android' }"
+          @click="activePlatformTab = 'android'"
+        >
+          <span>🤖 Android</span>
+          <span v-if="detectedPlatform === 'android'" class="detected-badge">현재 기기</span>
+        </button>
+        <button
+          type="button"
+          class="platform-tab-btn"
+          :class="{ active: activePlatformTab === 'ios' }"
+          @click="activePlatformTab = 'ios'"
+        >
+          <span>🍎 iOS (Safari)</span>
+          <span v-if="detectedPlatform === 'ios'" class="detected-badge">현재 기기</span>
+        </button>
+        <button
+          type="button"
+          class="platform-tab-btn"
+          :class="{ active: activePlatformTab === 'desktop' }"
+          @click="activePlatformTab = 'desktop'"
+        >
+          <span>💻 Desktop (PC)</span>
+          <span v-if="detectedPlatform === 'desktop'" class="detected-badge">현재 기기</span>
+        </button>
+      </nav>
+
+      <!-- Platform Guides -->
+      <div class="platform-guide-content">
+        <!-- Android Guide -->
+        <div v-if="activePlatformTab === 'android'" class="platform-card">
+          <div class="platform-card-header">
+            <strong>Android (Chrome / Samsung Internet) 설치 방법</strong>
           </div>
           <ol class="step-list">
-            <li>브라우저 상단 또는 하단의 더보기 메뉴(<strong>⋮</strong>)를 누릅니다.</li>
+            <li>Chrome 또는 Samsung Internet 브라우저로 Moatok에 접속합니다.</li>
+            <li>브라우저 상단 또는 하단의 <strong>더보기 메뉴(⋮)</strong>를 누릅니다.</li>
             <li><strong>'앱 설치'</strong> 또는 <strong>'홈 화면에 추가'</strong>를 선택합니다.</li>
-            <li>설치 후 홈 화면 아이콘을 통해 독립형 앱(Standalone)으로 실행합니다.</li>
+            <li>홈 화면에 추가된 Moatok 아이콘을 눌러 독립형 앱(Standalone)으로 실행합니다.</li>
           </ol>
         </div>
 
-        <div class="platform-guide ios-guide">
-          <div class="platform-header">
-            <span class="platform-icon">🍎</span>
-            <strong class="platform-name">iOS / iPadOS (Safari)</strong>
+        <!-- iOS Guide -->
+        <div v-if="activePlatformTab === 'ios'" class="platform-card ios-card">
+          <div class="platform-card-header">
+            <strong>iOS / iPadOS (Safari) 설치 방법</strong>
           </div>
           <ol class="step-list">
-            <li>반드시 <strong>Safari 브라우저</strong>로 접속합니다 (인앱 브라우저 불가).</li>
-            <li>하단 툴바의 <strong>공유 버튼</strong>(네모 위 화살표 모양)을 탭합니다.</li>
-            <li>메뉴를 아래로 스크롤하여 <strong>'홈 화면에 추가'</strong>를 누르고 완료합니다.</li>
+            <li>반드시 <strong>Safari 브라우저</strong>로 접속합니다 (카카오톡 인앱 브라우저 등에서는 설치 불가).</li>
+            <li>Safari 하단 툴바의 <strong>공유 버튼(네모 위 화살표 모양)</strong>을 탭합니다.</li>
+            <li>메뉴를 아래로 스크롤하여 <strong>'홈 화면에 추가'</strong>를 선택하고 완료합니다.</li>
             <li>홈 화면에 생성된 <strong>모아톡 아이콘을 눌러 실행</strong>합니다.</li>
           </ol>
-          <div class="ios-warning-box">
-            <span class="warning-badge">iOS 중요 안내</span>
-            <p class="warning-text">
-              Apple 정책상 <strong>iOS 16.4 이상</strong>에서만 웹 푸시 알림이 지원되며,
-              <strong>반드시 홈 화면에 추가한 후 홈 화면 아이콘으로 실행한 상태</strong>에서만
-              알림 권한을 요청하고 수신할 수 있습니다. 일반 Safari 탭에서는 알림 기능이 제한됩니다.
+          <div class="ios-alert-box">
+            <strong class="ios-alert-title">⚠️ iOS 필수 안내 (iOS 16.4+)</strong>
+            <p class="ios-alert-desc">
+              Apple 정책상 <strong>iOS 16.4 이상</strong>에서만 PWA 웹 푸시 알림이 지원되며, <strong>반드시 홈 화면에 추가한 후 홈 화면 아이콘으로 실행한 상태</strong>에서만 푸시 알림 권한을 허용하고 수신할 수 있습니다. 일반 Safari 브라우저 탭에서는 알림 기능이 차단됩니다.
             </p>
           </div>
         </div>
+
+        <!-- Desktop Guide -->
+        <div v-if="activePlatformTab === 'desktop'" class="platform-card">
+          <div class="platform-card-header">
+            <strong>Desktop (Chrome / Edge / Safari) 설치 방법</strong>
+          </div>
+          <ol class="step-list">
+            <li>Chrome 또는 Edge 브라우저 주소창 우측의 <strong>설치 아이콘(⊕)</strong>을 클릭합니다.</li>
+            <li>또는 브라우저 메뉴(⋮) > <strong>'Moatok 설치'</strong>를 선택합니다.</li>
+            <li>설치 후 데스크톱 독립 창 및 작업 표시줄에 고정하여 편리하게 사용합니다.</li>
+          </ol>
+        </div>
       </div>
     </section>
 
-    <!-- 5. HTTPS & Security Context Requirements -->
-    <section class="settings-card">
+    <!-- 4. User Account & Logout -->
+    <section class="settings-card" aria-labelledby="auth-heading">
       <div class="card-title-row">
-        <h3 class="card-title">보안 컨텍스트 (HTTPS & Localhost)</h3>
-        <span class="info-badge">보안 규격</span>
-      </div>
-      <div class="security-info">
-        <p>
-          Service Worker, Web App Manifest 및 Web Push 알림은 W3C 보안 표준에 따라
-          <strong>보안 컨텍스트(Secure Context)</strong>에서만 동작합니다:
-        </p>
-        <ul class="security-list">
-          <li><strong>로컬 개발 환경:</strong> <code>http://localhost:5173</code> 또는 <code>http://127.0.0.1</code>은 보안 예외로 취급되어 정상 등록됩니다.</li>
-          <li><strong>운영 배포 환경:</strong> 반드시 유효한 SSL/TLS 인증서가 적용된 <strong>HTTPS</strong> 도메인이어야 하며, 안전하지 않은 HTTP 원격 주소에서는 Service Worker 등록이 브라우저에 의해 차단됩니다.</li>
-        </ul>
-      </div>
-    </section>
-
-    <!-- 6. User Account & Firebase Authentication -->
-    <section class="settings-card">
-      <div class="card-title-row">
-        <h3 class="card-title">사용자 인증 (Firebase Auth)</h3>
+        <h3 id="auth-heading" class="card-title">사용자 계정 (Firebase Auth)</h3>
         <span
           class="status-indicator"
           :class="{
@@ -255,7 +392,7 @@ onMounted(() => {
               ? '확인 중'
               : authStore.isAuthenticated
               ? (authStore.isAdmin ? '관리자 (Admin)' : '인증됨')
-              : '미인증 (게스트)'
+              : '미인증'
           }}
         </span>
       </div>
@@ -285,20 +422,14 @@ onMounted(() => {
         </button>
       </div>
 
-      <!-- Loading State -->
-      <div v-if="authStore.isLoading && !authStore.isAuthenticated" class="auth-loading-box">
-        <div class="loading-spinner"></div>
-        <span class="loading-text">인증 상태를 확인하고 있습니다...</span>
-      </div>
-
-      <!-- Authenticated User Profile -->
-      <div v-else-if="authStore.isAuthenticated && authStore.profile" class="user-info-box">
+      <!-- Authenticated User Profile with Logout -->
+      <div v-if="authStore.isAuthenticated && authStore.profile" class="user-info-box">
         <div class="detail-row">
           <span class="detail-label">사용자 UID:</span>
           <span class="detail-value font-mono ellipsis">{{ authStore.profile.uid }}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">이메일 계정:</span>
+          <span class="detail-label">계정 이메일:</span>
           <span class="detail-value">{{ authStore.userEmail || '익명 게스트 계정' }}</span>
         </div>
         <div class="detail-row">
@@ -311,19 +442,12 @@ onMounted(() => {
         <div class="auth-actions-row">
           <button
             type="button"
-            class="refresh-token-btn"
-            :disabled="authStore.isLoading"
-            @click="handleRefreshSession"
-          >
-            토큰 갱신
-          </button>
-          <button
-            type="button"
             class="logout-btn"
             :disabled="authStore.isLoading"
+            aria-label="계정 로그아웃"
             @click="handleLogout"
           >
-            로그아웃
+            {{ authStore.isLoading ? '처리 중...' : '로그아웃' }}
           </button>
         </div>
       </div>
@@ -448,23 +572,31 @@ onMounted(() => {
       </div>
     </section>
 
-    <!-- 5. Backend Connection & Health -->
-    <section class="settings-card">
+    <!-- 5. System Health & Sharing Policy -->
+    <section class="settings-card highlight-card" aria-labelledby="policy-heading">
       <div class="card-title-row">
-        <h3 class="card-title">Flask REST API 연결</h3>
-        <span
-          class="status-indicator"
-          :class="backendStatus === 'healthy' ? 'active' : 'inactive'"
-        >
-          {{ backendStatus === 'healthy' ? '연결 정상 (200)' : backendStatus === 'checking' ? '확인 중' : '오프라인' }}
-        </span>
+        <h3 id="policy-heading" class="card-title">카카오톡 공유 정책 및 시스템 상태</h3>
+        <span class="notice-tag">필독</span>
       </div>
-      <p class="setting-caption">
-        백엔드 수집 엔진: Python Flask REST API & Cloud Firestore
-      </p>
-      <button type="button" class="refresh-health-btn" @click="checkBackendHealth">
-        연결 상태 재확인
-      </button>
+      <div class="policy-content">
+        <p class="policy-lead">
+          <strong>Moatok은 카카오톡 채팅방에 자동으로 게시하지 않습니다.</strong>
+        </p>
+        <ul class="policy-list">
+          <li>
+            <strong>사용자 주도 전송:</strong> 카카오 플랫폼 운영 정책 및 계정 안전을 위해, 사용자가 직접 내용을 검토한 후 대상 오픈채팅방이나 친구를 선택하여 공유하는 방식을 준수합니다.
+          </li>
+          <li>
+            <strong>안전한 백엔드 역할:</strong> Python Flask 백엔드는 RSS 수집, 사실 기반 요약 포맷팅, Firestore 중복 방지 저장 및 PWA 푸시 알림까지만 자동으로 수행합니다.
+          </li>
+          <li>
+            <strong>백엔드 연결 상태:</strong>
+            <span class="font-mono">
+              {{ backendStatus === 'healthy' ? '✓ 정상 연결됨 (/health OK)' : backendStatus === 'checking' ? '확인 중...' : '연결 실패' }}
+            </span>
+          </li>
+        </ul>
+      </div>
     </section>
   </div>
 </template>
@@ -475,7 +607,7 @@ onMounted(() => {
   flex-direction: column;
   gap: 16px;
   padding: 16px;
-  padding-bottom: 32px;
+  padding-bottom: 40px;
 }
 
 .view-header {
@@ -485,7 +617,7 @@ onMounted(() => {
 }
 
 .view-title {
-  font-size: 19px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.5px;
@@ -497,115 +629,175 @@ onMounted(() => {
 }
 
 .settings-card {
+  padding: 16px;
+  border-radius: 12px;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-default);
-  border-radius: 12px;
-  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  box-shadow: var(--shadow-sm);
-}
-
-.highlight-card {
-  border-left: 3px solid var(--accent-action);
+  gap: 12px;
 }
 
 .card-title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
 }
 
 .card-title {
-  font-size: 14.5px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: -0.3px;
-}
-
-.info-badge {
-  font-size: 10.5px;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background-color: var(--bg-surface-elevated);
-  color: var(--text-secondary);
-}
-
-.notice-tag {
-  font-size: 10.5px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background-color: var(--accent-action);
-  color: var(--accent-action-text);
-}
-
-.status-indicator {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-
-.status-indicator.active {
-  background-color: var(--accent-action);
-  color: var(--accent-action-text);
-}
-
-.status-indicator.inactive {
-  background-color: var(--bg-surface-elevated);
-  color: var(--text-muted);
+  margin: 0;
 }
 
 .setting-caption {
   font-size: 12.5px;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   line-height: 1.45;
+  margin: 0;
 }
 
-.toggle-container {
-  margin-top: 4px;
+.info-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
 }
 
-.policy-content {
+/* 1. Appearance Modes as a List */
+.appearance-mode-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.5;
 }
 
-.policy-lead {
+.appearance-mode-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.appearance-mode-item:hover {
+  border-color: var(--border-strong);
+}
+
+.appearance-mode-item.selected {
+  border-color: var(--accent-action);
+  background-color: var(--bg-surface);
+}
+
+.mode-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.mode-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mode-icon {
+  font-size: 15px;
+}
+
+.mode-name {
+  font-size: 13.5px;
+  font-weight: 700;
   color: var(--text-primary);
 }
 
-.policy-list {
-  padding-left: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.current-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background-color: var(--badge-bg);
+  color: var(--badge-text);
 }
 
-.notif-details,
-.user-info-box {
+.mode-desc {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.mode-radio-indicator {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+
+.appearance-mode-item.selected .mode-radio-indicator {
+  border-color: var(--accent-action);
+}
+
+.radio-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--accent-action);
+}
+
+/* 2. Notifications */
+.status-indicator {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
   background-color: var(--bg-surface-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  padding: 10px 12px;
+  color: var(--text-muted);
+}
+
+.status-indicator.active {
+  background-color: var(--badge-bg);
+  color: var(--badge-text);
+}
+
+.status-indicator.denied {
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+}
+
+.notif-details {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background-color: var(--bg-surface-elevated);
+  font-size: 12px;
 }
 
 .detail-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
-  gap: 12px;
+  gap: 8px;
 }
 
 .detail-label {
@@ -615,245 +807,217 @@ onMounted(() => {
 
 .detail-value {
   color: var(--text-primary);
-  font-weight: 600;
+  text-align: right;
 }
 
 .font-mono {
   font-family: var(--font-mono);
 }
 
+.font-semibold {
+  font-weight: 600;
+}
+
 .ellipsis {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 180px;
+}
+
+.notif-feedback-box {
+  padding: 9px 12px;
+  border-radius: 8px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.notif-action-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .setting-action-btn {
-  margin-top: 4px;
   width: 100%;
-  padding: 10px;
+  padding: 12px 16px;
   border-radius: 8px;
   background-color: var(--accent-action);
   color: var(--accent-action-text);
+  border: none;
   font-size: 13px;
-  font-weight: 600;
-  transition: opacity 0.15s ease;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .setting-action-btn:disabled {
   opacity: 0.6;
+  cursor: not-allowed;
 }
 
-.logout-btn {
-  margin-top: 6px;
-  padding: 6px;
-  font-size: 12px;
-  color: var(--text-muted);
-  text-decoration: underline;
-  text-align: right;
+.setting-sub-btn {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.refresh-health-btn {
-  padding: 8px 12px;
+.denied-guidance-box,
+.unsupported-guidance-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px dashed var(--border-strong);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.warning-icon {
+  font-size: 13px;
+}
+
+.denied-text,
+.unsupported-text {
+  margin: 0;
+}
+
+/* 3. Platform PWA Guidance */
+.platform-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.platform-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
   border-radius: 6px;
   background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-default);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-secondary);
-  align-self: flex-start;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
-.refresh-health-btn:hover {
+.platform-tab-btn.active {
+  background-color: var(--accent-action);
+  color: var(--accent-action-text);
+  border-color: var(--accent-action);
+}
+
+.detected-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background-color: var(--bg-surface);
   color: var(--text-primary);
 }
 
-.install-guides {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 4px;
-}
-
-.platform-guide {
-  background-color: var(--bg-surface-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+.platform-card {
   padding: 12px;
+  border-radius: 8px;
+  background-color: var(--bg-surface-elevated);
   display: flex;
   flex-direction: column;
   gap: 8px;
+  font-size: 12px;
 }
 
-.platform-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
+.platform-card-header {
+  font-size: 12.5px;
+  font-weight: 700;
   color: var(--text-primary);
 }
 
 .step-list {
-  padding-left: 20px;
+  margin: 0;
+  padding-left: 18px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
+  gap: 5px;
   color: var(--text-secondary);
   line-height: 1.45;
 }
 
-.ios-warning-box {
-  margin-top: 4px;
-  padding: 8px 10px;
-  background-color: var(--bg-surface);
-  border: 1px dashed var(--border-strong);
+.ios-alert-box {
+  margin-top: 6px;
+  padding: 9px 11px;
   border-radius: 6px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-strong);
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.warning-badge {
-  font-size: 10px;
+.ios-alert-title {
+  font-size: 11.5px;
   font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: -0.2px;
 }
 
-.warning-text {
+.ios-alert-desc {
   font-size: 11px;
   color: var(--text-muted);
-  line-height: 1.4;
+  line-height: 1.45;
+  margin: 0;
 }
 
-.security-info {
+/* 4. Auth & Logout */
+.user-info-box {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
-.security-list {
-  padding-left: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.security-list code {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  background-color: var(--bg-surface-elevated);
-  padding: 2px 4px;
-  border-radius: 4px;
-}
-
-.status-indicator.expired {
-  background-color: var(--bg-surface-elevated);
-  color: var(--text-primary);
-  border: 1px dashed var(--border-strong);
-}
-
-.auth-alert {
-  padding: 10px 12px;
+  padding: 12px;
   border-radius: 8px;
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  background-color: var(--bg-surface-elevated);
   font-size: 12px;
-  line-height: 1.4;
-}
-
-.auth-alert.expired-alert {
-  background-color: var(--bg-surface-elevated);
-  border: 1px dashed var(--border-strong);
-  color: var(--text-primary);
-}
-
-.auth-alert.error-alert {
-  background-color: var(--bg-surface-elevated);
-  border: 1px solid var(--border-strong);
-  color: var(--text-primary);
-}
-
-.alert-icon {
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
-.alert-body {
-  flex: 1;
-}
-
-.alert-dismiss-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 13px;
-  padding: 0 4px;
-}
-
-.alert-dismiss-btn:hover {
-  color: var(--text-primary);
-}
-
-.auth-loading-box {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px;
-  background-color: var(--bg-surface-elevated);
-  border-radius: 8px;
-  font-size: 12.5px;
-  color: var(--text-secondary);
-}
-
-.loading-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--border-subtle);
-  border-top-color: var(--accent-action);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .admin-badge {
   font-weight: 700;
-  text-decoration: underline;
+  color: var(--text-primary);
 }
 
 .auth-actions-row {
+  margin-top: 6px;
   display: flex;
-  align-items: center;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 8px;
 }
 
-.refresh-token-btn {
-  padding: 6px 12px;
+.logout-btn {
+  padding: 9px 18px;
   border-radius: 6px;
-  border: 1px solid var(--border-default);
-  background-color: var(--bg-surface-elevated);
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--text-secondary);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-weight: 700;
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.refresh-token-btn:hover:not(:disabled) {
-  color: var(--text-primary);
-  border-color: var(--border-strong);
+.logout-btn:hover {
+  background-color: var(--accent-action);
+  color: var(--accent-action-text);
 }
 
 .auth-form-box {
@@ -863,32 +1027,26 @@ onMounted(() => {
 }
 
 .auth-method-selector {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  background-color: var(--bg-surface-elevated);
-  border-radius: 8px;
-  padding: 3px;
-  border: 1px solid var(--border-subtle);
+  display: flex;
+  gap: 6px;
 }
 
 .method-btn {
-  padding: 6px 4px;
-  font-size: 11.5px;
-  font-weight: 600;
+  flex: 1;
+  padding: 8px 10px;
   border-radius: 6px;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
-  text-align: center;
 }
 
 .method-btn.active {
-  background-color: var(--bg-surface);
-  color: var(--text-primary);
-  box-shadow: var(--shadow-sm);
+  background-color: var(--accent-action);
+  color: var(--accent-action-text);
+  border-color: var(--accent-action);
 }
 
 .email-auth-form {
@@ -904,22 +1062,22 @@ onMounted(() => {
 }
 
 .form-label {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--text-secondary);
 }
 
 .form-input {
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-radius: 6px;
-  border: 1px solid var(--border-default);
   background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
   color: var(--text-primary);
   font-size: 13px;
-  outline: none;
 }
 
 .form-input:focus {
+  outline: none;
   border-color: var(--border-strong);
 }
 
@@ -932,15 +1090,14 @@ onMounted(() => {
 
 .auth-primary-btn {
   width: 100%;
-  padding: 10px;
-  border-radius: 8px;
+  padding: 11px 16px;
+  border-radius: 6px;
   background-color: var(--accent-action);
   color: var(--accent-action-text);
-  font-size: 13px;
-  font-weight: 600;
   border: none;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.15s ease;
 }
 
 .auth-primary-btn:disabled {
@@ -951,22 +1108,73 @@ onMounted(() => {
 .auth-sub-btn {
   background: none;
   border: none;
-  font-size: 11.5px;
+  padding: 6px;
+  font-size: 12px;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 4px;
-  text-align: center;
 }
 
-.auth-sub-btn:hover:not(:disabled) {
+.auth-sub-btn:hover {
   color: var(--text-primary);
-  text-decoration: underline;
 }
 
-.anonymous-auth-box,
-.google-auth-box {
+.auth-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.expired-alert {
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-strong);
+}
+
+.error-alert {
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-strong);
+}
+
+.alert-dismiss-btn {
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-left: auto;
+}
+
+/* 5. Policy */
+.policy-content {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.policy-lead {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.policy-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.notice-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background-color: var(--badge-bg);
+  color: var(--badge-text);
 }
 </style>

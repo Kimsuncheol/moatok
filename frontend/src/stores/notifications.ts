@@ -28,6 +28,13 @@ export const useNotificationsStore = defineStore('notifications', () => {
   const isRegistered = ref<boolean>(false)
   const latestNotification = ref<any | null>(null)
 
+  function checkPermission() {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      permission.value = Notification.permission
+      isSupported.value = 'serviceWorker' in navigator
+    }
+  }
+
   async function requestPermissionAndRegister(): Promise<boolean> {
     if (!isSupported.value) {
       return false
@@ -86,6 +93,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
     isSupported,
     isRegistered,
     latestNotification,
+    checkPermission,
     requestPermissionAndRegister
   }
 })

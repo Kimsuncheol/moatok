@@ -92,6 +92,43 @@ export const useMessagesStore = defineStore('messages', () => {
     }
   }
 
+  async function fetchHistory(isRefresh = false): Promise<ShareMessage[]> {
+    if (isRefresh) {
+      refreshing.value = true
+    } else {
+      loading.value = true
+    }
+    error.value = null
+
+    try {
+      const allRes = await api.getAllMessages(100)
+      if (allRes && Array.isArray(allRes.messages)) {
+        // Reliable backend event filtering:
+        // Include only items with share started (attempts > 0) or share confirmed (kakao_shared / shared status)
+        historyMessages.value = allRes.messages.filter(
+          (m) =>
+            m.kakao_shared === true ||
+            m.status === 'shared' ||
+            m.status === 'shared_by_user' ||
+            (m.share_attempt_count !== undefined && m.share_attempt_count > 0) ||
+            !!m.last_share_attempt_at
+        )
+      } else {
+        const historyRes = await api.getHistoryMessages()
+        if (historyRes && Array.isArray(historyRes.messages)) {
+          historyMessages.value = historyRes.messages
+        }
+      }
+    } catch (err: any) {
+      console.warn('API fetch history failed:', err)
+      error.value = err.message || '공유 이력을 불러오지 못했습니다.'
+    } finally {
+      loading.value = false
+      refreshing.value = false
+    }
+    return historyMessages.value
+  }
+
   async function fetchAll(isRefresh = false) {
     if (isRefresh) {
       refreshing.value = true
@@ -107,10 +144,22 @@ export const useMessagesStore = defineStore('messages', () => {
         pendingMessages.value = pendingRes.messages
       }
 
-      // 2. Fetch history (shared) messages
-      const historyRes = await api.getHistoryMessages()
-      if (historyRes && Array.isArray(historyRes.messages)) {
-        historyMessages.value = historyRes.messages
+      // 2. Fetch history messages supported by reliable backend events
+      const allRes = await api.getAllMessages(100)
+      if (allRes && Array.isArray(allRes.messages)) {
+        historyMessages.value = allRes.messages.filter(
+          (m) =>
+            m.kakao_shared === true ||
+            m.status === 'shared' ||
+            m.status === 'shared_by_user' ||
+            (m.share_attempt_count !== undefined && m.share_attempt_count > 0) ||
+            !!m.last_share_attempt_at
+        )
+      } else {
+        const historyRes = await api.getHistoryMessages()
+        if (historyRes && Array.isArray(historyRes.messages)) {
+          historyMessages.value = historyRes.messages
+        }
       }
     } catch (err: any) {
       console.warn('API fetch failed, retaining existing messages:', err)
@@ -237,6 +286,7 @@ export const useMessagesStore = defineStore('messages', () => {
     historyCount,
     fetchAll,
     fetchPending,
+    fetchHistory,
     fetchById,
     markAsShared,
     updateMessage,
