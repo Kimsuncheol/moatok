@@ -1,0 +1,158 @@
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", Roboto, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Default Light Palette (Monochrome) */
+  --bg-page: #f8f9fa;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #f1f3f5;
+  --bg-surface-hover: #e9ecef;
+  --border-subtle: #e9ecef;
+  --border-default: #dee2e6;
+  --border-strong: #ced4da;
+  --text-primary: #121212;
+  --text-secondary: #495057;
+  --text-muted: #868e96;
+  --accent-action: #000000;
+  --accent-action-hover: #212529;
+  --accent-action-text: #ffffff;
+  --badge-bg: #e9ecef;
+  --badge-text: #212529;
+  --badge-pending-bg: #212529;
+  --badge-pending-text: #ffffff;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+  /* Safe-area insets for mobile */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-page: #000000;
+    --bg-surface: #0a0a0a;
+    --bg-surface-elevated: #141414;
+    --bg-surface-hover: #1f1f1f;
+    --border-subtle: #1c1c1c;
+    --border-default: #2a2a2a;
+    --border-strong: #404040;
+    --text-primary: #f5f5f5;
+    --text-secondary: #a3a3a3;
+    --text-muted: #737373;
+    --accent-action: #ffffff;
+    --accent-action-hover: #e5e5e5;
+    --accent-action-text: #000000;
+    --badge-bg: #222222;
+    --badge-text: #e5e5e5;
+    --badge-pending-bg: #f5f5f5;
+    --badge-pending-text: #000000;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.6);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.7);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg-page: #000000;
+  --bg-surface: #0a0a0a;
+  --bg-surface-elevated: #141414;
+  --bg-surface-hover: #1f1f1f;
+  --border-subtle: #1c1c1c;
+  --border-default: #2a2a2a;
+  --border-strong: #404040;
+  --text-primary: #f5f5f5;
+  --text-secondary: #a3a3a3;
+  --text-muted: #737373;
+  --accent-action: #ffffff;
+  --accent-action-hover: #e5e5e5;
+  --accent-action-text: #000000;
+  --badge-bg: #222222;
+  --badge-text: #e5e5e5;
+  --badge-pending-bg: #f5f5f5;
+  --badge-pending-text: #000000;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.6);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.7);
+}
+
+:root[data-theme="light"] {
+  --bg-page: #f8f9fa;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #f1f3f5;
+  --bg-surface-hover: #e9ecef;
+  --border-subtle: #e9ecef;
+  --border-default: #dee2e6;
+  --border-strong: #ced4da;
+  --text-primary: #121212;
+  --text-secondary: #495057;
+  --text-muted: #868e96;
+  --accent-action: #000000;
+  --accent-action-hover: #212529;
+  --accent-action-text: #ffffff;
+  --badge-bg: #e9ecef;
+  --badge-text: #212529;
+  --badge-pending-bg: #212529;
+  --badge-pending-text: #ffffff;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  width: 100%;
+  min-height: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-page);
+  position: relative;
+  border-left: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-subtle);
+}
+
+@media (max-width: 480px) {
+  #app {
+    border-left: none;
+    border-right: none;
+  }
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+input, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}

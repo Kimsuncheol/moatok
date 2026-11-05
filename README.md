@@ -1,16 +1,18 @@
-# Moatok Backend (Content Collection & KakaoTalk Sharing Assistant)
+# Moatok (Content Collection & KakaoTalk Sharing Assistant)
 
-A production-oriented Python **Flask** backend that collects and formats content, stores shareable message drafts in **Cloud Firestore**, authenticates users via **Firebase Authentication**, enforces administrator access using **verified Firebase custom claims**, and sends push notifications via **Firebase Cloud Messaging (FCM)** so users can review and share messages from a companion **Flutter** application.
+A production-oriented platform comprising:
+1. **Python Flask REST API & Cloud Run Backend** (`app/`): Ingests content feeds, persists deduplicated articles and formatted share messages in **Cloud Firestore**, authenticates users via **Firebase Authentication** custom claims, and sends push notifications via **Firebase Cloud Messaging (FCM)**.
+2. **Mobile-First Vue 3 PWA** (`frontend/`): Clean, monochrome Progressive Web Application (Vue 3, TypeScript, Vite, Vue Router, Pinia) for reviewing content and initiating user-directed KakaoTalk sharing with System/Light/Dark appearance modes and a bottom navigation bar.
 
 ## Architectural Boundary & KakaoTalk Sharing Model
 
-> **Important**: This backend **does not** automatically post messages to KakaoTalk Open Chat rooms or personal chats on a user's behalf.
+> **Important**: This application **does not** automatically post messages to KakaoTalk Open Chat rooms or personal chats on a user's behalf.
 >
 > Instead, it follows a **user-initiated sharing workflow**:
-> 1. **Collect & Prepare**: The backend ingests content items and formats them into both plain text (`formatted_text`) and a structured template payload (`kakao_share_payload`) tailored for the Flutter client.
-> 2. **Store**: Prepared messages are persisted in **Cloud Firestore** (`shareable_messages` collection) with `sharing_mode: "user_initiated_flutter"`.
-> 3. **Notify**: The backend sends a push notification via **Firebase Cloud Messaging (FCM)** to the user's registered Flutter device(s).
-> 4. **User-Initiated Share in Flutter**: When the user taps the notification or opens the Flutter app, the Flutter app fetches the prepared message from this backend and invokes the KakaoTalk Flutter SDK (or system share sheet) upon explicit user action, then calls `POST /api/v1/messages/<id>/mark-shared` to record completion.
+> 1. **Collect & Prepare**: The backend ingests content items and formats them into both plain text (`formatted_text`) and a structured template payload (`kakao_share_payload`) tailored for mobile clients.
+> 2. **Store**: Prepared messages are persisted in **Cloud Firestore** (`shareable_messages` and `share_messages` collections) with `status: "pending"` and `kakao_shared: false`.
+> 3. **Notify**: The backend sends a push notification via **Firebase Cloud Messaging (FCM)** to the user's registered PWA or mobile device(s).
+> 4. **User-Initiated Share in Vue 3 PWA / Flutter**: When the user taps the notification or opens the PWA (`frontend/`), the app displays the briefing. The user reviews the content and explicitly triggers KakaoTalk sharing (via Kakao JS SDK, Web Share API, or clipboard), selecting the destination chatroom in KakaoTalk. The client then calls `POST /api/v1/messages/<id>/mark-shared` to record completion.
 
 ---
 
@@ -18,7 +20,7 @@ A production-oriented Python **Flask** backend that collects and formats content
 
 ```text
 .
-├── app/
+├── app/                            # Python Flask REST API & services
 │   ├── __init__.py                 # Flask application factory, logging, CORS, error handlers
 │   ├── auth.py                     # Firebase ID token verification, custom claim admin guard & Cloud Scheduler OIDC guard
 │   ├── config.py                   # Environment-based configuration (dev, testing, prod)
@@ -46,7 +48,19 @@ A production-oriented Python **Flask** backend that collects and formats content
 │       ├── source_connectors.py         # RSS and extensible Official API source connectors
 │       ├── source_service.py            # Source CRUD orchestration & validation
 │       └── url_validator.py             # Domain allowlist, SSRF IP/DNS checks, redirect, timeout & size guards
-├── tests/
+├── frontend/                       # Mobile-First Vue 3 PWA (TypeScript, Vite, Pinia)
+│   ├── src/
+│   │   ├── App.vue                 # App shell with AppHeader & BottomNav
+│   │   ├── components/             # BottomNav, AppearanceToggle, MessageCard, ShareModal
+│   │   ├── router/                 # Vue Router (Pending, History, Settings, Detail)
+│   │   ├── services/               # API, Firebase & Kakao Share services
+│   │   ├── stores/                 # Pinia stores (theme, auth, messages, notifications)
+│   │   └── views/                  # PendingView, HistoryView, SettingsView, MessageDetailView
+│   ├── tests/                      # Vitest unit & component tests
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── README.md
+├── tests/                          # Backend pytest test suite
 │   ├── conftest.py                      # Pytest fixtures & in-memory Firestore/Firebase mocks
 │   ├── test_auth.py                     # Auth, expired/invalid tokens, admin custom claims & role-spoofing tests
 │   ├── test_fcm_notifications.py        # FCM device registration, concise payloads, invalid token cleanup & observability

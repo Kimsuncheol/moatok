@@ -1,0 +1,13 @@
+{
+  "name": "moatok-root",
+  "private": true,
+  "description": "Moatok Content Collection and KakaoTalk Sharing Assistant",
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "test": "npm --prefix frontend test"
+  }
+}
