@@ -40,6 +40,7 @@ A production-oriented Python **Flask** backend that collects and formats content
 │   └── services/
 │       ├── content_service.py      # Content formatting & Firestore persistence
 │       ├── notification_service.py # FCM token registration & push notification dispatch
+│       ├── rss_collector.py        # RSS collection service, feed parsing, deduplication & safe logging
 │       ├── source_connectors.py    # RSS and extensible Official API source connectors
 │       ├── source_service.py       # Source CRUD orchestration & validation
 │       └── url_validator.py        # Domain allowlist, SSRF IP/DNS checks, redirect, timeout & size guards
@@ -47,6 +48,7 @@ A production-oriented Python **Flask** backend that collects and formats content
 │   ├── conftest.py                 # Pytest fixtures & in-memory Firestore/Firebase mocks
 │   ├── test_auth.py                # Auth, expired/invalid tokens, admin custom claims & role-spoofing tests
 │   ├── test_repositories.py        # Firestore repository, UTC, deduplication & secret-rejection tests
+│   ├── test_rss_collector.py       # RSS collection, deduplication, fault tolerance & log redaction tests
 │   ├── test_sources.py             # Admin content source endpoints & SSRF/redirect/timeout/size tests
 │   ├── test_health.py              # Public health endpoint tests
 │   └── test_content_and_notifications.py
@@ -201,6 +203,7 @@ docker run --rm -p 8080:8080 --env-file .env moatok-backend
 | `PATCH` / `PUT` | `/api/v1/admin/sources/<id>` (`/api/v1/sources/<id>`) | Firebase Admin Claim (`admin: true`) | Update a content source's `name`, `url`, `source_type`, or `enabled` state |
 | `POST` | `/api/v1/admin/sources/<id>/enable` (`/api/v1/sources/<id>/enable`) | Firebase Admin Claim (`admin: true`) | Enable a content source |
 | `POST` | `/api/v1/admin/sources/<id>/disable` (`/api/v1/sources/<id>/disable`) | Firebase Admin Claim (`admin: true`) | Disable a content source |
+| `POST` | `/api/v1/admin/sources/collect` (`/api/v1/sources/collect`) | Firebase Admin Claim (`admin: true`) | Trigger RSS collection across enabled RSS sources and return job summary |
 
 ---
 

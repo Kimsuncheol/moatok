@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, request
 
 from app.auth import require_admin
 from app.models import ValidationError
+from app.services.rss_collector import collect_rss_articles
 from app.services.source_service import (
     create_source_entry,
     get_source_entry,
@@ -179,7 +180,18 @@ def _handle_disable_source(source_id: str):
     return jsonify({"source": updated}), 200
 
 
+def _handle_collect_sources():
+    summary = collect_rss_articles()
+    return jsonify({"summary": summary}), 200
+
+
 for _bp in (admin_sources_bp, sources_bp):
+    _bp.add_url_rule(
+        "/collect",
+        endpoint="collect_sources",
+        view_func=require_admin(_handle_collect_sources),
+        methods=["POST"],
+    )
     _bp.add_url_rule(
         "",
         endpoint="create_source",

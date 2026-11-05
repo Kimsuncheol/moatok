@@ -146,9 +146,29 @@ def generate_source_id(url: str) -> str:
     return f"src_{digest}"
 
 
-def generate_article_id(canonical_url: str) -> str:
-    """Generate a deterministic Firestore document ID for an article from its canonical URL."""
-    normalized = normalize_url(canonical_url, field_name="canonical_url")
+def generate_article_id(
+    canonical_url: str | None = None,
+    *,
+    stable_id: str | None = None,
+    source_id: str | None = None,
+) -> str:
+    """Generate a deterministic Firestore document ID for an article.
+
+    Prefers a source-provided `stable_id` (normalizing it if it is a URL, or
+    scoping it to `source_id` if it is an opaque identifier), falling back to
+    the normalized `canonical_url`.
+    """
+    if stable_id is not None and str(stable_id).strip():
+        cleaned_stable = str(stable_id).strip()
+        try:
+            key = normalize_url(cleaned_stable, field_name="stable_id")
+        except ValidationError:
+            prefix = f"{source_id.strip()}:" if source_id and source_id.strip() else ""
+            key = f"id:{prefix}{cleaned_stable}"
+        digest = hashlib.sha256(key.encode("utf-8")).hexdigest()[:24]
+        return f"art_{digest}"
+
+    normalized = normalize_url(str(canonical_url or ""), field_name="canonical_url")
     digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:24]
     return f"art_{digest}"
 

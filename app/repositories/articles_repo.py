@@ -122,6 +122,7 @@ class ArticleRepository:
         source_id: str | None = None,
         source_url: str | None = None,
         canonical_url: str | None = None,
+        stable_id: str | None = None,
         title: str | None = None,
         summary: str | None = None,
         published_at: datetime | str | None = None,
@@ -129,7 +130,7 @@ class ArticleRepository:
         collected_at: datetime | str | None = None,
         collection_time: datetime | str | None = None,
     ) -> tuple[RecordDict, bool]:
-        """Atomically create an article using its deterministic canonical_url ID or return existing.
+        """Atomically create an article using its deterministic ID or return existing.
 
         Returns:
             Tuple of (article_record, created_bool).
@@ -147,6 +148,11 @@ class ArticleRepository:
             canonical_url
             if canonical_url is not None
             else raw.get("canonical_url", "")
+        )
+        resolved_stable_id = (
+            stable_id
+            if stable_id is not None
+            else raw.get("stable_id", raw.get("guid"))
         )
         resolved_title = title if title is not None else raw.get("title", "")
         resolved_summary = (
@@ -181,9 +187,21 @@ class ArticleRepository:
             collected_at=resolved_collected,
             extra=raw,
         )
+        if resolved_stable_id is not None and str(resolved_stable_id).strip():
+            doc_data["stable_id"] = str(resolved_stable_id).strip()
 
-        deterministic_id = generate_article_id(doc_data["canonical_url"])
+        deterministic_id = generate_article_id(
+            doc_data["canonical_url"],
+            stable_id=doc_data.get("stable_id"),
+            source_id=doc_data["source_id"],
+        )
+        canonical_doc_id = generate_article_id(doc_data["canonical_url"])
         doc_ref = self._collection().document(deterministic_id)
+        canonical_ref = (
+            self._collection().document(canonical_doc_id)
+            if canonical_doc_id != deterministic_id
+            else None
+        )
 
         @firestore.transactional
         def _txn_create(transaction: Any) -> tuple[RecordDict, bool]:
@@ -191,6 +209,11 @@ class ArticleRepository:
             if snapshot.exists:
                 existing = snapshot.to_dict() or {}
                 return self._to_record(snapshot.id, existing), False
+            if canonical_ref is not None:
+                canonical_snap = canonical_ref.get(transaction=transaction)
+                if canonical_snap.exists:
+                    existing = canonical_snap.to_dict() or {}
+                    return self._to_record(canonical_snap.id, existing), False
             transaction.create(doc_ref, doc_data)
             return self._to_record(deterministic_id, doc_data), True
 
