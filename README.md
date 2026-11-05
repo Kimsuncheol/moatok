@@ -34,15 +34,20 @@ A production-oriented Python **Flask** backend that collects and formats content
 │   ├── routes/
 │   │   ├── health.py               # Public GET /health endpoint
 │   │   ├── admin.py                # GET /api/v1/auth/me & /api/v1/admin/* endpoints
+│   │   ├── sources.py              # Admin-only /api/v1/admin/sources & /api/v1/sources endpoints
 │   │   ├── devices.py              # POST /api/v1/devices/fcm-token
 │   │   └── content.py              # /api/v1/messages endpoints
 │   └── services/
 │       ├── content_service.py      # Content formatting & Firestore persistence
-│       └── notification_service.py # FCM token registration & push notification dispatch
+│       ├── notification_service.py # FCM token registration & push notification dispatch
+│       ├── source_connectors.py    # RSS and extensible Official API source connectors
+│       ├── source_service.py       # Source CRUD orchestration & validation
+│       └── url_validator.py        # Domain allowlist, SSRF IP/DNS checks, redirect, timeout & size guards
 ├── tests/
 │   ├── conftest.py                 # Pytest fixtures & in-memory Firestore/Firebase mocks
 │   ├── test_auth.py                # Auth, expired/invalid tokens, admin custom claims & role-spoofing tests
 │   ├── test_repositories.py        # Firestore repository, UTC, deduplication & secret-rejection tests
+│   ├── test_sources.py             # Admin content source endpoints & SSRF/redirect/timeout/size tests
 │   ├── test_health.py              # Public health endpoint tests
 │   └── test_content_and_notifications.py
 ├── .dockerignore
@@ -190,3 +195,25 @@ docker run --rm -p 8080:8080 --env-file .env moatok-backend
 | `POST` | `/api/v1/messages/<id>/mark-shared` | Firebase Bearer Token | Mark a message as shared after the user completes KakaoTalk sharing in Flutter |
 | `GET` | `/api/v1/admin/messages` | Firebase Admin Claim (`admin: true`) | List prepared shareable messages across all users |
 | `POST` | `/api/v1/admin/users/<uid>/claims` | Firebase Admin Claim (`admin: true`) | Assign or revoke the `admin` Firebase custom claim for a target user |
+| `POST` | `/api/v1/admin/sources` (`/api/v1/sources`) | Firebase Admin Claim (`admin: true`) | Validate and create an RSS or official API content source |
+| `GET` | `/api/v1/admin/sources` (`/api/v1/sources`) | Firebase Admin Claim (`admin: true`) | List content sources (supports `enabled_only`, `source_type`, `limit`) |
+| `GET` | `/api/v1/admin/sources/<id>` (`/api/v1/sources/<id>`) | Firebase Admin Claim (`admin: true`) | Retrieve a single content source by ID |
+| `PATCH` / `PUT` | `/api/v1/admin/sources/<id>` (`/api/v1/sources/<id>`) | Firebase Admin Claim (`admin: true`) | Update a content source's `name`, `url`, `source_type`, or `enabled` state |
+| `POST` | `/api/v1/admin/sources/<id>/enable` (`/api/v1/sources/<id>/enable`) | Firebase Admin Claim (`admin: true`) | Enable a content source |
+| `POST` | `/api/v1/admin/sources/<id>/disable` (`/api/v1/sources/<id>/disable`) | Firebase Admin Claim (`admin: true`) | Disable a content source |
+
+---
+
+## Content Source Administration & SSRF-Safe URL Validation
+
+All content source management endpoints require a verified Firebase administrator token (`@require_admin`).
+
+### Supported Source Types & Extensibility
+- **`rss`** (`RssSourceConnector`): Validates and fetches RSS/Atom XML feeds.
+- **`official_api`** (`OfficialApiSourceConnector`, alias `api`): Base connector for official REST APIs. Additional official API connectors can be registered via `register_source_connector(connector)` in `app/services/source_connectors.py`.
+
+### Source URL Security Policy (`app/services/url_validator.py`)
+1. **Explicit Public Domain Allowlist**: Only hostnames matching `ALLOWED_SOURCE_DOMAINS` (configured via environment variable, supporting exact domains like `feeds.example.com` and subdomain wildcards like `*.example.com`) are permitted. Raw IP literals and unconfigured domains are rejected with `code: "domain_not_allowed"`.
+2. **SSRF & Metadata Protection**: Rejects `localhost`, loopback (`127.0.0.0/8`, `::1`), private networks (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `fc00::/7`), link-local (`169.254.0.0/16`, `fe80::/10`), and cloud metadata endpoints (`169.254.169.254`, `metadata.google.internal`, `fd00:ec2::254`, `100.100.100.200`) across both URL hostnames and DNS-resolved IP addresses (`code: "forbidden_address"`).
+3. **Redirect Destination Validation**: Automatic HTTP redirect following is disabled. Each redirect hop (up to `SOURCE_FETCH_MAX_REDIRECTS`, default `3`) has its `Location` target validated against the domain allowlist and SSRF IP/DNS checks before being followed.
+4. **Timeouts & Response-Size Limits**: Requests enforce `SOURCE_FETCH_TIMEOUT_SECONDS` (default `5.0`s, returning `code: "source_timeout"` on timeout) and `SOURCE_FETCH_MAX_BYTES` (default `1048576` bytes / 1 MiB, returning `code: "response_too_large"` if exceeded).

@@ -57,6 +57,29 @@ class SourceRepository:
         record["id"] = doc_id
         return record
 
+    @staticmethod
+    def to_api_dict(record: Mapping[str, Any]) -> dict[str, Any]:
+        """Serialize a source record into a JSON-ready dictionary with ISO-8601 UTC timestamps."""
+        created_at = record.get("created_at")
+        last_checked_at = record.get("last_checked_at")
+        return {
+            "id": record.get("id"),
+            "name": record.get("name"),
+            "url": record.get("url"),
+            "source_type": record.get("source_type"),
+            "enabled": bool(record.get("enabled", True)),
+            "last_checked_at": (
+                last_checked_at.isoformat()
+                if isinstance(last_checked_at, datetime)
+                else last_checked_at
+            ),
+            "created_at": (
+                created_at.isoformat()
+                if isinstance(created_at, datetime)
+                else created_at
+            ),
+        }
+
     def _build_document(
         self,
         *,
@@ -276,6 +299,68 @@ class SourceRepository:
             updates = {"enabled": enabled}
             transaction.update(doc_ref, updates)
             existing.update(updates)
+            return self._to_record(snapshot.id, existing)
+
+        return _txn_update(self.db.transaction())
+
+    def update(
+        self,
+        source_id: str,
+        updates: Mapping[str, Any],
+    ) -> RecordDict | None:
+        """Atomically update mutable fields (`name`, `url`, `source_type`, `enabled`, `last_checked_at`) on a source."""
+        cleaned_id = (source_id or "").strip()
+        if not cleaned_id:
+            return None
+
+        assert_no_forbidden_secrets(updates)
+        sanitized: dict[str, Any] = {}
+
+        if "name" in updates:
+            cleaned_name = str(updates.get("name") or "").strip()
+            if not cleaned_name:
+                raise ValidationError("Source 'name' cannot be empty.")
+            sanitized["name"] = cleaned_name
+
+        if "url" in updates:
+            sanitized["url"] = normalize_url(str(updates.get("url") or ""), field_name="url")
+
+        if "source_type" in updates:
+            cleaned_type = str(updates.get("source_type") or "").strip().lower()
+            if not cleaned_type:
+                raise ValidationError("Source 'source_type' cannot be empty.")
+            sanitized["source_type"] = cleaned_type
+
+        if "enabled" in updates:
+            if not isinstance(updates["enabled"], bool):
+                raise ValidationError("Source 'enabled' must be a boolean.")
+            sanitized["enabled"] = updates["enabled"]
+
+        if "last_checked_at" in updates or "last_checked_time" in updates:
+            raw_checked = updates.get(
+                "last_checked_at", updates.get("last_checked_time")
+            )
+            sanitized["last_checked_at"] = ensure_utc_datetime(
+                raw_checked,
+                field_name="last_checked_at",
+                allow_none=True,
+            )
+
+        if not sanitized:
+            raise ValidationError(
+                "At least one updatable field ('name', 'url', 'source_type', 'enabled', 'last_checked_at') is required."
+            )
+
+        doc_ref = self._collection().document(cleaned_id)
+
+        @firestore.transactional
+        def _txn_update(transaction: Any) -> RecordDict | None:
+            snapshot = doc_ref.get(transaction=transaction)
+            if not snapshot.exists:
+                return None
+            existing = snapshot.to_dict() or {}
+            transaction.update(doc_ref, sanitized)
+            existing.update(sanitized)
             return self._to_record(snapshot.id, existing)
 
         return _txn_update(self.db.transaction())

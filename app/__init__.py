@@ -14,6 +14,7 @@ from app.routes.admin import admin_bp, auth_bp
 from app.routes.content import content_bp
 from app.routes.devices import devices_bp
 from app.routes.health import health_bp
+from app.routes.sources import admin_sources_bp, sources_bp
 
 
 def _configure_logging(app: Flask) -> None:
@@ -88,6 +89,8 @@ def create_app(
     app.register_blueprint(health_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(admin_sources_bp)
+    app.register_blueprint(sources_bp)
     app.register_blueprint(devices_bp)
     app.register_blueprint(content_bp)
 

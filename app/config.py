@@ -47,6 +47,22 @@ class Config:
     # Optional internal API key for scheduled jobs or content ingestion pipelines
     INTERNAL_INGEST_API_KEY: str | None = os.getenv("INTERNAL_INGEST_API_KEY")
 
+    # Source URL validation & SSRF protection settings
+    ALLOWED_SOURCE_DOMAINS: tuple[str, ...] = tuple(
+        d.strip().lower()
+        for d in os.getenv("ALLOWED_SOURCE_DOMAINS", "").split(",")
+        if d.strip()
+    )
+    SOURCE_FETCH_TIMEOUT_SECONDS: float = float(
+        os.getenv("SOURCE_FETCH_TIMEOUT_SECONDS", "5.0")
+    )
+    SOURCE_FETCH_MAX_BYTES: int = int(
+        os.getenv("SOURCE_FETCH_MAX_BYTES", str(1024 * 1024))
+    )
+    SOURCE_FETCH_MAX_REDIRECTS: int = int(
+        os.getenv("SOURCE_FETCH_MAX_REDIRECTS", "3")
+    )
+
     # CORS configuration
     CORS_ALLOWED_ORIGINS: str = os.getenv("CORS_ALLOWED_ORIGINS", "*")
 
@@ -65,6 +81,15 @@ class TestingConfig(Config):
     TESTING = True
     GOOGLE_CLOUD_PROJECT = "test-moatok-project"
     INTERNAL_INGEST_API_KEY = "test-internal-key"
+    ALLOWED_SOURCE_DOMAINS = (
+        "example.com",
+        "*.example.com",
+        "example.org",
+        "*.example.org",
+    )
+    SOURCE_FETCH_TIMEOUT_SECONDS = 3.0
+    SOURCE_FETCH_MAX_BYTES = 512 * 1024
+    SOURCE_FETCH_MAX_REDIRECTS = 3
 
 
 class ProductionConfig(Config):
