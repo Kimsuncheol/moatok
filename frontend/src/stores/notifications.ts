@@ -4,15 +4,16 @@ import { getToken, onMessage } from 'firebase/messaging'
 import { getFirebaseMessaging } from '@/services/firebase'
 import { api } from '@/services/api'
 import { useMessagesStore } from './messages'
+import { getSafeLocalStorage } from './theme'
 
 const DEVICE_ID_KEY = 'moatok_pwa_device_id'
 
 function getOrCreateDeviceId(): string {
-  if (typeof window === 'undefined') return 'server_device'
-  let id = localStorage.getItem(DEVICE_ID_KEY)
+  const storage = getSafeLocalStorage()
+  let id = storage.getItem(DEVICE_ID_KEY)
   if (!id) {
     id = `pwa_${Math.random().toString(36).substring(2, 12)}_${Date.now().toString(36)}`
-    localStorage.setItem(DEVICE_ID_KEY, id)
+    storage.setItem(DEVICE_ID_KEY, id)
   }
   return id
 }

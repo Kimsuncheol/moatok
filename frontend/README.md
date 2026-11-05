@@ -110,7 +110,9 @@ frontend/
     ├── authStore.spec.ts        # Pinia auth store, sign-in methods, token refresh & state transitions
     ├── BottomNav.spec.ts        # Navigation tabs & badge count tests
     ├── kakaoService.spec.ts     # User-initiated Kakao sharing & fallback tests
+    ├── MessageCard.spec.ts      # Card title, source, status, time & selection tests
     ├── messagesStore.spec.ts    # Pinia messages state & markAsShared tests
+    ├── PendingView.spec.ts      # Pending page loading, empty, error, pull-to-refresh & navigation
     ├── pwaManifest.spec.ts      # Web App Manifest & icon presence verification
     ├── ReloadPrompt.spec.ts     # PWA update prompt & reload action tests
     ├── ShareModal.spec.ts       # Disclaimer banner & share event tests
@@ -243,7 +245,7 @@ Open `http://localhost:5173` in your browser or mobile emulator. Vite proxies `/
 
 ### 3. Run Automated Frontend Tests
 
-Runs all 36 unit & component tests across AppearanceToggle, apiClient, authStore, BottomNav, stores, Kakao sharing, PWA manifest, and ReloadPrompt:
+Runs all 49 unit & component tests across AppearanceToggle, apiClient, authStore, BottomNav, MessageCard, PendingView, stores, Kakao sharing, PWA manifest, and ReloadPrompt:
 
 ```bash
 npm test

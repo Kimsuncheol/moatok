@@ -7,6 +7,7 @@ const SAMPLE_INITIAL_MESSAGES: ShareMessage[] = [
   {
     id: 'smsg_sample_1',
     article_id: 'art_sample_1',
+    source_name: 'Tech Briefing',
     title: '구글 클라우드 런 배포 및 보안 권한 가이드',
     body: `[모아톡 브리핑] 구글 클라우드 런 배포 및 보안 권한 가이드\n\n최소 권한 원칙(Least Privilege)에 따른 전용 서비스 계정 분리와 OIDC 기반 Cloud Scheduler 인증 체계를 안내합니다.\n\n🔗 https://feeds.example.com/articles/cloud-run-iam`,
     target_url: 'https://feeds.example.com/articles/cloud-run-iam',
@@ -37,6 +38,7 @@ const SAMPLE_INITIAL_MESSAGES: ShareMessage[] = [
   {
     id: 'smsg_sample_2',
     article_id: 'art_sample_2',
+    source_name: 'Frontend Hub',
     title: '모바일 우선 Vue 3 PWA 카카오톡 공유 아키텍처',
     body: `[모아톡 브리핑] 모바일 우선 Vue 3 PWA 카카오톡 공유 아키텍처\n\n백엔드 자동 게시가 아닌 사용자 주도형 카카오톡 공유 워크플로우를 제공합니다.\n\n🔗 https://feeds.example.com/articles/vue3-pwa-kakao`,
     target_url: 'https://feeds.example.com/articles/vue3-pwa-kakao',
@@ -68,6 +70,28 @@ export const useMessagesStore = defineStore('messages', () => {
   const pendingCount = computed(() => pendingMessages.value.length)
   const historyCount = computed(() => historyMessages.value.length)
 
+  async function fetchPending(isRefresh = false) {
+    if (isRefresh) {
+      refreshing.value = true
+    } else {
+      loading.value = true
+    }
+    error.value = null
+
+    try {
+      const res = await api.getPendingMessages()
+      if (res && Array.isArray(res.messages)) {
+        pendingMessages.value = res.messages
+      }
+    } catch (err: any) {
+      console.warn('API fetch pending messages failed:', err)
+      error.value = err.message || '공유 대기 메시지를 불러오지 못했습니다.'
+    } finally {
+      loading.value = false
+      refreshing.value = false
+    }
+  }
+
   async function fetchAll(isRefresh = false) {
     if (isRefresh) {
       refreshing.value = true
@@ -79,7 +103,7 @@ export const useMessagesStore = defineStore('messages', () => {
     try {
       // 1. Fetch pending messages
       const pendingRes = await api.getPendingMessages()
-      if (pendingRes && Array.isArray(pendingRes.messages) && pendingRes.messages.length > 0) {
+      if (pendingRes && Array.isArray(pendingRes.messages)) {
         pendingMessages.value = pendingRes.messages
       }
 
@@ -95,6 +119,10 @@ export const useMessagesStore = defineStore('messages', () => {
       loading.value = false
       refreshing.value = false
     }
+  }
+
+  function clearError() {
+    error.value = null
   }
 
   async function fetchById(messageId: string): Promise<ShareMessage | null> {
@@ -178,7 +206,9 @@ export const useMessagesStore = defineStore('messages', () => {
     pendingCount,
     historyCount,
     fetchAll,
+    fetchPending,
     fetchById,
-    markAsShared
+    markAsShared,
+    clearError
   }
 })

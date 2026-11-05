@@ -36,6 +36,8 @@ export interface ShareMessage {
   title: string
   body: string
   target_url?: string
+  source_name?: string
+  source_id?: string
   status: MessageStatus
   kakao_shared?: boolean
   shared_by_user_id?: string | null
