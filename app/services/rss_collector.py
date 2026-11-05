@@ -20,7 +20,9 @@ from app.repositories.firestore_utils import (
     normalize_url,
     utc_now,
 )
+from app.repositories.share_messages_repo import ShareMessageRepository
 from app.repositories.sources_repo import SourceRepository
+from app.services.share_message_generator import RuleBasedShareMessageGenerator
 from app.services.url_validator import fetch_and_validate_source_url
 
 logger = logging.getLogger(__name__)
@@ -306,6 +308,8 @@ class RssCollectionService:
         *,
         source_repo: SourceRepository | None = None,
         article_repo: ArticleRepository | None = None,
+        share_repo: ShareMessageRepository | None = None,
+        share_generator: RuleBasedShareMessageGenerator | None = None,
         http_open: Callable[..., Any] | None = None,
         allowed_domains: Iterable[str] | None = None,
         timeout_seconds: float | None = None,
@@ -314,6 +318,10 @@ class RssCollectionService:
     ) -> None:
         self.source_repo = source_repo or SourceRepository()
         self.article_repo = article_repo or ArticleRepository()
+        self.share_repo = share_repo or ShareMessageRepository(db=self.article_repo.db)
+        self.share_generator = share_generator or RuleBasedShareMessageGenerator(
+            share_repo=self.share_repo
+        )
         self.http_open = http_open
         self.allowed_domains = allowed_domains
         self.timeout_seconds = timeout_seconds
@@ -332,6 +340,7 @@ class RssCollectionService:
         total_new = 0
         total_duplicate = 0
         total_failed = 0
+        total_share_messages_created = 0
         sources_succeeded = 0
         sources_failed = 0
         source_summaries: list[dict[str, Any]] = []
@@ -343,6 +352,7 @@ class RssCollectionService:
             src_new = 0
             src_duplicate = 0
             src_failed = 0
+            src_share_messages = 0
             src_error: str | None = None
 
             try:
@@ -365,18 +375,27 @@ class RssCollectionService:
                 for item in items:
                     src_processed += 1
                     try:
-                        _, created = self.article_repo.create_or_get_with_status(
-                            source_id=source_id,
-                            source_url=probe.final_url,
-                            canonical_url=item.canonical_url,
-                            stable_id=item.stable_id,
-                            title=item.title,
-                            summary=item.summary,
-                            published_at=item.published_at,
-                            collected_at=utc_now(),
+                        article_record, created = (
+                            self.article_repo.create_or_get_with_status(
+                                source_id=source_id,
+                                source_url=probe.final_url,
+                                canonical_url=item.canonical_url,
+                                stable_id=item.stable_id,
+                                title=item.title,
+                                summary=item.summary,
+                                published_at=item.published_at,
+                                collected_at=utc_now(),
+                            )
                         )
                         if created:
                             src_new += 1
+                            _, msg_created = (
+                                self.share_generator.generate_for_article_with_status(
+                                    article_record
+                                )
+                            )
+                            if msg_created:
+                                src_share_messages += 1
                         else:
                             src_duplicate += 1
                     except Exception as item_exc:
@@ -412,6 +431,7 @@ class RssCollectionService:
             total_new += src_new
             total_duplicate += src_duplicate
             total_failed += src_failed
+            total_share_messages_created += src_share_messages
 
             source_summaries.append(
                 {
@@ -421,6 +441,7 @@ class RssCollectionService:
                     "new": src_new,
                     "duplicate": src_duplicate,
                     "failed": src_failed,
+                    "share_messages_created": src_share_messages,
                     "error": src_error,
                 }
             )
@@ -433,6 +454,7 @@ class RssCollectionService:
             "new": total_new,
             "duplicate": total_duplicate,
             "failed": total_failed,
+            "share_messages_created": total_share_messages_created,
             "processed_count": total_processed,
             "new_count": total_new,
             "duplicate_count": total_duplicate,
@@ -449,6 +471,8 @@ def collect_rss_articles(
     *,
     source_repo: SourceRepository | None = None,
     article_repo: ArticleRepository | None = None,
+    share_repo: ShareMessageRepository | None = None,
+    share_generator: RuleBasedShareMessageGenerator | None = None,
     http_open: Callable[..., Any] | None = None,
     allowed_domains: Iterable[str] | None = None,
     timeout_seconds: float | None = None,
@@ -459,6 +483,8 @@ def collect_rss_articles(
     service = RssCollectionService(
         source_repo=source_repo,
         article_repo=article_repo,
+        share_repo=share_repo,
+        share_generator=share_generator,
         http_open=http_open,
         allowed_domains=allowed_domains,
         timeout_seconds=timeout_seconds,

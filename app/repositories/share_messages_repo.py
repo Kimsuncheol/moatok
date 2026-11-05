@@ -60,6 +60,30 @@ class ShareMessageRepository:
         record["id"] = doc_id
         return record
 
+    @staticmethod
+    def to_api_dict(record: Mapping[str, Any]) -> dict[str, Any]:
+        """Serialize a share message record into a JSON-ready dictionary with ISO-8601 UTC timestamps."""
+        created_at = record.get("created_at")
+        updated_at = record.get("updated_at")
+        return {
+            "id": record.get("id"),
+            "article_id": record.get("article_id"),
+            "title": record.get("title"),
+            "body": record.get("body"),
+            "target_url": record.get("target_url"),
+            "status": record.get("status"),
+            "created_at": (
+                created_at.isoformat()
+                if isinstance(created_at, datetime)
+                else created_at
+            ),
+            "updated_at": (
+                updated_at.isoformat()
+                if isinstance(updated_at, datetime)
+                else updated_at
+            ),
+        }
+
     def _build_document(
         self,
         *,
@@ -67,7 +91,7 @@ class ShareMessageRepository:
         title: str,
         body: str,
         target_url: str,
-        status: str = "ready_to_share",
+        status: str = "pending",
         created_at: datetime | str | None = None,
         updated_at: datetime | str | None = None,
         extra: Mapping[str, Any] | None = None,
@@ -153,7 +177,7 @@ class ShareMessageRepository:
         resolved_status = (
             status
             if status is not None
-            else raw.get("status", "ready_to_share")
+            else raw.get("status", "pending")
         )
         resolved_created = (
             created_at
@@ -294,3 +318,77 @@ class ShareMessageRepository:
             return self._to_record(snapshot.id, existing)
 
         return _txn_update(self.db.transaction())
+
+    def update_pending_message(
+        self,
+        message_id: str,
+        updates: Mapping[str, Any],
+        *,
+        max_title_length: int | None = None,
+        max_body_length: int | None = None,
+    ) -> RecordDict | None:
+        """Atomically edit a share message only when its current status is `'pending'`."""
+        cleaned_id = (message_id or "").strip()
+        if not cleaned_id:
+            return None
+
+        assert_no_forbidden_secrets(updates)
+        sanitized: dict[str, Any] = {}
+
+        if "title" in updates:
+            cleaned_title = " ".join(str(updates.get("title") or "").split()).strip()
+            if not cleaned_title:
+                raise ValidationError("Share message 'title' cannot be empty.")
+            if max_title_length is not None and len(cleaned_title) > max_title_length:
+                raise ValidationError(
+                    f"Share message 'title' exceeds maximum length of {max_title_length} characters."
+                )
+            sanitized["title"] = cleaned_title
+
+        if "body" in updates:
+            cleaned_body = str(updates.get("body") or "").strip()
+            if not cleaned_body:
+                raise ValidationError("Share message 'body' cannot be empty.")
+            if max_body_length is not None and len(cleaned_body) > max_body_length:
+                raise ValidationError(
+                    f"Share message 'body' exceeds maximum length of {max_body_length} characters."
+                )
+            sanitized["body"] = cleaned_body
+
+        if "target_url" in updates:
+            sanitized["target_url"] = normalize_url(
+                str(updates.get("target_url") or ""), field_name="target_url"
+            )
+
+        if "status" in updates:
+            cleaned_status = str(updates.get("status") or "").strip()
+            if cleaned_status not in VALID_MESSAGE_STATUSES:
+                raise ValidationError(
+                    f"Invalid share message status '{cleaned_status}'. "
+                    f"Must be one of: {sorted(VALID_MESSAGE_STATUSES)}"
+                )
+            sanitized["status"] = cleaned_status
+
+        if not sanitized:
+            raise ValidationError(
+                "At least one editable field ('title', 'body', 'target_url', 'status') is required."
+            )
+
+        sanitized["updated_at"] = utc_now()
+        doc_ref = self._collection().document(cleaned_id)
+
+        @firestore.transactional
+        def _txn_edit(transaction: Any) -> RecordDict | None:
+            snapshot = doc_ref.get(transaction=transaction)
+            if not snapshot.exists:
+                return None
+            existing = snapshot.to_dict() or {}
+            if existing.get("status") != "pending":
+                raise ValidationError(
+                    f"Cannot edit share message in '{existing.get('status')}' status; only 'pending' messages can be edited."
+                )
+            transaction.update(doc_ref, sanitized)
+            existing.update(sanitized)
+            return self._to_record(snapshot.id, existing)
+
+        return _txn_edit(self.db.transaction())
