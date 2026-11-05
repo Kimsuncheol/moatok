@@ -106,6 +106,8 @@ frontend/
 │       └── MessageDetailView.vue # Focused single-briefing detail view
 └── tests/
     ├── AppearanceToggle.spec.ts # Segmented control & no-dropdown verification
+    ├── apiClient.spec.ts        # API client, Bearer token injection, retry on 401 & expiration tests
+    ├── authStore.spec.ts        # Pinia auth store, sign-in methods, token refresh & state transitions
     ├── BottomNav.spec.ts        # Navigation tabs & badge count tests
     ├── kakaoService.spec.ts     # User-initiated Kakao sharing & fallback tests
     ├── messagesStore.spec.ts    # Pinia messages state & markAsShared tests
@@ -128,7 +130,8 @@ cp frontend/.env.example frontend/.env
 | Variable | Description |
 | :--- | :--- |
 | `VITE_API_BASE_URL` | Base URL of the Python Flask REST API (e.g., `http://localhost:8080`) |
-| `VITE_FIREBASE_API_KEY` | Firebase Web API key |
+| `VITE_FIREBASE_AUTH_SIGN_IN_METHOD` | Configurable preferred sign-in method (`email`, `anonymous`, `google`, default: `email`) |
+| `VITE_FIREBASE_API_KEY` | Firebase Web API key (Public client config ONLY) |
 | `VITE_FIREBASE_AUTH_DOMAIN` | Firebase Authentication domain |
 | `VITE_FIREBASE_PROJECT_ID` | Firebase / Google Cloud project ID |
 | `VITE_FIREBASE_STORAGE_BUCKET` | Firebase storage bucket |
@@ -136,6 +139,35 @@ cp frontend/.env.example frontend/.env
 | `VITE_FIREBASE_APP_ID` | Firebase Web App ID |
 | `VITE_FIREBASE_VAPID_KEY` | FCM Web Push Certificate (VAPID key) |
 | `VITE_KAKAO_JAVASCRIPT_KEY` | *(Optional)* Kakao Developers JavaScript SDK key for `Kakao.Share` |
+
+> [!CAUTION]
+> **No Secrets or Service Account Keys in Frontend**:
+> The frontend bundles only public Firebase client web configuration. **Never** include Google Cloud service account JSON keys, Kakao Client Secrets, or Cloud Scheduler credentials in the frontend repository or environment variables.
+
+---
+
+## Firebase Authentication & Backend REST API Integration
+
+### 1. Configurable Sign-in Methods
+Moatok supports multiple sign-in providers configured via `VITE_FIREBASE_AUTH_SIGN_IN_METHOD`:
+- **Email / Password** (`loginWithEmail`, `signupWithEmail`): Supports standard user authentication and account creation with localized error messages.
+- **Anonymous / Guest** (`loginAsGuest`): Instant sign-in without registration for reviewing briefings and sharing.
+- **Google Sign-In** (`loginWithGoogle`): OAuth pop-up authentication via `GoogleAuthProvider`.
+- **Polymorphic Dispatcher** (`signIn({ method, ... })`): Dispatches dynamically to the chosen method.
+
+### 2. Pinia Authentication State Management (`useAuthStore`)
+Manages reactive states:
+- `user`: Firebase `User` instance.
+- `profile`: Verified user profile retrieved from Flask backend (`/api/v1/auth/me`).
+- `status`: `'loading' | 'authenticated' | 'signed_out' | 'expired' | 'error'`.
+- `isAdmin`: Computed property verifying server-validated Firebase custom claims (`admin: true`).
+
+### 3. Bearer Token Propagation & Reactive 401 Session Refresh
+- Every call made by `api.ts` automatically attaches an `Authorization: Bearer <ID_TOKEN>` header resolved from `authStore.getIdToken()`.
+- **Automatic Token Refresh on 401**: When an API call returns `401 Unauthorized` with `code: "token_expired"`:
+  1. `api.ts` automatically calls `tokenProvider(true)` to force-refresh the Firebase ID token using the user's refresh token.
+  2. The request is retried **once** with the newly minted token.
+  3. If the retry fails or the session is revoked, `onSessionExpired` triggers `authStore.handleSessionExpired()`, setting `status: 'expired'` and notifying the user to sign in again.
 
 ---
 
@@ -211,7 +243,7 @@ Open `http://localhost:5173` in your browser or mobile emulator. Vite proxies `/
 
 ### 3. Run Automated Frontend Tests
 
-Runs all 19 unit & component tests across AppearanceToggle, BottomNav, stores, Kakao sharing, PWA manifest, and ReloadPrompt:
+Runs all 36 unit & component tests across AppearanceToggle, apiClient, authStore, BottomNav, stores, Kakao sharing, PWA manifest, and ReloadPrompt:
 
 ```bash
 npm test

@@ -33,7 +33,7 @@ describe('Pinia Auth Store (useAuthStore)', () => {
     authCallbacks = []
     vi.restoreAllMocks()
 
-    vi.mocked(firebaseAuth.onAuthStateChanged).mockImplementation((auth, callback: any) => {
+    vi.mocked(firebaseAuth.onAuthStateChanged).mockImplementation((_auth, callback: any) => {
       authCallbacks.push(callback)
       return vi.fn()
     })

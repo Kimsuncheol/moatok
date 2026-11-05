@@ -65,7 +65,7 @@ A production-oriented platform comprising:
 │   │   ├── services/               # API, Firebase & Kakao Share services
 │   │   ├── stores/                 # Pinia stores (theme, auth, messages, notifications)
 │   │   └── views/                  # PendingView, HistoryView, SettingsView, MessageDetailView
-│   ├── tests/                      # Vitest unit & component tests (19 tests)
+│   ├── tests/                      # Vitest unit & component tests (36 tests)
 │   ├── package.json
 │   ├── vite.config.ts              # Vite config with VitePWA & Workbox zero-cache policy
 │   └── README.md
@@ -150,6 +150,13 @@ Configured in [`vite.config.ts`](frontend/vite.config.ts) via `VitePWA` and Work
 Per W3C Service Worker and Web App Manifest specifications:
 - **Production Requirements**: Must be served over **HTTPS** with a valid TLS certificate. If served over plain HTTP on a public domain or remote LAN IP (e.g. `http://192.168.x.x`), browsers will refuse to register the Service Worker or enable Web Push notifications.
 - **Localhost Development**: Modern browsers treat `http://localhost` and `http://127.0.0.1` as secure contexts, allowing local PWA and service worker development without SSL certificates.
+
+### 6. Vue 3 PWA Client Authentication & Token Lifecycle
+- **Configurable Sign-in Methods**: Configured via `VITE_FIREBASE_AUTH_SIGN_IN_METHOD` (`email`, `anonymous`, `google`, default: `email`) with dedicated UI components for email/password, anonymous guest browsing, and Google authentication.
+- **Pinia State Machine (`useAuthStore`)**: Manages `status` (`'loading' | 'authenticated' | 'signed_out' | 'expired' | 'error'`), verified backend user claims (`isAdmin`), and localized error messages.
+- **Automatic Bearer Token Injection**: All outgoing requests in [`frontend/src/services/api.ts`](frontend/src/services/api.ts) automatically attach `Authorization: Bearer <ID_TOKEN>`.
+- **401 Token Refresh & Session Recovery**: If an API response returns `401 Unauthorized` with `code: "token_expired"`, the client interceptor forces a token refresh (`getIdToken(true)`) and retries the request once before signaling session expiration.
+- **Zero Secrets on Client**: The frontend uses only public Firebase client web config. No private keys, service account JSON files, or Kakao client secrets are present in frontend bundles or repository code.
 
 ---
 

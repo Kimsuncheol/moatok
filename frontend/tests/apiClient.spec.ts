@@ -34,7 +34,7 @@ describe('API Client & Token Interceptor', () => {
     let capturedHeaders: Headers | undefined
     setTokenProvider(async () => 'firebase-test-token-123')
 
-    global.fetch = vi.fn().mockImplementation((url, init) => {
+    global.fetch = vi.fn().mockImplementation((_url, init) => {
       capturedHeaders = new Headers(init.headers)
       return Promise.resolve({
         ok: true,
@@ -61,7 +61,7 @@ describe('API Client & Token Interceptor', () => {
 
     const capturedAuthHeaders: string[] = []
 
-    global.fetch = vi.fn().mockImplementation((url, init) => {
+    global.fetch = vi.fn().mockImplementation((_url, init) => {
       callCount++
       const headers = new Headers(init.headers)
       capturedAuthHeaders.push(headers.get('Authorization') || '')

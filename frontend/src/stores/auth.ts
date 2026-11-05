@@ -108,7 +108,7 @@ export const useAuthStore = defineStore('auth', () => {
     return null
   }
 
-  function handleSessionExpired(apiErr?: ApiError) {
+  function handleSessionExpired(_apiErr?: ApiError) {
     sessionExpired.value = true
     status.value = 'expired'
     error.value = '세션이 만료되었습니다. 다시 로그인해주세요.'
@@ -172,9 +172,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (err: any) {
       console.warn('Firebase Auth initialization skipped (using mock/offline auth):', err)
       loading.value = false
-      if (status.value !== 'expired') {
-        status.value = 'signed_out'
-      }
+      status.value = 'signed_out'
     }
   }
 
