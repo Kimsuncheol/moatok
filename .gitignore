@@ -9,13 +9,27 @@ venv/
 ENV/
 env/
 
-# Environment variables and secrets (NEVER commit)
+# Environment variables, credentials & keys (NEVER commit)
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.p12
+*.pfx
 *service-account*.json
+*service_account*.json
 *credentials*.json
 firebase-adminsdk-*.json
+gcloud-credentials*.json
+application_default_credentials.json
+
+# Local Firebase / Google Cloud emulator state
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+emulator-data/
 
 # Test / coverage artifacts
 .pytest_cache/

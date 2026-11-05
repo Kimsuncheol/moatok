@@ -56,11 +56,13 @@ A production-oriented Python **Flask** backend that collects and formats content
 │   ├── test_share_message_generator.py  # Rule-based share message generator, length limits & admin edit tests
 │   ├── test_sources.py                  # Admin content source endpoints & SSRF/redirect/timeout/size tests
 │   ├── test_health.py                   # Public health endpoint tests
+│   ├── test_e2e_workflow.py             # End-to-end 5-stage workflow & Gunicorn/Cloud Run readiness tests
 │   └── test_content_and_notifications.py
 ├── .dockerignore
 ├── .env.example
 ├── .gitignore
 ├── Dockerfile
+├── gunicorn.conf.py                # Gunicorn production configuration (respects PORT)
 ├── requirements.txt
 └── wsgi.py                         # WSGI entrypoint for Gunicorn
 ```
@@ -124,16 +126,78 @@ Firebase custom claims are embedded into the user's signed ID token when minted.
 
 ## Security & Credentials
 
-- **Never commit secrets or service account JSON files**: `.gitignore` and `.dockerignore` exclude `.env` files and `*service-account*.json` / `*credentials*.json`.
-- **Deployed Environments (Cloud Run, GKE, App Engine)**: Leave `GOOGLE_APPLICATION_CREDENTIALS` unset. The backend initializes `firebase_admin` with `credentials.ApplicationDefault()`, which automatically uses the runtime's attached Google Cloud service account.
-- **Local Development**: Authenticate with Google Cloud Application Default Credentials:
-  ```bash
-  gcloud auth application-default login
-  ```
+- **Never commit secrets or service account JSON files**: `.gitignore` and `.dockerignore` exclude `.env`, `.env.*`, `*.pem`, `*.key`, `*service-account*.json`, `*credentials*.json`, and `firebase-adminsdk-*.json`. Furthermore, `assert_no_forbidden_secrets()` in `app/repositories/firestore_utils.py` rejects any attempt to persist Kakao access/refresh tokens or service account private keys in Firestore.
+- **Deployed Environments (Cloud Run)**: Leave `GOOGLE_APPLICATION_CREDENTIALS` unset. The backend initializes `firebase_admin` with `credentials.ApplicationDefault()`, which automatically uses the Cloud Run service's attached least-privilege Google Cloud service account.
+- **Local Development**: Authenticate with Google Cloud Application Default Credentials (`gcloud auth application-default login`) or run against local Firebase/Firestore emulators.
 
 ---
 
-## Local Setup Instructions
+## Required Firebase & Google Cloud Configuration
+
+### 1. Required Google Cloud APIs
+Enable the required APIs in your Google Cloud project:
+```bash
+PROJECT_ID="your-gcp-project-id"
+
+gcloud services enable \
+  run.googleapis.com \
+  cloudscheduler.googleapis.com \
+  firestore.googleapis.com \
+  artifactregistry.googleapis.com \
+  cloudbuild.googleapis.com \
+  iam.googleapis.com \
+  identitytoolkit.googleapis.com \
+  fcm.googleapis.com \
+  --project="${PROJECT_ID}"
+```
+
+### 2. Cloud Firestore Configuration
+Create a **Firestore Native Mode** database in your target region:
+```bash
+gcloud firestore databases create \
+  --project="${PROJECT_ID}" \
+  --database="(default)" \
+  --location="asia-northeast3" \
+  --type="firestore-native"
+```
+The application uses the following collections (all timestamps stored in UTC):
+- `sources` (`FIRESTORE_COLLECTION_SOURCES`): Content source definitions (`name`, `url`, `source_type`, `enabled`, `last_checked_at`, `created_at`).
+- `articles` (`FIRESTORE_COLLECTION_ARTICLES`): Collected articles deduplicated via deterministic IDs (`source_id`, `source_url`, `canonical_url`, `stable_id`, `title`, `summary`, `published_at`, `collected_at`).
+- `share_messages` (`FIRESTORE_COLLECTION_SHARE_MESSAGES`): Rule-based shareable messages (`article_id`, `title`, `body`, `target_url`, `status`, `notification_attempts`, `kakao_shared`, `created_at`, `updated_at`).
+- `users/{userId}/devices` (`FIRESTORE_COLLECTION_USERS` / `FIRESTORE_SUBCOLLECTION_DEVICES`): Per-user registered Flutter device FCM tokens.
+
+### 3. Firebase Authentication & Cloud Messaging (FCM)
+1. Link your Google Cloud project in the **Firebase Console**.
+2. Enable **Firebase Authentication** sign-in providers used by the Flutter client.
+3. Assign administrator privileges strictly via **Firebase Custom User Claims** (`{"admin": true}`) using the Firebase Admin SDK (see [Assigning an Administrator Custom Claim Securely](#4-assigning-an-administrator-custom-claim-securely)).
+4. Enable **Firebase Cloud Messaging (FCM API v1)** so the backend can send concise push notifications (`share_message_id` only) to registered Flutter devices.
+
+### 4. Environment Variables Reference
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `PORT` | `8080` | TCP port injected by Cloud Run; respected by `gunicorn.conf.py`, `Dockerfile`, and `wsgi.py` |
+| `FLASK_ENV` | `production` (in Docker) | `development`, `testing`, or `production` |
+| `GOOGLE_CLOUD_PROJECT` | — | Google Cloud project ID for Firestore & ADC |
+| `FIREBASE_PROJECT_ID` | `GOOGLE_CLOUD_PROJECT` | Firebase project ID for ID token & FCM verification |
+| `FIRESTORE_DATABASE` | `(default)` | Firestore database ID |
+| `SCHEDULER_SERVICE_ACCOUNT_EMAIL` | — | **Required for `/internal/jobs/collect`**: Expected Cloud Scheduler service account email (fails closed with `403` if unset) |
+| `SCHEDULER_OIDC_AUDIENCE` | — | Expected `aud` claim on Cloud Scheduler OIDC tokens (e.g., `https://<service-url>/internal/jobs/collect`) |
+| `ALLOWED_SOURCE_DOMAINS` | — | Comma-separated public domain allowlist for RSS/API sources (e.g. `feeds.example.com,*.example.org`) |
+| `SOURCE_FETCH_TIMEOUT_SECONDS` | `5.0` | HTTP request timeout in seconds when validating/fetching sources |
+| `SOURCE_FETCH_MAX_BYTES` | `1048576` (1 MiB) | Maximum response body size in bytes when fetching sources |
+| `SOURCE_FETCH_MAX_REDIRECTS` | `3` | Maximum SSRF-validated redirect hops allowed |
+| `SHARE_MESSAGE_PREFIX` | `[모아톡 브리핑]` | Configurable prefix prepended to generated share messages |
+| `SHARE_MESSAGE_MAX_TITLE_LENGTH` | `100` | Maximum title length in generated share messages |
+| `SHARE_MESSAGE_MAX_DESCRIPTION_LENGTH` | `160` | Maximum summary/description length in generated share messages |
+| `SHARE_MESSAGE_MAX_BODY_LENGTH` | `500` | Maximum total body length (preserving the article URL) |
+| `GUNICORN_WORKERS` | `2` | Number of Gunicorn worker processes |
+| `GUNICORN_THREADS` | `4` | Number of threads per Gunicorn worker |
+| `GUNICORN_TIMEOUT` | `60` | Gunicorn worker timeout in seconds |
+
+---
+
+## Local Setup & Testing Instructions (Mocks & Emulators)
 
 ### 1. Create and activate a virtual environment
 
@@ -143,47 +207,135 @@ source .venv/bin/activate
 .venv/bin/pip install -r requirements.txt
 ```
 
-### 2. Configure environment variables
+### 2. Run Offline Automated Tests (Mocks & Fake Repositories)
 
-Copy `.env.example` to `.env` and fill in your Google Cloud / Firebase project details:
-
-```bash
-cp .env.example .env
-```
-
-Authenticate locally with Application Default Credentials:
-
-```bash
-gcloud auth application-default login
-```
-
-### 3. Run the development server
-
-```bash
-.venv/bin/python wsgi.py
-```
-
-Verify the public health endpoint:
-
-```bash
-curl http://localhost:8080/health
-```
-
-### 4. Run automated tests
-
-Tests run completely offline in `testing` mode using mocked Firebase Auth, FCM, and an in-memory Firestore test double:
+The automated test suite (`pytest`) runs 100% offline in `testing` mode without any external network calls or cloud credentials. It uses:
+- `FakeFirestoreClient` & `FakeTransaction` (`tests/conftest.py`) to test transactional deduplication and concurrency.
+- Mocked Firebase Auth (`mock_firebase_auth`), mocked Google OIDC (`mock_scheduler_oidc`), and mocked FCM (`mock_fcm_send`).
+- Mocked HTTP openers (`SyntheticProbeResponse` / `_MockHttpResponse`) to test RSS parsing, SSRF blocking, redirects, timeouts, and size limits.
 
 ```bash
 .venv/bin/pytest -v
 ```
 
----
+### 3. Local Testing with Firebase / Firestore Emulators
 
-## Docker Build & Run
+To test locally against the official **Google Cloud Firestore Emulator** and **Firebase Auth Emulator** instead of cloud resources:
+
+1. Start the local emulators (using the Firebase CLI or `gcloud emulators firestore start`):
+   ```bash
+   gcloud beta emulators firestore start --host-port=127.0.0.1:8085
+   ```
+2. Export the emulator environment variables and run the Flask/Gunicorn server:
+   ```bash
+   export FLASK_ENV=development
+   export GOOGLE_CLOUD_PROJECT=demo-moatok-local
+   export FIREBASE_PROJECT_ID=demo-moatok-local
+   export FIRESTORE_EMULATOR_HOST=127.0.0.1:8085
+   export ALLOWED_SOURCE_DOMAINS=example.com,feeds.example.com
+   export PORT=8080
+
+   .venv/bin/gunicorn --config gunicorn.conf.py wsgi:app
+   ```
+3. Verify the health endpoint:
+   ```bash
+   curl http://localhost:8080/health
+   ```
+
+### 4. Local Docker Build & Gunicorn `PORT` Verification
+
+Verify that the container runs as non-root (`appuser`), uses Gunicorn, and respects a custom `PORT` environment variable (e.g., `PORT=9090`):
 
 ```bash
 docker build -t moatok-backend .
-docker run --rm -p 8080:8080 --env-file .env moatok-backend
+docker run --rm -p 9090:9090 -e PORT=9090 --env-file .env moatok-backend
+curl http://localhost:9090/health
+```
+
+---
+
+## Google Cloud Run Deployment (Least-Privilege IAM)
+
+### 1. Dedicated Service Accounts & Least-Privilege IAM Permissions
+
+Never use the default Compute Engine service account (`PROJECT_NUMBER-compute@developer.gserviceaccount.com`) or grant broad primitive roles (`roles/owner`, `roles/editor`). Instead, provision **two** dedicated service accounts with minimal permissions:
+
+| Service Account | Purpose | Least-Privilege IAM Roles | Scope |
+| :--- | :--- | :--- | :--- |
+| `moatok-cloudrun-sa@<PROJECT_ID>.iam.gserviceaccount.com` | **Cloud Run Runtime Identity** (attached to the Cloud Run revision via ADC) | `roles/datastore.user` (Firestore read/write)<br>`roles/firebaseauth.admin` (verify Firebase ID tokens & manage custom claims)<br>`roles/cloudmessaging.admin` or custom role with `cloudmessaging.messages.create` (send FCM push notifications)<br>`roles/logging.logWriter` (write container logs) | Project |
+| `moatok-scheduler@<PROJECT_ID>.iam.gserviceaccount.com` | **Cloud Scheduler Invoker Identity** (mints OIDC tokens for `POST /internal/jobs/collect`) | `roles/run.invoker` (invoke the Cloud Run service) | `moatok-backend` Cloud Run service only |
+
+Create the Cloud Run runtime service account and bind its least-privilege roles:
+```bash
+PROJECT_ID="your-gcp-project-id"
+REGION="asia-northeast3"
+SERVICE_NAME="moatok-backend"
+RUNTIME_SA_NAME="moatok-cloudrun-sa"
+RUNTIME_SA_EMAIL="${RUNTIME_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+
+gcloud iam service-accounts create "${RUNTIME_SA_NAME}" \
+  --project="${PROJECT_ID}" \
+  --display-name="Moatok Cloud Run Runtime Service Account"
+
+for ROLE in \
+  "roles/datastore.user" \
+  "roles/firebaseauth.admin" \
+  "roles/firebase.sdkAdminServiceAgent" \
+  "roles/logging.logWriter"; do
+  gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${RUNTIME_SA_EMAIL}" \
+    --role="${ROLE}"
+done
+```
+
+### 2. Build & Push Container Image to Artifact Registry
+
+```bash
+REPO_NAME="moatok"
+IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${SERVICE_NAME}:latest"
+
+gcloud artifacts repositories create "${REPO_NAME}" \
+  --project="${PROJECT_ID}" \
+  --repository-format=docker \
+  --location="${REGION}" \
+  --description="Moatok container repository"
+
+gcloud builds submit \
+  --project="${PROJECT_ID}" \
+  --tag="${IMAGE_URI}" .
+```
+
+### 3. Deploy to Cloud Run with the Dedicated Runtime Service Account
+
+```bash
+SCHEDULER_SA_NAME="moatok-scheduler"
+SCHEDULER_SA_EMAIL="${SCHEDULER_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+
+gcloud run deploy "${SERVICE_NAME}" \
+  --project="${PROJECT_ID}" \
+  --region="${REGION}" \
+  --image="${IMAGE_URI}" \
+  --service-account="${RUNTIME_SA_EMAIL}" \
+  --port=8080 \
+  --cpu=1 \
+  --memory=512Mi \
+  --min-instances=0 \
+  --max-instances=5 \
+  --timeout=60s \
+  --set-env-vars="FLASK_ENV=production,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},FIREBASE_PROJECT_ID=${PROJECT_ID},SCHEDULER_SERVICE_ACCOUNT_EMAIL=${SCHEDULER_SA_EMAIL},ALLOWED_SOURCE_DOMAINS=feeds.example.com" \
+  --allow-unauthenticated
+```
+*(Note: `--allow-unauthenticated` allows public HTTPS traffic to reach `/health` and Firebase-authenticated `/api/v1/*` mobile endpoints, while `/internal/jobs/collect` remains strictly locked down by `@require_scheduler_auth` OIDC verification. If the Cloud Run service itself is deployed with `--no-allow-unauthenticated`, Cloud Run additionally enforces `roles/run.invoker` at the ingress proxy layer.)*
+
+After initial deployment, retrieve the canonical Cloud Run service URL and lock `SCHEDULER_OIDC_AUDIENCE` to `<SERVICE_URL>/internal/jobs/collect`:
+```bash
+SERVICE_URL="$(gcloud run services describe "${SERVICE_NAME}" --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+JOB_AUDIENCE="${SERVICE_URL}/internal/jobs/collect"
+
+gcloud run services update "${SERVICE_NAME}" \
+  --project="${PROJECT_ID}" \
+  --region="${REGION}" \
+  --update-env-vars="SCHEDULER_OIDC_AUDIENCE=${JOB_AUDIENCE}"
 ```
 
 ---
@@ -295,3 +447,56 @@ All content source management endpoints require a verified Firebase administrato
 2. **SSRF & Metadata Protection**: Rejects `localhost`, loopback (`127.0.0.0/8`, `::1`), private networks (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `fc00::/7`), link-local (`169.254.0.0/16`, `fe80::/10`), and cloud metadata endpoints (`169.254.169.254`, `metadata.google.internal`, `fd00:ec2::254`, `100.100.100.200`) across both URL hostnames and DNS-resolved IP addresses (`code: "forbidden_address"`).
 3. **Redirect Destination Validation**: Automatic HTTP redirect following is disabled. Each redirect hop (up to `SOURCE_FETCH_MAX_REDIRECTS`, default `3`) has its `Location` target validated against the domain allowlist and SSRF IP/DNS checks before being followed.
 4. **Timeouts & Response-Size Limits**: Requests enforce `SOURCE_FETCH_TIMEOUT_SECONDS` (default `5.0`s, returning `code: "source_timeout"` on timeout) and `SOURCE_FETCH_MAX_BYTES` (default `1048576` bytes / 1 MiB, returning `code: "response_too_large"` if exceeded).
+
+---
+
+## End-to-End (E2E) Test Plan
+
+This test plan covers the full lifecycle across **Collection**, **Deduplication**, **Firestore Persistence**, **FCM Notification**, and **User-Initiated KakaoTalk Sharing** (automated in `tests/test_e2e_workflow.py` and verifiable in staging/production).
+
+### Stage 1: Content Source Registration & Scheduled RSS Collection
+1. **Admin Source Creation**:
+   - Send `POST /api/v1/admin/sources` with an administrator Firebase ID token (`{"admin": true}` custom claim) and payload `{"name": "Briefing RSS", "url": "https://feeds.example.com/rss.xml", "source_type": "rss", "enabled": true}`.
+   - **Expected**: `201 Created`; SSRF validator confirms the domain is in `ALLOWED_SOURCE_DOMAINS`, resolves to a public IP, and responds within timeout/size bounds.
+   - Verify non-admin tokens receive `403 Forbidden` (`code: "admin_required"`) and private/metadata URLs (`127.0.0.1`, `169.254.169.254`, `metadata.google.internal`) are rejected with `400 Bad Request` (`code: "forbidden_address"`).
+2. **Cloud Scheduler Job Trigger**:
+   - Trigger `POST /internal/jobs/collect` with a valid Cloud Scheduler OIDC Bearer token for `SCHEDULER_SERVICE_ACCOUNT_EMAIL`.
+   - **Expected**: `200 OK` with structured job summary (`sources_checked`, `sources_succeeded`, `processed`, `new`, `duplicate`, `failed`, `share_messages_created`, `notifications`).
+   - Verify requests without a token return `401` (`code: "missing_token"`), invalid/expired OIDC tokens return `401` (`code: "invalid_scheduler_token"`), and unexpected service accounts return `403` (`code: "unauthorized_service_account"`).
+
+### Stage 2: Deduplication, Retries & Concurrent Execution
+1. **In-Feed & Cross-Run Deduplication**:
+   - Include feed items that share the same `<guid>` (`stable_id`) or resolve to the same `canonical_url` after stripping tracking parameters (`utm_*`, `fbclid`, `gclid`).
+   - Re-run `POST /internal/jobs/collect` immediately with the same RSS feed.
+   - **Expected**: First run records `new: N`, `share_messages_created: N`; second run records `new: 0`, `duplicate: N`, `share_messages_created: 0`, `notifications.messages_notified: 0`.
+2. **Partial Retry & Concurrent Execution**:
+   - Trigger concurrent `POST /internal/jobs/collect` requests across multiple worker threads (`tests/test_scheduler_job.py`).
+   - **Expected**: Firestore transactions (`ArticleRepository.create_or_get_with_status`, `ShareMessageRepository.create_or_get_for_article_with_status`, `ShareMessageRepository.claim_initial_notification`) guarantee exactly 1 article document, 1 pending share message document, and 1 initial notification dispatch per unique article.
+
+### Stage 3: Firestore Persistence & Data Hygiene
+1. **Collection & Field Verification**:
+   - Inspect `sources`, `articles`, `share_messages`, and `users/{userId}/devices` in Firestore.
+   - **Expected**:
+     - All timestamp fields (`created_at`, `last_checked_at`, `published_at`, `collected_at`, `updated_at`) are persisted in UTC (`tzinfo=timezone.utc`).
+     - Generated share messages have initial `status: "pending"`, `kakao_shared: false`, configurable prefix (`SHARE_MESSAGE_PREFIX`), bounded title/description/body lengths, and the original `target_url`.
+     - `assert_no_forbidden_secrets` blocks any document containing Kakao OAuth tokens (`kakao_access_token`, `kakao_refresh_token`) or service account private keys (`private_key`, `private_key_id`).
+
+### Stage 4: Firebase Cloud Messaging (FCM) Notification & Token Lifecycle
+1. **Device Token Registration**:
+   - Send `POST /api/v1/devices/fcm-token` with a user's Firebase Bearer token and `{"fcm_token": "<token>", "device_id": "<device_id>", "platform": "ios"}`.
+   - **Expected**: `200 OK`; token is upserted under `users/{userId}/devices/{deviceId}` with `enabled: true`.
+2. **Concise Push Notification & Observability**:
+   - When `POST /internal/jobs/collect` or `POST /api/v1/admin/share-messages/<id>/notify` runs, inspect the dispatched FCM message and the updated `share_messages/<id>` document.
+   - **Expected**:
+     - FCM `data` payload contains only `{"action": "OPEN_SHARE_PREVIEW", "share_message_id": "<id>", "message_id": "<id>", "sharing_mode": "user_initiated_flutter"}` — **never** full article text, user PII, or credentials.
+     - Firestore records `notification_attempts`, `last_notification_status`, and `last_notified_at`, while `kakao_shared` remains `false` and `status` remains `"pending"` (proving notification delivery is never conflated with KakaoTalk sharing).
+     - Invalid or expired tokens raising `UnregisteredError` / `InvalidArgumentError` are automatically deactivated (`enabled: false`).
+
+### Stage 5: User-Initiated KakaoTalk Sharing & Completion
+1. **Optional Admin Review / Edit**:
+   - Admin sends `PATCH /api/v1/admin/share-messages/<id>` while `status == "pending"` to refine `title` or `body`.
+   - **Expected**: `200 OK` with updated content validated against length limits.
+2. **Flutter Share Preview & User-Initiated KakaoTalk Share**:
+   - When the user taps the FCM notification in the Flutter app, the app calls `GET /api/v1/messages/<share_message_id>` with the user's Firebase ID token to display the share preview.
+   - After the user explicitly completes sharing via the KakaoTalk Flutter SDK / native share sheet, the Flutter app calls `POST /api/v1/messages/<share_message_id>/mark-shared` with `{"share_channel": "kakaotalk_flutter_sdk"}`.
+   - **Expected**: `200 OK`; document transitions to `status: "shared"`, `kakao_shared: true`, `shared_by_user_id: "<uid>"`, and `shared_by_user_at: "<ISO-8601 UTC timestamp>"`.

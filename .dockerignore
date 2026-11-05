@@ -1,15 +1,47 @@
-__pycache__
-*.pyc
-.venv
-venv
+# Python bytecode & caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Environment variables, credentials & private keys (NEVER include in image)
 .env
 .env.*
-!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
 *service-account*.json
+*service_account*.json
 *credentials*.json
 firebase-adminsdk-*.json
-.git
+gcloud-credentials*.json
+application_default_credentials.json
+
+# Local Firebase / Google Cloud emulator state
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+emulator-data/
+
+# Git, IDE, documentation & test files
+.git/
 .gitignore
-.pytest_cache
-tests
+.dockerignore
+.DS_Store
+.vscode/
+.idea/
+tests/
 README.md
+Dockerfile

@@ -21,6 +21,7 @@ from app.models import (
     SourceContentItem,
     ValidationError,
 )
+from app.repositories.share_messages_repo import ShareMessageRepository
 
 
 def format_kakao_share_bundle(
@@ -160,15 +161,19 @@ def get_shareable_message(message_id: str, user_id: str | None = None) -> dict[s
     db = get_firestore_client()
     collection_name = current_app.config["FIRESTORE_COLLECTION_MESSAGES"]
     doc = db.collection(collection_name).document(message_id).get()
-    if not doc.exists:
-        return None
+    if doc.exists:
+        data = doc.to_dict() or {}
+        if user_id and user_id != "system" and data.get("user_id") != user_id:
+            return None
+        data["id"] = doc.id
+        return data
 
-    data = doc.to_dict() or {}
-    if user_id and user_id != "system" and data.get("user_id") != user_id:
-        return None
+    share_repo = ShareMessageRepository(db=db)
+    share_record = share_repo.get(message_id)
+    if share_record is not None:
+        return ShareMessageRepository.to_api_dict(share_record)
 
-    data["id"] = doc.id
-    return data
+    return None
 
 
 def record_user_share_event(
@@ -179,21 +184,30 @@ def record_user_share_event(
     collection_name = current_app.config["FIRESTORE_COLLECTION_MESSAGES"]
     doc_ref = db.collection(collection_name).document(message_id)
     doc = doc_ref.get()
-    if not doc.exists:
-        return None
+    if doc.exists:
+        data = doc.to_dict() or {}
+        if data.get("user_id") != user_id:
+            return None
 
-    data = doc.to_dict() or {}
-    if data.get("user_id") != user_id:
-        return None
+        now_iso = datetime.now(timezone.utc).isoformat()
+        updates = {
+            "status": "shared_by_user",
+            "shared_by_user_at": now_iso,
+            "updated_at": now_iso,
+            "last_share_channel": share_channel,
+        }
+        doc_ref.update(updates)
+        data.update(updates)
+        data["id"] = doc.id
+        return data
 
-    now_iso = datetime.now(timezone.utc).isoformat()
-    updates = {
-        "status": "shared_by_user",
-        "shared_by_user_at": now_iso,
-        "updated_at": now_iso,
-        "last_share_channel": share_channel,
-    }
-    doc_ref.update(updates)
-    data.update(updates)
-    data["id"] = doc.id
-    return data
+    share_repo = ShareMessageRepository(db=db)
+    updated_share = share_repo.mark_shared_by_user(
+        message_id=message_id,
+        user_id=user_id,
+        share_channel=share_channel,
+    )
+    if updated_share is not None:
+        return ShareMessageRepository.to_api_dict(updated_share)
+
+    return None

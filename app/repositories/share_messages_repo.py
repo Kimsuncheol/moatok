@@ -88,6 +88,8 @@ class ShareMessageRepository:
                 else last_notified_at
             ),
             "kakao_shared": bool(record.get("kakao_shared", False)),
+            "shared_by_user_id": record.get("shared_by_user_id"),
+            "last_share_channel": record.get("last_share_channel"),
             "shared_by_user_at": (
                 shared_at.isoformat() if isinstance(shared_at, datetime) else shared_at
             ),
@@ -509,3 +511,38 @@ class ShareMessageRepository:
             return True
 
         return _txn_claim(self.db.transaction())
+
+    def mark_shared_by_user(
+        self,
+        message_id: str,
+        user_id: str,
+        share_channel: str = "kakaotalk_flutter_sdk",
+    ) -> RecordDict | None:
+        """Record that an authenticated user completed user-initiated KakaoTalk sharing in Flutter."""
+        cleaned_id = (message_id or "").strip()
+        cleaned_uid = (user_id or "").strip()
+        if not cleaned_id or not cleaned_uid:
+            return None
+
+        now = utc_now()
+        doc_ref = self._collection().document(cleaned_id)
+
+        @firestore.transactional
+        def _txn_mark_shared(transaction: Any) -> RecordDict | None:
+            snapshot = doc_ref.get(transaction=transaction)
+            if not snapshot.exists:
+                return None
+            existing = snapshot.to_dict() or {}
+            updates: dict[str, Any] = {
+                "status": "shared",
+                "kakao_shared": True,
+                "shared_by_user_id": cleaned_uid,
+                "shared_by_user_at": now,
+                "last_share_channel": (share_channel or "kakaotalk_flutter_sdk").strip(),
+                "updated_at": now,
+            }
+            transaction.update(doc_ref, updates)
+            existing.update(updates)
+            return self._to_record(snapshot.id, existing)
+
+        return _txn_mark_shared(self.db.transaction())
