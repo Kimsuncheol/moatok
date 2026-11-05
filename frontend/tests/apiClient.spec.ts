@@ -188,6 +188,11 @@ describe('API Client & Token Interceptor', () => {
       platform: 'ios'
     })
 
+    await api.reportShareAttempt('smsg_100', { channel: 'kakao_sdk' })
+    expect(capturedUrl).toBe('http://test-api.example.com/api/v1/messages/smsg_100/share-attempt')
+    expect(capturedMethod).toBe('POST')
+    expect(JSON.parse(capturedBody)).toEqual({ channel: 'kakao_sdk' })
+
     await api.updateShareMessage('smsg_100', {
       body: '수정된 브리핑 문구'
     })

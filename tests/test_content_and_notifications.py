@@ -129,3 +129,56 @@ def test_internal_api_key_ingestion(client, mock_fcm_send):
     )
     assert res.status_code == 201
     assert res.get_json()["message"]["user_id"] == "user-1"
+
+
+def test_record_share_attempt_does_not_mark_as_delivered(client, mock_firebase_auth):
+    headers_user1 = {"Authorization": "Bearer valid-token-user-1"}
+
+    # 1. Create a pending message
+    create_res = client.post(
+        "/api/v1/messages",
+        headers=headers_user1,
+        json={
+            "title": "공유 시도 테스트 아티클",
+            "items": [{"title": "카카오톡 공유 시작"}],
+            "notify_user": False,
+        },
+    )
+    assert create_res.status_code == 201
+    msg_id = create_res.get_json()["message"]["id"]
+
+    # 2. Record first share attempt via Kakao JS SDK
+    attempt1_res = client.post(
+        f"/api/v1/messages/{msg_id}/share-attempt",
+        headers=headers_user1,
+        json={"channel": "kakao_sdk"},
+    )
+    assert attempt1_res.status_code == 200
+    data1 = attempt1_res.get_json()
+    assert data1["recorded"] is True
+    assert data1["channel"] == "kakao_sdk"
+    assert data1["share_attempt_count"] == 1
+    # Architectural boundary: status is NOT shared, kakao_shared is NOT True
+    assert data1["status"] in ("pending", "ready_to_share", "notified")
+    assert data1["status"] not in ("shared", "shared_by_user")
+    assert data1["kakao_shared"] is False
+
+    # 3. Record second share attempt (e.g. user retries with web_share fallback)
+    attempt2_res = client.post(
+        f"/api/v1/messages/{msg_id}/share-attempt",
+        headers=headers_user1,
+        json={"channel": "web_share"},
+    )
+    assert attempt2_res.status_code == 200
+    data2 = attempt2_res.get_json()
+    assert data2["share_attempt_count"] == 2
+    assert data2["channel"] == "web_share"
+    assert data2["kakao_shared"] is False
+
+    # Verify message detail still reflects pending status
+    get_res = client.get(f"/api/v1/messages/{msg_id}", headers=headers_user1)
+    assert get_res.status_code == 200
+    msg_detail = get_res.get_json()["message"]
+    assert msg_detail.get("kakao_shared") is not True
+    assert msg_detail.get("share_attempt_count") == 2
+    assert msg_detail.get("last_share_attempt_channel") == "web_share"

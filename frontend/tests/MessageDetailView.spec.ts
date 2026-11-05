@@ -83,6 +83,13 @@ describe('MessageDetailView Component', () => {
 
     // 6. Current share status
     expect(wrapper.find('.status-badge').text()).toBe('공유 대기')
+
+    // 7. Policy and Open Chat real-device advisory
+    const policyNotice = wrapper.find('.sharing-policy-notice')
+    expect(policyNotice.exists()).toBe(true)
+    expect(policyNotice.text()).toContain('사용자 주도 전송 원칙')
+    expect(policyNotice.text()).toContain('오픈채팅방 지원 안내')
+    expect(policyNotice.text()).toContain('실제 모바일 기기')
   })
 
   it('hides admin edit button for regular non-admin users', async () => {

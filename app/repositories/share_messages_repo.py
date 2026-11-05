@@ -68,6 +68,7 @@ class ShareMessageRepository:
         last_attempt_at = record.get("last_notification_attempt_at")
         last_notified_at = record.get("last_notified_at")
         shared_at = record.get("shared_by_user_at")
+        last_share_attempt_at = record.get("last_share_attempt_at")
         return {
             "id": record.get("id"),
             "article_id": record.get("article_id"),
@@ -93,6 +94,13 @@ class ShareMessageRepository:
             "shared_by_user_at": (
                 shared_at.isoformat() if isinstance(shared_at, datetime) else shared_at
             ),
+            "share_attempt_count": int(record.get("share_attempt_count", 0)),
+            "last_share_attempt_at": (
+                last_share_attempt_at.isoformat()
+                if isinstance(last_share_attempt_at, datetime)
+                else last_share_attempt_at
+            ),
+            "last_share_attempt_channel": record.get("last_share_attempt_channel"),
             "created_at": (
                 created_at.isoformat()
                 if isinstance(created_at, datetime)
@@ -546,3 +554,38 @@ class ShareMessageRepository:
             return self._to_record(snapshot.id, existing)
 
         return _txn_mark_shared(self.db.transaction())
+
+    def record_share_attempt(
+        self,
+        message_id: str,
+        user_id: str,
+        channel: str = "kakao_sdk",
+    ) -> RecordDict | None:
+        """Record a user-initiated share attempt without claiming delivery or altering message status."""
+        cleaned_id = (message_id or "").strip()
+        cleaned_uid = (user_id or "").strip()
+        if not cleaned_id or not cleaned_uid:
+            return None
+
+        now = utc_now()
+        doc_ref = self._collection().document(cleaned_id)
+
+        @firestore.transactional
+        def _txn_attempt(transaction: Any) -> RecordDict | None:
+            snapshot = doc_ref.get(transaction=transaction)
+            if not snapshot.exists:
+                return None
+            existing = snapshot.to_dict() or {}
+            attempts = int(existing.get("share_attempt_count") or 0) + 1
+            updates: dict[str, Any] = {
+                "share_attempt_count": attempts,
+                "last_share_attempt_at": now,
+                "last_share_attempt_channel": (channel or "kakao_sdk").strip(),
+                "last_share_attempt_user_id": cleaned_uid,
+                "updated_at": now,
+            }
+            transaction.update(doc_ref, updates)
+            existing.update(updates)
+            return self._to_record(snapshot.id, existing)
+
+        return _txn_attempt(self.db.transaction())

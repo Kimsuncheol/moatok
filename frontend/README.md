@@ -228,6 +228,79 @@ Configured in `vite.config.ts` via `vite-plugin-pwa` and Workbox:
 
 ---
 
+## Official Kakao SDK Integration & Developer Console Settings
+
+The PWA integrates the official **Kakao SDK for JavaScript (v2.7.2)** (`https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js`) for user-directed sharing.
+
+### 1. Kakao Developers Console Settings Guide
+
+To configure Kakao sharing for your deployment:
+
+1. **Create Kakao Developer App**:
+   - Navigate to [Kakao Developers Console](https://developers.kakao.com/).
+   - Log in and select **[내 애플리케이션] > [애플리케이션 추가하기]**.
+   - Fill in the App Name (e.g. `Moatok`) and Company/Developer Name.
+2. **Obtain JavaScript Key**:
+   - In your application dashboard, go to **[앱 설정] > [요약 정보]**.
+   - Copy the **JavaScript 키** (e.g. `1234567890abcdef1234567890abcdef`).
+   - Set in `frontend/.env`:
+     ```bash
+     VITE_KAKAO_JAVASCRIPT_KEY=your_kakao_javascript_key_here
+     ```
+3. **Web Platform & Site Domain Registration (CRITICAL: KOE101 Error Prevention)**:
+   - Go to **[앱 설정] > [플랫폼] > [Web 플랫폼 등록]**.
+   - Register all web domains hosting this application:
+     - Local development: `http://localhost:5173`, `http://127.0.0.1:5173`, `http://localhost:8080`
+     - Production deployment: `https://moatok.example.com`, `https://<your-project-id>.web.app`
+   - Up to 10 web site domains can be registered per Kakao app.
+
+> [!IMPORTANT]
+> **Domain Validation & External Article Routing (KOE101)**:
+> The official Kakao SDK strictly validates that all link parameters (`mobileWebUrl`, `webUrl`) in `Kakao.Share.sendDefault` belong to domains registered in your Kakao Developers Console. Attempting to pass external article URLs (e.g. `https://techcrunch.com/...`) directly into Kakao template link properties triggers a Kakao server validation failure: `KOE101 (Unregistered domain)`.
+>
+> **Moatok Architectural Design**:
+> - Template link properties (`webUrl`, `mobileWebUrl`) point to the application's registered domain detail route: `${window.location.origin}/messages/${message.id}`.
+> - When recipients click the KakaoTalk card, they open the detail page on the registered domain.
+> - The detail page displays the full briefing and provides the direct clickable link (`message.target_url`) to the original article source.
+
+### 2. Supported Message Templates
+
+Moatok leverages the official Kakao default templates via `Kakao.Share.sendDefault`:
+- **Feed Template (`feed`)**: Used when the content briefing contains an image (`imageUrl`). Includes article title, briefing excerpt/description, hero image, and action button (`자세히 보기` / `브리핑 상세 보기`).
+- **Text Template (`text`)**: Used when no image is available. Displays structured briefing text, domain link, and action button (`브리핑 상세 보기`).
+
+### 3. Graceful Fallback Strategy
+
+When Kakao SDK sharing cannot proceed (e.g., ad blockers, missing app key, network failure, or desktop browser):
+1. **Web Share API (`navigator.share`)**: Opens the native mobile operating system share sheet, enabling the user to choose KakaoTalk or any messaging app.
+2. **Clipboard Copy (`navigator.clipboard.writeText`)**: Automatically copies the formatted briefing text and prompts the user with clear instructions to paste into KakaoTalk.
+
+### 4. Share Initiation Telemetry vs Delivery Decoupling
+
+> [!WARNING]
+> **Clicking the Share Button DOES NOT Prove Successful Delivery**:
+> - Clicking `카카오톡으로 공유하기` only initiates the share flow and launches the KakaoTalk selector.
+> - The application reports share initiation to the Flask backend (`POST /api/v1/messages/<id>/share-attempt`) for observability.
+> - This telemetry does **not** change message status to `shared` and does not set `kakao_shared: true`.
+> - The user must select the recipient in KakaoTalk and send the message, then explicitly confirm via `카카오톡 전송 완료로 기록하기` (`POST /api/v1/messages/<id>/mark-shared`).
+
+### 5. Real-Device Open Chat Testing Requirement
+
+> [!NOTE]
+> **Open Chat Room Selection Availability**:
+> Kakao Open Chat rooms can only be selected as a sharing destination via the native KakaoTalk mobile app on **actual physical mobile devices (Android or iOS)** with KakaoTalk installed.
+> - Desktop web browsers, headless automation, and mobile simulators cannot verify or select Open Chat rooms via Kakao Share.
+> - All Open Chat sharing workflows must be validated on physical Android/iOS hardware.
+
+### 6. Strict Prohibition of Private Protocols and Automation
+
+> [!CAUTION]
+> - **No Private Protocols**: Never use undocumented or reverse-engineered internal KakaoTalk schemes (`kakaotalk://` RPCs).
+> - **No Background Automation**: Never use background UI automation, accessibility services, or bot frameworks to bypass the KakaoTalk user interface.
+> - Moatok strictly complies with Kakao's official developer terms of service and user privacy guidelines.
+
+---
+
 ## Local Development & Testing Instructions
 
 ### 1. Install Dependencies

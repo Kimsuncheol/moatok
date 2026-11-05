@@ -170,6 +170,19 @@ export const api = {
     })
   },
 
+  async reportShareAttempt(
+    messageId: string,
+    payload: { channel: string } = { channel: 'kakao_sdk' }
+  ): Promise<{ message_id: string; recorded: boolean; channel: string; share_attempt_count: number }> {
+    return request<{ message_id: string; recorded: boolean; channel: string; share_attempt_count: number }>(
+      `/api/v1/messages/${encodeURIComponent(messageId)}/share-attempt`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      }
+    )
+  },
+
   async updateShareMessage(
     messageId: string,
     payload: { title?: string; body?: string; target_url?: string; status?: string }

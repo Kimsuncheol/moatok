@@ -158,6 +158,41 @@ Per W3C Service Worker and Web App Manifest specifications:
 - **401 Token Refresh & Session Recovery**: If an API response returns `401 Unauthorized` with `code: "token_expired"`, the client interceptor forces a token refresh (`getIdToken(true)`) and retries the request once before signaling session expiration.
 - **Zero Secrets on Client**: The frontend uses only public Firebase client web config. No private keys, service account JSON files, or Kakao client secrets are present in frontend bundles or repository code.
 
+### 7. Official Kakao SDK Integration & Developer Console Settings
+
+The Vue 3 PWA integrates the official **Kakao SDK for JavaScript (v2.7.2)** for user-directed KakaoTalk sharing.
+
+#### Kakao Developers Console Settings Guide
+1. **Application Registration**:
+   - Register an application in the [Kakao Developers Console](https://developers.kakao.com/).
+   - Copy the **JavaScript Key** ([앱 설정] > [요약 정보] > [JavaScript 키]).
+   - Set `VITE_KAKAO_JAVASCRIPT_KEY` in `frontend/.env`.
+2. **Web Platform & Site Domain Registration (CRITICAL KOE101 Prevention)**:
+   - Navigate to **[앱 설정] > [플랫폼] > [Web 플랫폼 등록]**.
+   - Register all web domains hosting Moatok:
+     - Development: `http://localhost:5173`, `http://127.0.0.1:5173`, `http://localhost:8080`
+     - Production: `https://moatok.example.com`, `https://<project-id>.web.app`
+   - **Official Domain Validation Constraint**: Kakao JavaScript SDK strictly rejects any link targets (`mobileWebUrl`, `webUrl`) that do not belong to registered platform domains with error `KOE101 (Unregistered domain)`.
+   - **Moatok Solution**: Template links point to the application's registered domain detail route (`${window.location.origin}/messages/${message.id}`). The shared detail page on the registered domain provides the direct link (`target_url`) to the original article source.
+
+#### Supported Templates & Fallback Chain
+- **Feed Template (`feed`)**: Used when the briefing contains an image URL; includes title, description, image, and action button.
+- **Text Template (`text`)**: Used when no image is present; includes title, formatted body, and action button.
+- **Graceful Fallbacks**: If Kakao SDK is blocked, uninitialized, or encounters errors, the client falls back to the **Web Share API** (`navigator.share`) and standard **Clipboard Copy** (`navigator.clipboard.writeText`).
+
+#### Share Initiation Telemetry vs Delivery Decoupling
+- **User-Initiated Share Only**: Sharing starts strictly after the user clicks the prominent "카카오톡으로 공유하기" button.
+- **Backend Telemetry**: When sharing is initiated, the PWA reports the attempt to the Flask backend (`POST /api/v1/messages/<id>/share-attempt`).
+- **No False Delivery Claims**: Clicking the share button **does not** mark the message as delivered or shared. The status remains `pending`. Delivery confirmation is decoupled and requires explicit user action (`POST /api/v1/messages/<id>/mark-shared`).
+
+#### Real-Device Open Chat Testing Requirement
+- **Mobile Hardware Required**: Kakao Open Chat room selection is available **only within the native KakaoTalk mobile app on a physical Android or iOS device**. Desktop browsers and simulators cannot verify Open Chat room selection.
+
+#### Strict Prohibition of Private Protocols and Automation
+- Strictly no undocumented or reverse-engineered internal Kakao schemes (`kakaotalk://` RPCs).
+- Strictly no background accessibility services, UI automation, or bot scraping.
+- Complies fully with Kakao developer platform policies.
+
 ---
 
 ## Authentication & Authorization Architecture

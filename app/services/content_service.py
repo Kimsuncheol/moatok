@@ -211,3 +211,42 @@ def record_user_share_event(
         return ShareMessageRepository.to_api_dict(updated_share)
 
     return None
+
+
+def record_user_share_attempt(
+    message_id: str, user_id: str, channel: str = "kakao_sdk"
+) -> dict[str, Any] | None:
+    """Record a user-initiated share attempt without claiming delivery or marking the message shared."""
+    db = get_firestore_client()
+    collection_name = current_app.config["FIRESTORE_COLLECTION_MESSAGES"]
+    doc_ref = db.collection(collection_name).document(message_id)
+    doc = doc_ref.get()
+    if doc.exists:
+        data = doc.to_dict() or {}
+        if data.get("user_id") != user_id:
+            return None
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        current_attempts = int(data.get("share_attempt_count") or 0) + 1
+        updates = {
+            "share_attempt_count": current_attempts,
+            "last_share_attempt_at": now_iso,
+            "last_share_attempt_channel": channel,
+            "last_share_attempt_user_id": user_id,
+            "updated_at": now_iso,
+        }
+        doc_ref.update(updates)
+        data.update(updates)
+        data["id"] = doc.id
+        return data
+
+    share_repo = ShareMessageRepository(db=db)
+    updated_share = share_repo.record_share_attempt(
+        message_id=message_id,
+        user_id=user_id,
+        channel=channel,
+    )
+    if updated_share is not None:
+        return ShareMessageRepository.to_api_dict(updated_share)
+
+    return None

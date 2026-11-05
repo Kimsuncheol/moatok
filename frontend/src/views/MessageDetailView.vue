@@ -403,13 +403,17 @@ async function handleConfirmShared() {
           </div>
         </div>
 
-        <!-- Architectural Boundary Explanation -->
+        <!-- Architectural Boundary Explanation & Real Device Notice -->
         <div class="sharing-policy-notice">
           <p class="policy-notice-text">
             ℹ️ <strong>사용자 주도 전송 원칙:</strong>
-            카카오톡 공유 버튼을 클릭하면 카카오톡 앱 또는 공유 시트가 실행됩니다.
-            플랫폼 보안 규정에 따라 <strong>버튼 클릭만으로는 메시지가 배포 완료로 처리되지 않으며</strong>,
-            카카오톡에서 전송을 마친 후 아래의 <em>'공유 완료로 기록하기'</em>를 눌러 완료 상태를 확정할 수 있습니다.
+            카카오톡 공유 버튼을 클릭하면 공식 카카오톡 공유 창 또는 시스템 공유 시트가 실행됩니다.
+            플랫폼 규정에 따라 <strong>버튼 클릭만으로는 메시지가 배포 완료로 처리되지 않으며</strong>,
+            카카오톡에서 전송을 마친 후 아래의 <em>'카카오톡 전송 완료로 기록하기'</em>를 눌러 완료 상태를 확정할 수 있습니다.
+          </p>
+          <p class="policy-notice-subtext">
+            📱 <strong>오픈채팅방 지원 안내:</strong>
+            오픈채팅방 공유 및 전송 가능 여부는 <strong>카카오톡 앱이 설치된 실제 모바일 기기(iOS/Android)</strong>에서 직접 확인하셔야 합니다. (PC 웹 또는 브라우저 환경에서는 오픈채팅방 선택이 지원되지 않을 수 있습니다.)
           </p>
         </div>
       </section>
@@ -889,6 +893,15 @@ async function handleConfirmShared() {
   font-size: 11.5px;
   line-height: 1.5;
   color: var(--text-muted);
+}
+
+.policy-notice-subtext {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border-subtle);
 }
 
 .share-feedback-notice {

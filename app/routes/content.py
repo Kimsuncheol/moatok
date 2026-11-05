@@ -16,6 +16,7 @@ from app.services.content_service import (
     create_shareable_message,
     get_shareable_message,
     list_shareable_messages,
+    record_user_share_attempt,
     record_user_share_event,
 )
 from app.services.notification_service import notify_user_message_ready
@@ -187,7 +188,7 @@ def trigger_message_notification(message_id: str):
 @content_bp.post("/<string:message_id>/mark-shared")
 @require_auth
 def mark_message_shared(message_id: str):
-    """Called by the Flutter app after the user initiates KakaoTalk sharing."""
+    """Called by the client app after the user confirms KakaoTalk sharing completion."""
     user_id = g.current_user["uid"]
     payload = request.get_json(silent=True) or {}
     share_channel = str(payload.get("share_channel") or "kakaotalk_flutter_sdk").strip()
@@ -207,3 +208,47 @@ def mark_message_shared(message_id: str):
         )
 
     return jsonify({"message": updated}), 200
+
+
+@content_bp.post("/<string:message_id>/share-attempt")
+@require_auth
+def record_share_attempt_endpoint(message_id: str):
+    """Record a user-initiated share attempt without claiming delivery or altering message status.
+
+    Critical architectural boundary:
+    Clicking 'Share to KakaoTalk' in the PWA notifies the backend that a share was initiated,
+    allowing observability into user sharing activity without falsely claiming delivery.
+    """
+    user_id = g.current_user["uid"]
+    payload = request.get_json(silent=True) or {}
+    channel = str(payload.get("channel") or "kakao_sdk").strip()
+
+    updated = record_user_share_attempt(
+        message_id=message_id, user_id=user_id, channel=channel
+    )
+    if not updated:
+        return (
+            jsonify(
+                {
+                    "error": "not_found",
+                    "message": "Shareable message not found.",
+                }
+            ),
+            404,
+        )
+
+    return (
+        jsonify(
+            {
+                "message_id": message_id,
+                "recorded": True,
+                "channel": channel,
+                "share_attempt_count": updated.get("share_attempt_count", 1),
+                "last_share_attempt_at": updated.get("last_share_attempt_at"),
+                "status": updated.get("status"),
+                "kakao_shared": bool(updated.get("kakao_shared", False)),
+                "message": updated,
+            }
+        ),
+        200,
+    )
