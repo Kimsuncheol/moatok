@@ -48,6 +48,7 @@ A production-oriented Python **Flask** backend that collects and formats content
 ├── tests/
 │   ├── conftest.py                      # Pytest fixtures & in-memory Firestore/Firebase mocks
 │   ├── test_auth.py                     # Auth, expired/invalid tokens, admin custom claims & role-spoofing tests
+│   ├── test_fcm_notifications.py        # FCM device registration, concise payloads, invalid token cleanup & observability
 │   ├── test_repositories.py             # Firestore repository, UTC, deduplication & secret-rejection tests
 │   ├── test_rss_collector.py            # RSS collection, deduplication, fault tolerance & log redaction tests
 │   ├── test_share_message_generator.py  # Rule-based share message generator, length limits & admin edit tests
@@ -209,6 +210,7 @@ docker run --rm -p 8080:8080 --env-file .env moatok-backend
 | `GET` | `/api/v1/admin/share-messages` (`/api/v1/share-messages`) | Firebase Admin Claim (`admin: true`) | List generated share messages (supports `status`, `limit`) |
 | `GET` | `/api/v1/admin/share-messages/<id>` (`/api/v1/share-messages/<id>`) | Firebase Admin Claim (`admin: true`) | Retrieve a generated share message by ID |
 | `PATCH` / `PUT` | `/api/v1/admin/share-messages/<id>` (`/api/v1/share-messages/<id>`) | Firebase Admin Claim (`admin: true`) | Edit a `pending` share message's `title`, `body`, `target_url`, or `status` |
+| `POST` | `/api/v1/admin/share-messages/<id>/notify` (`/api/v1/share-messages/<id>/notify`) | Firebase Admin Claim (`admin: true`) | Send a concise FCM notification for a pending share message and record observable attempt telemetry |
 
 ---
 

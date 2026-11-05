@@ -65,6 +65,9 @@ class ShareMessageRepository:
         """Serialize a share message record into a JSON-ready dictionary with ISO-8601 UTC timestamps."""
         created_at = record.get("created_at")
         updated_at = record.get("updated_at")
+        last_attempt_at = record.get("last_notification_attempt_at")
+        last_notified_at = record.get("last_notified_at")
+        shared_at = record.get("shared_by_user_at")
         return {
             "id": record.get("id"),
             "article_id": record.get("article_id"),
@@ -72,6 +75,22 @@ class ShareMessageRepository:
             "body": record.get("body"),
             "target_url": record.get("target_url"),
             "status": record.get("status"),
+            "notification_attempts": int(record.get("notification_attempts", 0)),
+            "last_notification_status": record.get("last_notification_status"),
+            "last_notification_attempt_at": (
+                last_attempt_at.isoformat()
+                if isinstance(last_attempt_at, datetime)
+                else last_attempt_at
+            ),
+            "last_notified_at": (
+                last_notified_at.isoformat()
+                if isinstance(last_notified_at, datetime)
+                else last_notified_at
+            ),
+            "kakao_shared": bool(record.get("kakao_shared", False)),
+            "shared_by_user_at": (
+                shared_at.isoformat() if isinstance(shared_at, datetime) else shared_at
+            ),
             "created_at": (
                 created_at.isoformat()
                 if isinstance(created_at, datetime)
@@ -138,6 +157,12 @@ class ShareMessageRepository:
             "body": cleaned_body,
             "target_url": normalized_target_url,
             "status": cleaned_status,
+            "notification_attempts": 0,
+            "last_notification_status": None,
+            "last_notification_attempt_at": None,
+            "last_notified_at": None,
+            "kakao_shared": False,
+            "shared_by_user_at": None,
             "created_at": utc_created,
             "updated_at": utc_updated,
         }
@@ -392,3 +417,60 @@ class ShareMessageRepository:
             return self._to_record(snapshot.id, existing)
 
         return _txn_edit(self.db.transaction())
+
+    def record_notification_attempt(
+        self,
+        message_id: str,
+        *,
+        sent_count: int,
+        failed_count: int,
+        invalid_token_count: int = 0,
+        attempted_at: datetime | str | None = None,
+    ) -> RecordDict | None:
+        """Record an observable FCM notification attempt without marking the message as shared to KakaoTalk."""
+        cleaned_id = (message_id or "").strip()
+        if not cleaned_id:
+            return None
+
+        utc_attempted = (
+            ensure_utc_datetime(attempted_at, field_name="attempted_at")
+            if attempted_at is not None
+            else utc_now()
+        )
+
+        if sent_count > 0 and failed_count == 0:
+            attempt_status = "sent"
+        elif sent_count > 0 and failed_count > 0:
+            attempt_status = "partial_failure"
+        elif sent_count == 0 and failed_count > 0:
+            attempt_status = "failed"
+        else:
+            attempt_status = "no_registered_devices"
+
+        doc_ref = self._collection().document(cleaned_id)
+
+        @firestore.transactional
+        def _txn_record(transaction: Any) -> RecordDict | None:
+            snapshot = doc_ref.get(transaction=transaction)
+            if not snapshot.exists:
+                return None
+            existing = snapshot.to_dict() or {}
+            attempts = int(existing.get("notification_attempts") or 0) + 1
+            updates: dict[str, Any] = {
+                "notification_attempts": attempts,
+                "last_notification_attempt_at": utc_attempted,
+                "last_notification_status": attempt_status,
+                "last_notification_sent_count": int(sent_count),
+                "last_notification_failed_count": int(failed_count),
+                "last_notification_invalid_token_count": int(invalid_token_count),
+                "kakao_shared": bool(existing.get("kakao_shared", False)),
+                "updated_at": utc_attempted,
+            }
+            if sent_count > 0:
+                updates["last_notified_at"] = utc_attempted
+
+            transaction.update(doc_ref, updates)
+            existing.update(updates)
+            return self._to_record(snapshot.id, existing)
+
+        return _txn_record(self.db.transaction())
