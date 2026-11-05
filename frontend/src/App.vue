@@ -3,6 +3,7 @@ import { onMounted } from 'vue'
 import { RouterView } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import BottomNav from '@/components/BottomNav.vue'
+import ReloadPrompt from '@/components/ReloadPrompt.vue'
 import { useThemeStore } from '@/stores/theme'
 import { useAuthStore } from '@/stores/auth'
 
@@ -21,6 +22,7 @@ onMounted(() => {
     <main class="main-content">
       <RouterView />
     </main>
+    <ReloadPrompt />
     <BottomNav />
   </div>
 </template>

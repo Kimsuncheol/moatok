@@ -49,16 +49,25 @@ A production-oriented platform comprising:
 │       ├── source_service.py            # Source CRUD orchestration & validation
 │       └── url_validator.py             # Domain allowlist, SSRF IP/DNS checks, redirect, timeout & size guards
 ├── frontend/                       # Mobile-First Vue 3 PWA (TypeScript, Vite, Pinia)
+│   ├── public/                     # Static assets, Web App Manifest & icons (PNG & SVG)
+│   │   ├── apple-touch-icon.png    # 180x180 iOS Home Screen touch icon
+│   │   ├── favicon.png             # 32x32 local PNG favicon
+│   │   ├── favicon.svg             # Monochrome vector favicon
+│   │   ├── icon-192.svg            # 192x192 vector icon
+│   │   ├── icon-512.svg            # 512x512 vector icon
+│   │   ├── manifest.webmanifest    # Web App Manifest (standalone, theme colors, icons)
+│   │   ├── pwa-192x192.png         # 192x192 local PNG icon (maskable & any)
+│   │   └── pwa-512x512.png         # 512x512 local PNG icon (maskable & any)
 │   ├── src/
-│   │   ├── App.vue                 # App shell with AppHeader & BottomNav
-│   │   ├── components/             # BottomNav, AppearanceToggle, MessageCard, ShareModal
+│   │   ├── App.vue                 # App shell with AppHeader, BottomNav & ReloadPrompt
+│   │   ├── components/             # BottomNav, AppearanceToggle, MessageCard, ShareModal, ReloadPrompt
 │   │   ├── router/                 # Vue Router (Pending, History, Settings, Detail)
 │   │   ├── services/               # API, Firebase & Kakao Share services
 │   │   ├── stores/                 # Pinia stores (theme, auth, messages, notifications)
 │   │   └── views/                  # PendingView, HistoryView, SettingsView, MessageDetailView
-│   ├── tests/                      # Vitest unit & component tests
+│   ├── tests/                      # Vitest unit & component tests (19 tests)
 │   ├── package.json
-│   ├── vite.config.ts
+│   ├── vite.config.ts              # Vite config with VitePWA & Workbox zero-cache policy
 │   └── README.md
 ├── tests/                          # Backend pytest test suite
 │   ├── conftest.py                      # Pytest fixtures & in-memory Firestore/Firebase mocks
@@ -80,6 +89,67 @@ A production-oriented platform comprising:
 ├── requirements.txt
 └── wsgi.py                         # WSGI entrypoint for Gunicorn
 ```
+
+---
+
+## Progressive Web App (PWA) Architecture & Mobile Installation
+
+The frontend (`frontend/`) is built with Vue 3, TypeScript, and `vite-plugin-pwa` to provide a mobile-first, high-contrast monochrome application that functions seamlessly across Android and iOS devices.
+
+### 1. Web App Manifest & App Identity
+The manifest ([`manifest.webmanifest`](frontend/public/manifest.webmanifest)) and HTML meta tags configure a standalone app experience:
+- **App Name**: `Moatok · 카카오톡 공유 비서`
+- **Short Name**: `Moatok`
+- **Display Mode**: `standalone` (removes browser URL bar and toolbar chrome)
+- **Theme & Background Color**: `#000000` (deep OLED-friendly monochrome)
+- **Icons**:
+  - `pwa-192x192.png`: 192x192 local PNG icon (`purpose: "any maskable"`)
+  - `pwa-512x512.png`: 512x512 local PNG icon (`purpose: "any maskable"`)
+  - `apple-touch-icon.png`: 180x180 local PNG icon optimized for iOS Safari Home Screen
+  - `favicon.png` (32x32) & `favicon.svg` (vector)
+  - `icon-192.svg` & `icon-512.svg`: Scalable monochrome vector icons
+
+### 2. Service Worker Caching & Zero-Cache API Policy
+Configured in [`vite.config.ts`](frontend/vite.config.ts) via `VitePWA` and Workbox:
+- **Safe Application Shell Pre-caching**:
+  - Pre-caches core assets (`**/*.{js,css,html,ico,png,svg,webmanifest}`) with content hashes.
+  - Purges outdated revisions on service worker activation (`cleanupOutdatedCaches: true`).
+- **Zero-Cache Policy for Authenticated API & Sensitive Data**:
+  - Navigation denylist: `navigateFallbackDenylist: [/^\/api\//, /^\/health/, /^\/internal\//]`.
+  - Explicit runtime routing: `NetworkOnly` for `/^\/api\/.*/`, `/^\/health$/`, and `/^\/internal\/.*/`.
+  - **Security Guarantee**: Authenticated API responses (user messages, device tokens, Firebase ID tokens, admin endpoints) are **strictly network-only and never stored** in CacheStorage or IndexedDB.
+
+### 3. Update Prompt (`ReloadPrompt.vue`)
+- Configured with `registerType: 'prompt'`.
+- The [`ReloadPrompt.vue`](frontend/src/components/ReloadPrompt.vue) component monitors the service worker lifecycle via `virtual:pwa-register/vue` (`needRefresh`, `updateServiceWorker`).
+- When a new deployment is detected, an unobtrusive monochrome toast appears at the top of the mobile screen alerting the user: *"새로운 버전이 출시되었습니다."* Clicking **"업데이트"** activates the waiting service worker and reloads the page with the latest version.
+
+### 4. Platform Installation Instructions (Android & iOS)
+
+#### Android (Chrome / Samsung Internet)
+1. Navigate to the app in Chrome or Samsung Internet.
+2. Tap the browser menu (**⋮**) or the install banner.
+3. Select **"Install app"** or **"Add to Home screen"** (**앱 설치** / **홈 화면에 추가**).
+4. Moatok will be installed as a standalone application in the app drawer and home screen.
+
+#### iOS / iPadOS (Safari)
+> [!IMPORTANT]
+> **iOS Version & Home Screen Execution Requirements**:
+> 1. **iOS 16.4+ Required for Web Push**: Apple introduced Web Push Notification support for PWAs starting in iOS 16.4. Older iOS versions do not support the Web Push API.
+> 2. **Must Be Launched from Home Screen**: Web Push notification permissions (`Notification.requestPermission()`) and standalone display **only function when the PWA is launched from the iOS Home Screen**. In regular Safari browser tabs, Web Push is disabled by Apple security policy.
+
+**Step-by-Step iOS Installation**:
+1. Open the application in **Safari** (third-party in-app browsers like KakaoTalk or Instagram in-app browser do not support PWA installation).
+2. Tap the **Share icon** (square with upward arrow) in the Safari toolbar.
+3. Scroll down and select **"Add to Home Screen"** (**홈 화면에 추가**).
+4. Tap **"Add"** in the top-right corner.
+5. Exit Safari and open **Moatok** directly from the Home Screen icon.
+6. In **Settings** (`/settings`), tap **"푸시 알림 권한 허용하기"** to grant notification permissions.
+
+### 5. Security Context Requirements: HTTPS & Localhost
+Per W3C Service Worker and Web App Manifest specifications:
+- **Production Requirements**: Must be served over **HTTPS** with a valid TLS certificate. If served over plain HTTP on a public domain or remote LAN IP (e.g. `http://192.168.x.x`), browsers will refuse to register the Service Worker or enable Web Push notifications.
+- **Localhost Development**: Modern browsers treat `http://localhost` and `http://127.0.0.1` as secure contexts, allowing local PWA and service worker development without SSL certificates.
 
 ---
 

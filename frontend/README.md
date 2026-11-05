@@ -65,13 +65,17 @@ frontend/
 ├── vitest.config.ts          # Vitest testing configuration
 ├── public/
 │   ├── favicon.svg           # Monochrome SVG favicon
-│   ├── icon-192.svg          # 192x192 PWA maskable icon
-│   ├── icon-512.svg          # 512x512 PWA maskable icon
+│   ├── favicon.png           # 32x32 local PNG favicon
+│   ├── icon-192.svg          # 192x192 PWA vector icon
+│   ├── icon-512.svg          # 512x512 PWA vector icon
+│   ├── pwa-192x192.png       # 192x192 local PNG PWA icon (maskable & any)
+│   ├── pwa-512x512.png       # 512x512 local PNG PWA icon (maskable & any)
+│   ├── apple-touch-icon.png  # 180x180 Apple touch icon for iOS Home Screen
 │   └── manifest.webmanifest  # PWA manifest
 ├── src/
-│   ├── App.vue               # Root application shell with AppHeader and BottomNav
+│   ├── App.vue               # Root application shell with AppHeader, BottomNav & ReloadPrompt
 │   ├── main.ts               # Vue application entrypoint (Pinia, Router)
-│   ├── env.d.ts              # Vite & window.Kakao type definitions
+│   ├── env.d.ts              # Vite, window.Kakao & virtual:pwa-register type definitions
 │   ├── assets/
 │   │   └── main.css          # Monochrome design tokens & light/dark CSS variables
 │   ├── types/
@@ -93,7 +97,8 @@ frontend/
 │   │   ├── AppearanceToggle.vue # 3-way segmented control (NO dropdown)
 │   │   ├── MessageCard.vue   # Briefing item card with status badge & actions
 │   │   ├── ShareModal.vue    # Full briefing review & KakaoTalk sharing sheet
-│   │   └── NotificationBanner.vue # Permission prompt for FCM notifications
+│   │   ├── NotificationBanner.vue # Permission prompt for FCM notifications
+│   │   └── ReloadPrompt.vue  # PWA service worker update prompt banner
 │   └── views/
 │       ├── PendingView.vue   # Active pending briefings list
 │       ├── HistoryView.vue   # Shared briefings history archive
@@ -104,6 +109,8 @@ frontend/
     ├── BottomNav.spec.ts        # Navigation tabs & badge count tests
     ├── kakaoService.spec.ts     # User-initiated Kakao sharing & fallback tests
     ├── messagesStore.spec.ts    # Pinia messages state & markAsShared tests
+    ├── pwaManifest.spec.ts      # Web App Manifest & icon presence verification
+    ├── ReloadPrompt.spec.ts     # PWA update prompt & reload action tests
     ├── ShareModal.spec.ts       # Disclaimer banner & share event tests
     └── themeStore.spec.ts       # System/Light/Dark persistence tests
 ```
@@ -132,6 +139,60 @@ cp frontend/.env.example frontend/.env
 
 ---
 
+## PWA Installation & Platform Instructions (Android & iOS)
+
+### Android (Chrome / Samsung Internet)
+1. Open the web app in Chrome or Samsung Internet.
+2. An automatic install banner will appear, or tap the three dots menu (**⋮**) in the upper right/lower corner.
+3. Tap **"Install app"** or **"Add to Home screen"** (**앱 설치** / **홈 화면에 추가**).
+4. The PWA will be installed as an independent standalone app in your app drawer and home screen.
+
+### iOS / iPadOS (Safari)
+> **IMPORTANT: iOS Version & Home Screen Requirements**
+>
+> 1. **iOS 16.4+ Required for Web Push**: Apple introduced Web Push Notification support for PWAs in iOS / iPadOS 16.4. Older iOS versions cannot receive web push notifications.
+> 2. **Must Be Launched from Home Screen**: Web Push notifications (`Notification.requestPermission()`) and standalone full-screen execution **only function after adding the PWA to the Home Screen**. In regular Safari browser tabs, Web Push is disabled by Apple policy.
+
+**Step-by-Step iOS Installation**:
+1. Open the web app in **Safari** (third-party in-app browsers like KakaoTalk or Instagram in-app browser do not support PWA installation).
+2. Tap the **Share icon** (square with an arrow pointing upward) in the Safari bottom toolbar.
+3. Scroll down and tap **"Add to Home Screen"** (**홈 화면에 추가**).
+4. Tap **"Add"** in the top right corner.
+5. Exit Safari and launch **Moatok** from the newly created Home Screen icon.
+6. In **Settings** (`/settings`), tap **"푸시 알림 권한 허용하기"** to enable push notifications.
+
+---
+
+## Security Context Requirements: HTTPS & Localhost
+
+Progressive Web App features — including **Service Worker registration**, **CacheStorage precaching**, **Web App Manifest installation**, and **Firebase Cloud Messaging Web Push** — strictly require a **Secure Context (HTTPS)** per W3C and browser security standards:
+
+1. **Local Development Exception**:
+   - `http://localhost` (e.g. `http://localhost:5173`) and `http://127.0.0.1` are treated as secure contexts by modern browsers.
+   - You can test PWA service workers and updates locally without SSL certificates.
+2. **Production Deployment Requirement**:
+   - Production instances **must be served over HTTPS** with a valid TLS certificate (e.g., Firebase Hosting, Cloud Run with custom domain, Cloudflare, Vercel, Netlify).
+   - If deployed on an insecure remote IP or plain HTTP domain (e.g., `http://192.168.x.x:5173` or `http://moatok.example.com`), iOS Safari and Android Chrome will **block** Service Worker registration and Web Push notifications.
+
+---
+
+## Caching Strategy & Security Guarantees
+
+Configured in `vite.config.ts` via `vite-plugin-pwa` and Workbox:
+
+1. **Safe Application Shell Pre-caching**:
+   - HTML, CSS, JavaScript chunks, fonts, and icon assets are precached with content hashes (`globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}']`).
+   - Uses `cleanupOutdatedCaches: true` to purge stale revisions upon update.
+2. **Zero-Cache Policy for Authenticated & Sensitive APIs**:
+   - `navigateFallbackDenylist: [/^\/api\//, /^\/health/, /^\/internal\//]`
+   - `runtimeCaching: [{ urlPattern: /^\/api\/.*/, handler: 'NetworkOnly' }]`
+   - **Guarantees**: Authenticated API responses (user messages, device tokens, Firebase ID tokens, admin endpoints) are **never cached** in the Service Worker or CacheStorage.
+3. **PWA Update Prompt**:
+   - Configured with `registerType: 'prompt'`.
+   - When a new build is deployed, [`ReloadPrompt.vue`](src/components/ReloadPrompt.vue) detects the waiting service worker via `virtual:pwa-register/vue` and displays an unobtrusive monochrome banner asking the user to update.
+
+---
+
 ## Local Development & Testing Instructions
 
 ### 1. Install Dependencies
@@ -150,7 +211,7 @@ Open `http://localhost:5173` in your browser or mobile emulator. Vite proxies `/
 
 ### 3. Run Automated Frontend Tests
 
-Runs all 13 unit & component tests across AppearanceToggle, BottomNav, stores, and Kakao sharing:
+Runs all 19 unit & component tests across AppearanceToggle, BottomNav, stores, Kakao sharing, PWA manifest, and ReloadPrompt:
 
 ```bash
 npm test

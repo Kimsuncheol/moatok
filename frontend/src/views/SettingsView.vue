@@ -118,7 +118,71 @@ onMounted(() => {
       </button>
     </section>
 
-    <!-- 4. User Account & Firebase Authentication -->
+    <!-- 4. PWA Installation & Platform Instructions (Android & iOS) -->
+    <section class="settings-card">
+      <div class="card-title-row">
+        <h3 class="card-title">PWA 앱 설치 안내 (Android / iOS)</h3>
+        <span class="info-badge">PWA 가이드</span>
+      </div>
+      <p class="setting-caption">
+        모아톡을 홈 화면에 앱 형태로 설치하여 전체화면 실행과 푸시 알림을 활성화할 수 있습니다.
+      </p>
+
+      <div class="install-guides">
+        <div class="platform-guide">
+          <div class="platform-header">
+            <span class="platform-icon">🤖</span>
+            <strong class="platform-name">Android (Chrome / Samsung Internet)</strong>
+          </div>
+          <ol class="step-list">
+            <li>브라우저 상단 또는 하단의 더보기 메뉴(<strong>⋮</strong>)를 누릅니다.</li>
+            <li><strong>'앱 설치'</strong> 또는 <strong>'홈 화면에 추가'</strong>를 선택합니다.</li>
+            <li>설치 후 홈 화면 아이콘을 통해 독립형 앱(Standalone)으로 실행합니다.</li>
+          </ol>
+        </div>
+
+        <div class="platform-guide ios-guide">
+          <div class="platform-header">
+            <span class="platform-icon">🍎</span>
+            <strong class="platform-name">iOS / iPadOS (Safari)</strong>
+          </div>
+          <ol class="step-list">
+            <li>반드시 <strong>Safari 브라우저</strong>로 접속합니다 (인앱 브라우저 불가).</li>
+            <li>하단 툴바의 <strong>공유 버튼</strong>(네모 위 화살표 모양)을 탭합니다.</li>
+            <li>메뉴를 아래로 스크롤하여 <strong>'홈 화면에 추가'</strong>를 누르고 완료합니다.</li>
+            <li>홈 화면에 생성된 <strong>모아톡 아이콘을 눌러 실행</strong>합니다.</li>
+          </ol>
+          <div class="ios-warning-box">
+            <span class="warning-badge">iOS 중요 안내</span>
+            <p class="warning-text">
+              Apple 정책상 <strong>iOS 16.4 이상</strong>에서만 웹 푸시 알림이 지원되며,
+              <strong>반드시 홈 화면에 추가한 후 홈 화면 아이콘으로 실행한 상태</strong>에서만
+              알림 권한을 요청하고 수신할 수 있습니다. 일반 Safari 탭에서는 알림 기능이 제한됩니다.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. HTTPS & Security Context Requirements -->
+    <section class="settings-card">
+      <div class="card-title-row">
+        <h3 class="card-title">보안 컨텍스트 (HTTPS & Localhost)</h3>
+        <span class="info-badge">보안 규격</span>
+      </div>
+      <div class="security-info">
+        <p>
+          Service Worker, Web App Manifest 및 Web Push 알림은 W3C 보안 표준에 따라
+          <strong>보안 컨텍스트(Secure Context)</strong>에서만 동작합니다:
+        </p>
+        <ul class="security-list">
+          <li><strong>로컬 개발 환경:</strong> <code>http://localhost:5173</code> 또는 <code>http://127.0.0.1</code>은 보안 예외로 취급되어 정상 등록됩니다.</li>
+          <li><strong>운영 배포 환경:</strong> 반드시 유효한 SSL/TLS 인증서가 적용된 <strong>HTTPS</strong> 도메인이어야 하며, 안전하지 않은 HTTP 원격 주소에서는 Service Worker 등록이 브라우저에 의해 차단됩니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 6. User Account & Firebase Authentication -->
     <section class="settings-card">
       <div class="card-title-row">
         <h3 class="card-title">사용자 인증 (Firebase Auth)</h3>
@@ -371,5 +435,88 @@ onMounted(() => {
 
 .refresh-health-btn:hover {
   color: var(--text-primary);
+}
+
+.install-guides {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.platform-guide {
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.platform-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.step-list {
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.ios-warning-box {
+  margin-top: 4px;
+  padding: 8px 10px;
+  background-color: var(--bg-surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.warning-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+}
+
+.warning-text {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.security-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.security-list {
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.security-list code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background-color: var(--bg-surface-elevated);
+  padding: 2px 4px;
+  border-radius: 4px;
 }
 </style>
