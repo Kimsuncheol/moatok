@@ -69,6 +69,9 @@ class Config:
         os.getenv("SOURCE_FETCH_MAX_REDIRECTS", "3")
     )
 
+    ENGLISH_SCRAPER_URL = os.getenv("ENGLISH_SCRAPER_URL", "https://english-scrapper.onrender.com")
+    ENGLISH_SCRAPER_ENABLED = os.getenv("ENGLISH_SCRAPER_ENABLED", "false").lower() == "true"
+
     # Rule-based share message generator settings
     SHARE_MESSAGE_PREFIX: str = os.getenv("SHARE_MESSAGE_PREFIX", "[모아톡 브리핑]")
     SHARE_MESSAGE_MAX_TITLE_LENGTH: int = int(

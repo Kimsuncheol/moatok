@@ -204,3 +204,17 @@ export const api = {
     })
   }
 }
+
+
+export interface EnglishLesson {
+  fields: Record<string, string>
+  missing_sections: string[]
+  upstream_updated_at?: string
+  url: string
+}
+export const englishScraperApi = {
+  review: () => request<{ lessons: EnglishLesson[] }>('/api/v1/admin/integrations/english-scrapper/lessons'),
+  status: () => request<{ enabled: boolean; url: string; last_sync: Record<string, unknown> | null }>('/api/v1/admin/integrations/english-scrapper'),
+  sync: (offset = 0) => request<{ created: number; held: number; failed: number; next_offset: number | null }>('/api/v1/admin/integrations/english-scrapper/sync', { method: 'POST', body: JSON.stringify({ offset }) }),
+  lesson: (id: string) => request<{ lesson: EnglishLesson }>(`/api/v1/share-messages/${encodeURIComponent(id)}/english-lesson`)
+}

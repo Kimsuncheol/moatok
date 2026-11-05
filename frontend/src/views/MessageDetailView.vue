@@ -5,6 +5,9 @@ import { useMessagesStore } from '@/stores/messages'
 import { useAuthStore } from '@/stores/auth'
 import { initiateKakaoShare } from '@/services/kakao'
 import type { ShareMessage } from '@/types'
+import { englishScraperApi, type EnglishLesson } from '@/services/api'
+const englishLesson = ref<EnglishLesson | null>(null)
+const lessonLabels: Record<string, string> = { expression: '오늘의 표현', korean_meaning: '뜻', korean_explanation: '설명', english_dialogue: '영어 대화', korean_dialogue_translation: '대화 해석', vocabulary_notes: '어휘', source_credit: '출처' }
 
 const props = defineProps<{
   id: string
@@ -109,6 +112,9 @@ onMounted(async () => {
   loading.value = true
   try {
     message.value = await messagesStore.fetchById(props.id)
+    if (message.value) {
+      try { englishLesson.value = (await englishScraperApi.lesson(props.id)).lesson } catch { /* Generic messages have no English lesson. */ }
+    }
   } finally {
     loading.value = false
   }
@@ -206,6 +212,16 @@ async function handleConfirmShared() {
 </script>
 
 <template>
+  <section v-if="englishLesson" class="english-lesson" style="padding: 1rem">
+    <h2>영어 수업</h2>
+    <p v-if="englishLesson.missing_sections.length">일부 내용은 확인이 필요합니다.</p>
+    <template v-for="(label, key) in lessonLabels" :key="key">
+      <div v-if="englishLesson.fields[key]">
+        <h3>{{ label }}</h3>
+        <p style="white-space: pre-wrap">{{ englishLesson.fields[key] }}</p>
+      </div>
+    </template>
+  </section>
   <main class="detail-view">
     <!-- Top Bar Navigation -->
     <nav class="top-nav" aria-label="상세 페이지 뒤로가기">

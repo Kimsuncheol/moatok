@@ -677,3 +677,35 @@ Follow the 8-point physical device verification plan detailed in [DEPLOYMENT_FIR
 6. **Launch KakaoTalk sharing** (verify Kakao SDK initialization without `KOE101`, or graceful fallback).
 7. **Check Open Chat room selection in KakaoTalk** (confirm selection on physical mobile device).
 8. **Confirm delivery information received by backend** (verify `POST /api/v1/messages/:id/share-attempt` telemetry vs `POST /api/v1/messages/:id/mark-shared` user-confirmed status decoupling).
+
+### English scraper integration
+
+Moatok imports saved lessons from `https://english-scrapper.onrender.com`; it does
+not run OCR or trigger upstream scraping. Set `ENGLISH_SCRAPER_ENABLED=true` to
+include a bounded 20-record page in each existing scheduler collection run.
+Scheduled runs persist the next offset and restart at zero after scanning the
+catalog, so later corrections and previously failed records are revisited.
+Offset pagination is eventually consistent; repeat scans repair shifts caused by
+new upstream records. An upstream incremental cursor is not currently available.
+
+Administrators can use **Settings → 오늘의 영어** to import pages or inspect held
+lessons. API controls (Firebase admin token required):
+
+- `GET /api/v1/admin/integrations/english-scrapper`: configuration and last sync.
+- `POST /api/v1/admin/integrations/english-scrapper/sync`, JSON `{"offset":0}`:
+  imports one page and returns `next_offset`, counts and per-record errors.
+- `GET /api/v1/admin/integrations/english-scrapper/lessons`: up to 100 imported
+  lesson snapshots, including `missing_sections` for review.
+
+Imports use stable external IDs and existing transactional message creation.
+Snapshots in `english_lessons` retain structured fields, upstream update time and
+content hash. Existing share text is preserved on upstream corrections to protect
+user edits and shared messages. Detail pages display the latest imported fields.
+Incomplete lessons or uncertain OCR do not produce new share messages or pushes;
+correct the lesson upstream and sync again to release it automatically.
+`GET /api/v1/share-messages/{id}/english-lesson` provides the structured lesson to
+signed-in users with access to the shared message catalog.
+
+The existing FCM and user-initiated Kakao sharing flow is reused. No upstream
+credentials are needed for the deployed read API. Deployment and enabling the
+scheduled integration are separate from these source changes.

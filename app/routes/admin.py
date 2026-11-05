@@ -303,3 +303,51 @@ share_messages_bp.add_url_rule(
     view_func=require_admin(_handle_notify_share_message),
     methods=["POST"],
 )
+
+
+@admin_bp.get("/integrations/english-scrapper")
+@require_admin
+def english_scrapper_status():
+    from app.extensions import get_firestore_client
+    from flask import current_app
+    doc = get_firestore_client().collection('integration_status').document('english_scrapper').get()
+    return jsonify(enabled=current_app.config['ENGLISH_SCRAPER_ENABLED'],
+                   url=current_app.config['ENGLISH_SCRAPER_URL'], last_sync=doc.to_dict() if doc.exists else None)
+
+
+@admin_bp.post("/integrations/english-scrapper/sync")
+@require_admin
+def english_scrapper_sync():
+    from app.services.english_scraper import sync_english_lessons
+    payload = request.get_json(silent=True) or {}
+    offset = payload.get('offset', 0) if isinstance(payload, dict) else None
+    if type(offset) is not int or offset < 0:
+        return jsonify(error='validation_error', message='offset must be a nonnegative integer'), 400
+    try:
+        return jsonify(sync_english_lessons(offset=offset))
+    except Exception:
+        from flask import current_app
+        current_app.logger.exception('English scraper sync unavailable')
+        return jsonify(error='upstream_unavailable', message='English lesson sync failed. Retry shortly.'), 502
+
+
+@share_messages_bp.get("/<string:message_id>/english-lesson")
+@require_auth
+def english_lesson_detail(message_id):
+    from app.extensions import get_firestore_client
+    message = ShareMessageRepository().get(message_id)
+    if not message:
+        return jsonify(error='not_found'), 404
+    doc = get_firestore_client().collection('english_lessons').document(message['article_id']).get()
+    if not doc.exists:
+        return jsonify(error='not_found'), 404
+    return jsonify(lesson=doc.to_dict())
+
+
+@admin_bp.get('/integrations/english-scrapper/lessons')
+@require_admin
+def english_scrapper_review_lessons():
+    """Inspect recent imports, including held lessons and missing sections."""
+    from app.extensions import get_firestore_client
+    docs = get_firestore_client().collection('english_lessons').limit(100).stream()
+    return jsonify(lessons=[doc.to_dict() for doc in docs])

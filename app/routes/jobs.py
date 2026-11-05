@@ -25,6 +25,14 @@ def run_scheduled_collection_job():
     5. Returns a structured job summary.
     """
     summary = collect_rss_articles(notify_users=True)
+    from flask import current_app
+    if current_app.config.get('ENGLISH_SCRAPER_ENABLED'):
+        from app.services.english_scraper import sync_english_lessons
+        try:
+            summary['english_scrapper'] = sync_english_lessons(offset=None)
+        except Exception:
+            current_app.logger.exception('Scheduled English sync failed')
+            summary['english_scrapper'] = {'error': 'upstream_unavailable'}
     scheduler_email = (getattr(g, "current_scheduler", None) or {}).get("email")
 
     return (

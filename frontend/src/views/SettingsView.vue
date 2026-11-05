@@ -1,9 +1,29 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { englishScraperApi } from '@/services/api'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import type { AppearanceMode, AuthSignInMethod } from '@/types'
+
+const heldEnglish = ref<Array<{ fields: Record<string, string>; missing_sections: string[]; url: string }>>([])
+async function reviewEnglish() {
+  try { heldEnglish.value = (await englishScraperApi.review()).lessons.filter(item => item.missing_sections.length) }
+  catch { englishFeedback.value = '검토 목록을 불러오지 못했습니다.' }
+}
+const englishBusy = ref(false)
+const englishFeedback = ref('')
+const englishOffset = ref<number | null>(0)
+async function syncEnglish() {
+  englishBusy.value = true
+  try {
+    const result = await englishScraperApi.sync(englishOffset.value ?? 0)
+    englishOffset.value = result.next_offset
+    englishFeedback.value = `새 메시지 ${result.created} · 검토 대기 ${result.held} · 실패 ${result.failed}`
+  } catch {
+    englishFeedback.value = '영어 수업을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.'
+  } finally { englishBusy.value = false }
+}
 
 const notifStore = useNotificationsStore()
 const authStore = useAuthStore()
@@ -152,6 +172,19 @@ onMounted(() => {
       <p class="view-desc">화면 모드, 알림 권한, PWA 앱 설치 및 사용자 계정을 관리합니다.</p>
     </section>
 
+    <section v-if="authStore.isAdmin" class="settings-card">
+      <h3 class="card-title">오늘의 영어</h3>
+      <p class="setting-caption">저장된 영어 수업을 가져와 공유 대기 메시지를 만듭니다. 불완전한 수업은 검토 대기로 보관합니다.</p>
+      <button :disabled="englishBusy" @click="syncEnglish">{{ englishBusy ? '가져오는 중…' : englishOffset ? '다음 수업 가져오기' : '최신 수업 다시 확인' }}</button>
+      <button :disabled="englishBusy" @click="reviewEnglish">검토 대기 확인</button>
+      <p role="status">{{ englishFeedback }}</p>
+      <article v-for="lesson in heldEnglish" :key="lesson.url">
+        <h4>{{ lesson.fields.expression || '영어 수업' }}</h4>
+        <p>확인할 항목: {{ lesson.missing_sections.join(', ') }}</p>
+        <p style="white-space: pre-wrap">{{ lesson.fields.english_dialogue }}</p>
+        <a :href="lesson.url" target="_blank" rel="noopener noreferrer">원문 확인</a>
+      </article>
+    </section>
     <!-- 1. Appearance Modes as a List (NO dropdown!) -->
     <section class="settings-card" aria-labelledby="appearance-heading">
       <div class="card-title-row">
