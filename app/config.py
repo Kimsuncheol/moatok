@@ -47,6 +47,12 @@ class Config:
     # Optional internal API key for scheduled jobs or content ingestion pipelines
     INTERNAL_INGEST_API_KEY: str | None = os.getenv("INTERNAL_INGEST_API_KEY")
 
+    # Cloud Scheduler OIDC authentication settings for POST /internal/jobs/collect
+    SCHEDULER_SERVICE_ACCOUNT_EMAIL: str | None = os.getenv(
+        "SCHEDULER_SERVICE_ACCOUNT_EMAIL"
+    )
+    SCHEDULER_OIDC_AUDIENCE: str | None = os.getenv("SCHEDULER_OIDC_AUDIENCE")
+
     # Source URL validation & SSRF protection settings
     ALLOWED_SOURCE_DOMAINS: tuple[str, ...] = tuple(
         d.strip().lower()
@@ -93,6 +99,10 @@ class TestingConfig(Config):
     TESTING = True
     GOOGLE_CLOUD_PROJECT = "test-moatok-project"
     INTERNAL_INGEST_API_KEY = "test-internal-key"
+    SCHEDULER_SERVICE_ACCOUNT_EMAIL = (
+        "moatok-scheduler@test-moatok-project.iam.gserviceaccount.com"
+    )
+    SCHEDULER_OIDC_AUDIENCE = "https://moatok-backend-test.a.run.app/internal/jobs/collect"
     ALLOWED_SOURCE_DOMAINS = (
         "example.com",
         "*.example.com",

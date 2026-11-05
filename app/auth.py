@@ -9,8 +9,11 @@ from typing import Any, Callable
 
 from firebase_admin import auth as firebase_auth
 from flask import current_app, g, has_app_context, jsonify, request
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
 
 logger = logging.getLogger(__name__)
+VALID_GOOGLE_ISSUERS = frozenset({"https://accounts.google.com", "accounts.google.com"})
 
 
 def _auth_error(
@@ -257,5 +260,119 @@ def require_auth_or_internal_key(fn: Callable[..., Any]) -> Callable[..., Any]:
             )
 
         return require_auth(fn)(*args, **kwargs)
+
+    return wrapper
+
+
+def verify_scheduler_oidc_token(
+    token: str, audience: str | None = None
+) -> dict[str, Any]:
+    """Verify a Google-signed OIDC ID token from Cloud Scheduler."""
+    return google_id_token.verify_oauth2_token(
+        token,
+        google_requests.Request(),
+        audience=audience,
+    )
+
+
+def require_scheduler_auth(fn: Callable[..., Any]) -> Callable[..., Any]:
+    """Require a verified Google OIDC Bearer token from the configured Cloud Scheduler service account.
+
+    Fails closed if `SCHEDULER_SERVICE_ACCOUNT_EMAIL` is not configured so the
+    internal job endpoint is never exposed unauthenticated in production.
+    """
+
+    @wraps(fn)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        expected_sa = str(
+            current_app.config.get("SCHEDULER_SERVICE_ACCOUNT_EMAIL") or ""
+        ).strip()
+        if not expected_sa:
+            logger.error(
+                "Rejecting scheduler job request because SCHEDULER_SERVICE_ACCOUNT_EMAIL is not configured."
+            )
+            return _auth_error(
+                error="forbidden",
+                code="scheduler_auth_not_configured",
+                message="Cloud Scheduler service account authentication is not configured.",
+                status_code=403,
+            )
+
+        token, err_code, err_msg = _extract_bearer_token()
+        if not token:
+            return _auth_error(
+                error="unauthorized",
+                code=err_code or "missing_token",
+                message=err_msg or "Missing Authorization Bearer OIDC token.",
+                status_code=401,
+            )
+
+        expected_audience = (
+            str(current_app.config.get("SCHEDULER_OIDC_AUDIENCE") or "").strip()
+            or None
+        )
+        try:
+            decoded = verify_scheduler_oidc_token(token, audience=expected_audience)
+        except Exception as exc:
+            logger.warning("Cloud Scheduler OIDC token verification failed: %s", exc)
+            return _auth_error(
+                error="unauthorized",
+                code="invalid_scheduler_token",
+                message="Invalid or expired Cloud Scheduler OIDC token.",
+                status_code=401,
+            )
+
+        if not isinstance(decoded, dict):
+            return _auth_error(
+                error="unauthorized",
+                code="invalid_scheduler_token",
+                message="Invalid Cloud Scheduler OIDC token claims.",
+                status_code=401,
+            )
+
+        issuer = decoded.get("iss")
+        if issuer is not None and issuer not in VALID_GOOGLE_ISSUERS:
+            return _auth_error(
+                error="unauthorized",
+                code="invalid_scheduler_token",
+                message="Invalid OIDC token issuer.",
+                status_code=401,
+            )
+
+        if decoded.get("email_verified") is False:
+            return _auth_error(
+                error="unauthorized",
+                code="invalid_scheduler_token",
+                message="Cloud Scheduler OIDC token email is not verified.",
+                status_code=401,
+            )
+
+        verified_email = str(decoded.get("email") or "").strip()
+        if not verified_email:
+            return _auth_error(
+                error="unauthorized",
+                code="invalid_scheduler_token",
+                message="Cloud Scheduler OIDC token is missing 'email' claim.",
+                status_code=401,
+            )
+
+        if not hmac.compare_digest(verified_email.lower(), expected_sa.lower()):
+            logger.warning(
+                "Unauthorized service account '%s' attempted to invoke scheduler job.",
+                verified_email,
+            )
+            return _auth_error(
+                error="forbidden",
+                code="unauthorized_service_account",
+                message="Authenticated service account is not authorized to invoke this job.",
+                status_code=403,
+            )
+
+        g.current_scheduler = {
+            "email": verified_email,
+            "sub": decoded.get("sub"),
+            "claims": decoded,
+        }
+        return fn(*args, **kwargs)
 
     return wrapper

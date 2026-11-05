@@ -474,3 +474,38 @@ class ShareMessageRepository:
             return self._to_record(snapshot.id, existing)
 
         return _txn_record(self.db.transaction())
+
+    def claim_initial_notification(self, message_id: str) -> bool:
+        """Atomically claim initial notification dispatch for a pending share message.
+
+        Prevents duplicate push notifications when concurrent or retried jobs
+        process the same share message.
+        """
+        cleaned_id = (message_id or "").strip()
+        if not cleaned_id:
+            return False
+
+        doc_ref = self._collection().document(cleaned_id)
+
+        @firestore.transactional
+        def _txn_claim(transaction: Any) -> bool:
+            snapshot = doc_ref.get(transaction=transaction)
+            if not snapshot.exists:
+                return False
+            existing = snapshot.to_dict() or {}
+            if (
+                existing.get("initial_notification_claimed")
+                or int(existing.get("notification_attempts") or 0) > 0
+                or existing.get("last_notified_at") is not None
+            ):
+                return False
+            transaction.update(
+                doc_ref,
+                {
+                    "initial_notification_claimed": True,
+                    "updated_at": utc_now(),
+                },
+            )
+            return True
+
+        return _txn_claim(self.db.transaction())

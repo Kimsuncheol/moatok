@@ -15,6 +15,7 @@ import xml.etree.ElementTree as ET
 
 from app.models import ValidationError
 from app.repositories.articles_repo import ArticleRepository
+from app.repositories.devices_repo import UserDeviceRepository
 from app.repositories.firestore_utils import (
     ensure_utc_datetime,
     normalize_url,
@@ -22,6 +23,7 @@ from app.repositories.firestore_utils import (
 )
 from app.repositories.share_messages_repo import ShareMessageRepository
 from app.repositories.sources_repo import SourceRepository
+from app.services.notification_service import notify_pending_share_message
 from app.services.share_message_generator import RuleBasedShareMessageGenerator
 from app.services.url_validator import fetch_and_validate_source_url
 
@@ -309,7 +311,9 @@ class RssCollectionService:
         source_repo: SourceRepository | None = None,
         article_repo: ArticleRepository | None = None,
         share_repo: ShareMessageRepository | None = None,
+        device_repo: UserDeviceRepository | None = None,
         share_generator: RuleBasedShareMessageGenerator | None = None,
+        notify_users: bool = True,
         http_open: Callable[..., Any] | None = None,
         allowed_domains: Iterable[str] | None = None,
         timeout_seconds: float | None = None,
@@ -317,11 +321,13 @@ class RssCollectionService:
         max_redirects: int | None = None,
     ) -> None:
         self.source_repo = source_repo or SourceRepository()
-        self.article_repo = article_repo or ArticleRepository()
+        self.article_repo = article_repo or ArticleRepository(db=self.source_repo.db)
         self.share_repo = share_repo or ShareMessageRepository(db=self.article_repo.db)
+        self.device_repo = device_repo or UserDeviceRepository(db=self.article_repo.db)
         self.share_generator = share_generator or RuleBasedShareMessageGenerator(
             share_repo=self.share_repo
         )
+        self.notify_users = notify_users
         self.http_open = http_open
         self.allowed_domains = allowed_domains
         self.timeout_seconds = timeout_seconds
@@ -335,12 +341,19 @@ class RssCollectionService:
             for src in self.source_repo.list_sources(enabled_only=True)
             if str(src.get("source_type") or "").strip().lower() == "rss"
         ]
+        active_user_ids = (
+            self.device_repo.list_active_user_ids() if self.notify_users else []
+        )
 
         total_processed = 0
         total_new = 0
         total_duplicate = 0
         total_failed = 0
         total_share_messages_created = 0
+        total_messages_notified = 0
+        total_notifications_sent = 0
+        total_notifications_failed = 0
+        total_invalid_tokens = 0
         sources_succeeded = 0
         sources_failed = 0
         source_summaries: list[dict[str, Any]] = []
@@ -389,15 +402,44 @@ class RssCollectionService:
                         )
                         if created:
                             src_new += 1
-                            _, msg_created = (
-                                self.share_generator.generate_for_article_with_status(
-                                    article_record
-                                )
-                            )
-                            if msg_created:
-                                src_share_messages += 1
                         else:
                             src_duplicate += 1
+
+                        # Always ensure a pending share message exists for the article
+                        # (tolerating partial retries where an earlier run saved the article
+                        # before saving or notifying its share message).
+                        share_msg, msg_created = (
+                            self.share_generator.generate_for_article_with_status(
+                                article_record
+                            )
+                        )
+                        if msg_created:
+                            src_share_messages += 1
+
+                        if (
+                            self.notify_users
+                            and active_user_ids
+                            and share_msg.get("status") == "pending"
+                            and self.share_repo.claim_initial_notification(
+                                share_msg["id"]
+                            )
+                        ):
+                            notif_res = notify_pending_share_message(
+                                share_msg,
+                                target_user_ids=active_user_ids,
+                                share_repo=self.share_repo,
+                                device_repo=self.device_repo,
+                            )
+                            total_messages_notified += 1
+                            total_notifications_sent += int(
+                                notif_res.get("sent_count", 0)
+                            )
+                            total_notifications_failed += int(
+                                notif_res.get("failed_count", 0)
+                            )
+                            total_invalid_tokens += int(
+                                notif_res.get("invalid_token_count", 0)
+                            )
                     except Exception as item_exc:
                         src_failed += 1
                         logger.error(
@@ -455,6 +497,14 @@ class RssCollectionService:
             "duplicate": total_duplicate,
             "failed": total_failed,
             "share_messages_created": total_share_messages_created,
+            "notifications": {
+                "messages_notified": total_messages_notified,
+                "sent_count": total_notifications_sent,
+                "failed_count": total_notifications_failed,
+                "invalid_token_count": total_invalid_tokens,
+            },
+            "notifications_sent": total_notifications_sent,
+            "notifications_failed": total_notifications_failed,
             "processed_count": total_processed,
             "new_count": total_new,
             "duplicate_count": total_duplicate,
@@ -472,7 +522,9 @@ def collect_rss_articles(
     source_repo: SourceRepository | None = None,
     article_repo: ArticleRepository | None = None,
     share_repo: ShareMessageRepository | None = None,
+    device_repo: UserDeviceRepository | None = None,
     share_generator: RuleBasedShareMessageGenerator | None = None,
+    notify_users: bool = True,
     http_open: Callable[..., Any] | None = None,
     allowed_domains: Iterable[str] | None = None,
     timeout_seconds: float | None = None,
@@ -484,7 +536,9 @@ def collect_rss_articles(
         source_repo=source_repo,
         article_repo=article_repo,
         share_repo=share_repo,
+        device_repo=device_repo,
         share_generator=share_generator,
+        notify_users=notify_users,
         http_open=http_open,
         allowed_domains=allowed_domains,
         timeout_seconds=timeout_seconds,

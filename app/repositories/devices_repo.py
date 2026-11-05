@@ -152,11 +152,19 @@ class UserDeviceRepository:
             else utc_updated
         )
 
+        user_doc_ref = self.db.collection(self.users_collection_name).document(
+            cleaned_user_id
+        )
         doc_ref = self._devices_collection(cleaned_user_id).document(resolved_device_id)
 
         @firestore.transactional
         def _txn_upsert(transaction: Any) -> RecordDict:
             snapshot = doc_ref.get(transaction=transaction)
+            transaction.set(
+                user_doc_ref,
+                {"user_id": cleaned_user_id, "updated_at": utc_updated},
+                merge=True,
+            )
             if snapshot.exists:
                 existing = snapshot.to_dict() or {}
                 updates = {
@@ -261,3 +269,37 @@ class UserDeviceRepository:
         return True
 
     delete = delete_device
+
+    def list_active_user_ids(self) -> list[str]:
+        """Return distinct user IDs that currently have at least one enabled device."""
+        user_ids: list[str] = []
+        users_col = self.users_collection_name
+        subcol = self.devices_subcollection_name
+
+        # 1. Inspect top-level user documents
+        for user_doc in self.db.collection(users_col).stream():
+            uid = str(user_doc.id).strip()
+            if not uid:
+                continue
+            if self.list_devices(uid, enabled_only=True, limit=1):
+                if uid not in user_ids:
+                    user_ids.append(uid)
+            else:
+                data = user_doc.to_dict() or {}
+                tokens = [str(t).strip() for t in (data.get("fcm_tokens") or []) if str(t).strip()]
+                if tokens and uid not in user_ids:
+                    user_ids.append(uid)
+
+        # 2. Also inspect hierarchical subcollections in in-memory FakeFirestoreClient
+        collections_map = getattr(self.db, "collections", None)
+        if isinstance(collections_map, dict):
+            prefix = f"{users_col}/"
+            suffix = f"/{subcol}"
+            for path in list(collections_map.keys()):
+                if path.startswith(prefix) and path.endswith(suffix):
+                    uid = path[len(prefix) : -len(suffix)].strip()
+                    if uid and uid not in user_ids:
+                        if self.list_devices(uid, enabled_only=True, limit=1):
+                            user_ids.append(uid)
+
+        return sorted(user_ids)

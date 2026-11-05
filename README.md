@@ -20,7 +20,7 @@ A production-oriented Python **Flask** backend that collects and formats content
 .
 ├── app/
 │   ├── __init__.py                 # Flask application factory, logging, CORS, error handlers
-│   ├── auth.py                     # Firebase ID token verification, custom claim admin guard & internal API key guard
+│   ├── auth.py                     # Firebase ID token verification, custom claim admin guard & Cloud Scheduler OIDC guard
 │   ├── config.py                   # Environment-based configuration (dev, testing, prod)
 │   ├── extensions.py               # Firebase Admin & Firestore initialization via ADC
 │   ├── models.py                   # Data models & payload validation
@@ -29,13 +29,14 @@ A production-oriented Python **Flask** backend that collects and formats content
 │   │   ├── firestore_utils.py      # UTC timestamp normalization, deterministic IDs & secret guards
 │   │   ├── sources_repo.py         # `sources` collection repository
 │   │   ├── articles_repo.py        # `articles` collection repository (transactional deduplication)
-│   │   ├── share_messages_repo.py  # `share_messages` collection repository (transactional deduplication)
+│   │   ├── share_messages_repo.py  # `share_messages` collection repository (transactional deduplication & notification claim)
 │   │   └── devices_repo.py         # `users/{userId}/devices` subcollection repository
 │   ├── routes/
 │   │   ├── health.py               # Public GET /health endpoint
 │   │   ├── admin.py                # GET /api/v1/auth/me & /api/v1/admin/* endpoints
 │   │   ├── sources.py              # Admin-only /api/v1/admin/sources & /api/v1/sources endpoints
 │   │   ├── devices.py              # POST /api/v1/devices/fcm-token
+│   │   ├── jobs.py                 # Protected POST /internal/jobs/collect endpoint for Cloud Scheduler
 │   │   └── content.py              # /api/v1/messages endpoints
 │   └── services/
 │       ├── content_service.py           # Content formatting & Firestore persistence
@@ -51,6 +52,7 @@ A production-oriented Python **Flask** backend that collects and formats content
 │   ├── test_fcm_notifications.py        # FCM device registration, concise payloads, invalid token cleanup & observability
 │   ├── test_repositories.py             # Firestore repository, UTC, deduplication & secret-rejection tests
 │   ├── test_rss_collector.py            # RSS collection, deduplication, fault tolerance & log redaction tests
+│   ├── test_scheduler_job.py            # Cloud Scheduler OIDC auth, collection job, retry & concurrency tests
 │   ├── test_share_message_generator.py  # Rule-based share message generator, length limits & admin edit tests
 │   ├── test_sources.py                  # Admin content source endpoints & SSRF/redirect/timeout/size tests
 │   ├── test_health.py                   # Public health endpoint tests
@@ -211,6 +213,72 @@ docker run --rm -p 8080:8080 --env-file .env moatok-backend
 | `GET` | `/api/v1/admin/share-messages/<id>` (`/api/v1/share-messages/<id>`) | Firebase Admin Claim (`admin: true`) | Retrieve a generated share message by ID |
 | `PATCH` / `PUT` | `/api/v1/admin/share-messages/<id>` (`/api/v1/share-messages/<id>`) | Firebase Admin Claim (`admin: true`) | Edit a `pending` share message's `title`, `body`, `target_url`, or `status` |
 | `POST` | `/api/v1/admin/share-messages/<id>/notify` (`/api/v1/share-messages/<id>/notify`) | Firebase Admin Claim (`admin: true`) | Send a concise FCM notification for a pending share message and record observable attempt telemetry |
+| `POST` | `/internal/jobs/collect` | Google OIDC Token (`@require_scheduler_auth`) | Protected Cloud Scheduler job that collects enabled sources, creates deduplicated articles & pending share messages, notifies registered users, and returns a structured job summary |
+
+---
+
+## Cloud Scheduler & Cloud Run Authentication (`POST /internal/jobs/collect`)
+
+The scheduled collection endpoint (`POST /internal/jobs/collect` in `app/routes/jobs.py`) is **never exposed unauthenticated**. It is protected by `@require_scheduler_auth` (`app/auth.py`), which enforces two layers of defense:
+1. **Cloud Run IAM / Ingress Protection**: Cloud Run verifies the Google-signed OIDC token at the platform boundary (`roles/run.invoker`).
+2. **Application-Level OIDC & Service Account Verification**: The Flask application independently verifies the `Authorization: Bearer <OIDC_ID_TOKEN>` signature, expiration, issuer (`accounts.google.com` / `https://accounts.google.com`), audience (`SCHEDULER_OIDC_AUDIENCE`), and verified `email` claim against `SCHEDULER_SERVICE_ACCOUNT_EMAIL` using `google.oauth2.id_token.verify_oauth2_token()`. If `SCHEDULER_SERVICE_ACCOUNT_EMAIL` is unset, the endpoint **fails closed** with `403 Forbidden` (`code: "scheduler_auth_not_configured"`).
+
+### Idempotency, Retry Tolerance & Concurrency Safety
+- **Deterministic Article IDs**: Articles use `build_article_doc_id(source_id, canonical_url, stable_id)` (`art_<sha256[:32]>`) and a Firestore transaction (`ArticleRepository.create_or_get_with_status`) so retries or overlapping runs never create duplicate articles.
+- **Deterministic Share Message IDs**: Share messages use `build_share_message_doc_id(article_id)` (`smsg_<sha256[:32]>`) and a Firestore transaction (`ShareMessageRepository.create_or_get_for_article_with_status`). Even if a previous run saved an article and crashed before saving its share message, the next retry ensures the pending share message is created.
+- **Transactional Initial Notification Claim**: `ShareMessageRepository.claim_initial_notification(message_id)` uses a Firestore transaction to atomically set `initial_notification_claimed = True` once per share message so retries and concurrent workers never send duplicate initial FCM push notifications.
+
+### Step-by-Step Cloud Run & Cloud Scheduler Configuration
+
+#### 1. Create a Dedicated Cloud Scheduler Service Account
+```bash
+PROJECT_ID="your-gcp-project-id"
+REGION="asia-northeast3"
+SERVICE_NAME="moatok-backend"
+SCHEDULER_SA_NAME="moatok-scheduler"
+SCHEDULER_SA_EMAIL="${SCHEDULER_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+
+gcloud iam service-accounts create "${SCHEDULER_SA_NAME}" \
+  --project="${PROJECT_ID}" \
+  --display-name="Moatok Cloud Scheduler Invoker"
+```
+
+#### 2. Deploy Cloud Run with `SCHEDULER_SERVICE_ACCOUNT_EMAIL` and `SCHEDULER_OIDC_AUDIENCE`
+Deploy the Cloud Run service and configure the expected scheduler service account email and OIDC token audience:
+```bash
+SERVICE_URL="https://${SERVICE_NAME}-<hash>-an.a.run.app"
+JOB_AUDIENCE="${SERVICE_URL}/internal/jobs/collect"
+
+gcloud run services update "${SERVICE_NAME}" \
+  --project="${PROJECT_ID}" \
+  --region="${REGION}" \
+  --set-env-vars="SCHEDULER_SERVICE_ACCOUNT_EMAIL=${SCHEDULER_SA_EMAIL},SCHEDULER_OIDC_AUDIENCE=${JOB_AUDIENCE}"
+```
+
+#### 3. Grant `roles/run.invoker` to the Scheduler Service Account
+```bash
+gcloud run services add-iam-policy-binding "${SERVICE_NAME}" \
+  --project="${PROJECT_ID}" \
+  --region="${REGION}" \
+  --member="serviceAccount:${SCHEDULER_SA_EMAIL}" \
+  --role="roles/run.invoker"
+```
+
+#### 4. Create the Cloud Scheduler HTTP Job with OIDC Authentication
+Configure Cloud Scheduler to mint an OIDC ID token for `SCHEDULER_SA_EMAIL` with `--oidc-token-audience` matching `SCHEDULER_OIDC_AUDIENCE`:
+```bash
+gcloud scheduler jobs create http moatok-collect-rss \
+  --project="${PROJECT_ID}" \
+  --location="${REGION}" \
+  --schedule="*/15 * * * *" \
+  --uri="${SERVICE_URL}/internal/jobs/collect" \
+  --http-method=POST \
+  --oidc-service-account-email="${SCHEDULER_SA_EMAIL}" \
+  --oidc-token-audience="${JOB_AUDIENCE}" \
+  --max-retry-attempts=3 \
+  --min-backoff=10s \
+  --max-backoff=120s
+```
 
 ---
 
