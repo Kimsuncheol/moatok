@@ -1,6 +1,6 @@
 # Moatok Backend (Content Collection & KakaoTalk Sharing Assistant)
 
-A production-oriented Python **Flask** backend that collects and formats content, stores shareable message drafts in **Cloud Firestore**, authenticates users via **Firebase Authentication**, and sends push notifications via **Firebase Cloud Messaging (FCM)** so users can review and share messages from a companion **Flutter** application.
+A production-oriented Python **Flask** backend that collects and formats content, stores shareable message drafts in **Cloud Firestore**, authenticates users via **Firebase Authentication**, enforces administrator access using **verified Firebase custom claims**, and sends push notifications via **Firebase Cloud Messaging (FCM)** so users can review and share messages from a companion **Flutter** application.
 
 ## Architectural Boundary & KakaoTalk Sharing Model
 
@@ -20,12 +20,13 @@ A production-oriented Python **Flask** backend that collects and formats content
 .
 ├── app/
 │   ├── __init__.py                 # Flask application factory, logging, CORS, error handlers
-│   ├── auth.py                     # Firebase Auth ID token verification & internal API key guard
+│   ├── auth.py                     # Firebase ID token verification, custom claim admin guard & internal API key guard
 │   ├── config.py                   # Environment-based configuration (dev, testing, prod)
 │   ├── extensions.py               # Firebase Admin & Firestore initialization via ADC
 │   ├── models.py                   # Data models & payload validation
 │   ├── routes/
-│   │   ├── health.py               # GET /health endpoint
+│   │   ├── health.py               # Public GET /health endpoint
+│   │   ├── admin.py                # GET /api/v1/auth/me & /api/v1/admin/* endpoints
 │   │   ├── devices.py              # POST /api/v1/devices/fcm-token
 │   │   └── content.py              # /api/v1/messages endpoints
 │   └── services/
@@ -33,7 +34,8 @@ A production-oriented Python **Flask** backend that collects and formats content
 │       └── notification_service.py # FCM token registration & push notification dispatch
 ├── tests/
 │   ├── conftest.py                 # Pytest fixtures & in-memory Firestore/Firebase mocks
-│   ├── test_health.py              # Health endpoint tests
+│   ├── test_auth.py                # Auth, expired/invalid tokens, admin custom claims & role-spoofing tests
+│   ├── test_health.py              # Public health endpoint tests
 │   └── test_content_and_notifications.py
 ├── .dockerignore
 ├── .env.example
@@ -42,6 +44,61 @@ A production-oriented Python **Flask** backend that collects and formats content
 ├── requirements.txt
 └── wsgi.py                         # WSGI entrypoint for Gunicorn
 ```
+
+---
+
+## Authentication & Authorization Architecture
+
+### 1. Firebase ID Token Verification (`@require_auth`)
+All protected user-facing endpoints require an HTTP `Authorization: Bearer <FIREBASE_ID_TOKEN>` header.
+The backend verifies the token signature, expiration, and claims server-side using `firebase_admin.auth.verify_id_token()`.
+
+### 2. Consistent JSON Authentication & Authorization Errors
+Every authentication or authorization failure returns a structured JSON payload containing `error`, `code`, and `message`:
+
+| Scenario | HTTP Status | `error` | `code` | `message` |
+| :--- | :--- | :--- | :--- | :--- |
+| Missing `Authorization` header or empty Bearer token | `401` | `"unauthorized"` | `"missing_token"` | `"Missing Authorization Bearer token."` |
+| Malformed `Authorization` header (e.g. non-Bearer scheme) | `401` | `"unauthorized"` | `"invalid_token"` | `"Malformed Authorization header. Expected 'Bearer <token>'."` |
+| Expired Firebase ID token (`ExpiredIdTokenError`) | `401` | `"unauthorized"` | `"token_expired"` | `"Firebase ID token has expired."` |
+| Revoked Firebase ID token (`RevokedIdTokenError`) | `401` | `"unauthorized"` | `"token_revoked"` | `"Firebase ID token has been revoked."` |
+| Disabled Firebase user (`UserDisabledError`) | `401` | `"unauthorized"` | `"user_disabled"` | `"User account has been disabled."` |
+| Invalid/forged Firebase ID token (`InvalidIdTokenError`) | `401` | `"unauthorized"` | `"invalid_token"` | `"Invalid Firebase ID token."` |
+| Valid user token lacking verified admin custom claim | `403` | `"forbidden"` | `"admin_required"` | `"Administrator privileges required."` |
+
+### 3. Zero Trust for Client-Supplied Roles
+The API **never** accepts roles or privilege flags supplied by the client (such as `role`, `admin`, or `is_admin` in JSON request bodies, query strings, or custom HTTP headers like `X-User-Role`). Authorization decisions rely exclusively on cryptographic Firebase ID token claims verified by the Firebase Admin SDK (`has_admin_claim(decoded_claims)`).
+
+### 4. Assigning an Administrator Custom Claim Securely
+
+Administrator privileges are granted via Firebase Custom User Claims (`{"admin": true}`) using the **Firebase Admin SDK** from a trusted server environment. Custom claims cannot be modified by client SDKs.
+
+#### Step A: Bootstrap the Initial Administrator (Trusted Server / CLI)
+Run a one-off command from a secure administrative environment authenticated via Google Cloud Application Default Credentials (`gcloud auth application-default login`) where the caller holds the **Firebase Authentication Admin** (`roles/firebaseauth.admin`) IAM role:
+
+```bash
+python3 -c '
+import firebase_admin
+from firebase_admin import auth, credentials
+
+firebase_admin.initialize_app(credentials.ApplicationDefault())
+auth.set_custom_user_claims("TARGET_FIREBASE_UID", {"admin": True})
+print("Assigned admin custom claim successfully.")
+'
+```
+
+#### Step B: Assign or Revoke Admin Claims via the Admin API
+Once an administrator exists, they can manage custom claims for other users via the `@require_admin`-protected endpoint (which calls `app.auth.set_admin_claim()` -> `firebase_admin.auth.set_custom_user_claims()`):
+
+```bash
+curl -X POST http://localhost:8080/api/v1/admin/users/<TARGET_UID>/claims \
+  -H "Authorization: Bearer <ADMIN_FIREBASE_ID_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"admin": true}'
+```
+
+#### Step C: Token Propagation on the Client
+Firebase custom claims are embedded into the user's signed ID token when minted. After a user's custom claim is updated on the server, the client application (e.g., Flutter) must force an ID token refresh (`await FirebaseAuth.instance.currentUser?.getIdToken(true)`) or re-authenticate so the updated `{"admin": true}` claim is included in subsequent `Authorization: Bearer <ID_TOKEN>` requests.
 
 ---
 
@@ -86,7 +143,7 @@ gcloud auth application-default login
 .venv/bin/python wsgi.py
 ```
 
-Verify the health endpoint:
+Verify the public health endpoint:
 
 ```bash
 curl http://localhost:8080/health
@@ -116,9 +173,12 @@ docker run --rm -p 8080:8080 --env-file .env moatok-backend
 | Method | Endpoint | Auth | Description |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/health` | Public | Health check for load balancers & orchestrators |
+| `GET` | `/api/v1/auth/me` | Firebase Bearer Token | Return verified user identity and role from Firebase ID token claims |
 | `POST` | `/api/v1/devices/fcm-token` | Firebase Bearer Token | Register a Flutter device's FCM token for push notifications |
 | `POST` | `/api/v1/messages` | Firebase Bearer Token or `X-Internal-Api-Key` | Collect content items, store a shareable message in Firestore, and optionally notify the user via FCM |
 | `GET` | `/api/v1/messages` | Firebase Bearer Token | List prepared shareable messages for the authenticated user |
 | `GET` | `/api/v1/messages/<id>` | Firebase Bearer Token | Retrieve a single prepared message payload for the Flutter share preview |
 | `POST` | `/api/v1/messages/<id>/notify` | Firebase Bearer Token or `X-Internal-Api-Key` | Send or re-send an FCM push notification for a prepared message |
 | `POST` | `/api/v1/messages/<id>/mark-shared` | Firebase Bearer Token | Mark a message as shared after the user completes KakaoTalk sharing in Flutter |
+| `GET` | `/api/v1/admin/messages` | Firebase Admin Claim (`admin: true`) | List prepared shareable messages across all users |
+| `POST` | `/api/v1/admin/users/<uid>/claims` | Firebase Admin Claim (`admin: true`) | Assign or revoke the `admin` Firebase custom claim for a target user |

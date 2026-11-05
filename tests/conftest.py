@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 import uuid
+from firebase_admin import auth as firebase_auth
 import pytest
 
 from app import create_app
@@ -91,6 +92,12 @@ class FakeCollection:
     def where(self, field: str, op: str, value: Any) -> FakeQuery:
         return FakeQuery(self._store).where(field, op, value)
 
+    def limit(self, count: int) -> FakeQuery:
+        return FakeQuery(self._store, limit_val=count)
+
+    def stream(self) -> list[FakeDocumentSnapshot]:
+        return FakeQuery(self._store).stream()
+
 
 class FakeFirestoreClient:
     def __init__(self):
@@ -130,7 +137,19 @@ def mock_firebase_auth(monkeypatch):
             return {"uid": "user-1", "email": "user1@example.com"}
         if token == "valid-token-user-2":
             return {"uid": "user-2", "email": "user2@example.com"}
-        raise ValueError("Invalid token")
+        if token == "valid-token-admin":
+            return {
+                "uid": "admin-1",
+                "email": "admin@example.com",
+                "admin": True,
+            }
+        if token == "expired-token":
+            raise firebase_auth.ExpiredIdTokenError("Token expired", cause=None)
+        if token == "revoked-token":
+            raise firebase_auth.RevokedIdTokenError("Token revoked")
+        if token == "disabled-user-token":
+            raise firebase_auth.UserDisabledError("User disabled")
+        raise firebase_auth.InvalidIdTokenError("Invalid token")
 
     monkeypatch.setattr("app.auth.verify_firebase_token", _verify)
 

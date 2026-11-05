@@ -10,6 +10,7 @@ from werkzeug.exceptions import HTTPException
 
 from app.config import Config, get_config
 from app.extensions import init_firebase
+from app.routes.admin import admin_bp, auth_bp
 from app.routes.content import content_bp
 from app.routes.devices import devices_bp
 from app.routes.health import health_bp
@@ -85,6 +86,8 @@ def create_app(
 
     # Register modular Blueprints
     app.register_blueprint(health_bp)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(admin_bp)
     app.register_blueprint(devices_bp)
     app.register_blueprint(content_bp)
 

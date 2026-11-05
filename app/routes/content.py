@@ -28,7 +28,7 @@ content_bp = Blueprint("content", __name__, url_prefix="/api/v1/messages")
 def collect_and_prepare_message():
     """Collect content items, store a shareable message in Firestore, and optionally notify via FCM."""
     payload = request.get_json(silent=True)
-    if payload is None:
+    if payload is None or not isinstance(payload, dict):
         return (
             jsonify(
                 {
@@ -39,13 +39,33 @@ def collect_and_prepare_message():
             400,
         )
 
-    default_uid = (
-        None if g.current_user.get("is_internal") else g.current_user.get("uid")
+    is_privileged = bool(
+        g.current_user.get("is_admin") or g.current_user.get("is_internal")
     )
+    authenticated_uid = g.current_user.get("uid")
+    requested_uid = str(payload.get("user_id") or "").strip()
+
+    if not is_privileged:
+        if requested_uid and requested_uid != authenticated_uid:
+            return (
+                jsonify(
+                    {
+                        "error": "forbidden",
+                        "code": "admin_required",
+                        "message": "Only administrators can create messages for another user.",
+                    }
+                ),
+                403,
+            )
+        target_payload = {**payload, "user_id": authenticated_uid}
+        default_uid = authenticated_uid
+    else:
+        target_payload = payload
+        default_uid = None if g.current_user.get("is_internal") else authenticated_uid
 
     try:
         created_message = create_shareable_message(
-            payload=payload, default_user_id=default_uid
+            payload=target_payload, default_user_id=default_uid
         )
     except ValidationError as exc:
         return jsonify({"error": "validation_error", "message": str(exc)}), 400
@@ -72,7 +92,25 @@ def collect_and_prepare_message():
 @require_auth
 def list_user_messages():
     """List prepared shareable messages for the authenticated Flutter user."""
-    user_id = g.current_user["uid"]
+    authenticated_uid = g.current_user["uid"]
+    requested_uid = (request.args.get("user_id") or "").strip()
+
+    if requested_uid and requested_uid != authenticated_uid:
+        if g.current_user.get("is_admin") is not True:
+            return (
+                jsonify(
+                    {
+                        "error": "forbidden",
+                        "code": "admin_required",
+                        "message": "Only administrators can list another user's messages.",
+                    }
+                ),
+                403,
+            )
+        user_id = requested_uid
+    else:
+        user_id = authenticated_uid
+
     status = request.args.get("status")
     try:
         limit = int(request.args.get("limit", "20"))
@@ -99,7 +137,7 @@ def list_user_messages():
 @require_auth
 def get_single_message(message_id: str):
     """Fetch a single prepared shareable message for the Flutter app to preview and share."""
-    user_id = g.current_user["uid"]
+    user_id = None if g.current_user.get("is_admin") else g.current_user["uid"]
     message = get_shareable_message(message_id=message_id, user_id=user_id)
     if not message:
         return (
@@ -118,9 +156,10 @@ def get_single_message(message_id: str):
 @require_auth_or_internal_key
 def trigger_message_notification(message_id: str):
     """Send or re-send an FCM notification reminding the user to share the message in Flutter."""
-    user_id = (
-        None if g.current_user.get("is_internal") else g.current_user.get("uid")
+    is_privileged = bool(
+        g.current_user.get("is_admin") or g.current_user.get("is_internal")
     )
+    user_id = None if is_privileged else g.current_user.get("uid")
     message = get_shareable_message(message_id=message_id, user_id=user_id)
     if not message:
         return (

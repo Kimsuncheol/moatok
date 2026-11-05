@@ -128,9 +128,9 @@ def create_shareable_message(
 
 
 def list_shareable_messages(
-    user_id: str, status: str | None = None, limit: int = 20
+    user_id: str | None = None, status: str | None = None, limit: int = 20
 ) -> list[dict[str, Any]]:
-    """List prepared shareable messages for a specific user from Firestore."""
+    """List prepared shareable messages from Firestore (filtered by user_id when provided)."""
     if status and status not in VALID_MESSAGE_STATUSES:
         raise ValidationError(
             f"Invalid status '{status}'. Must be one of: {sorted(VALID_MESSAGE_STATUSES)}"
@@ -138,7 +138,9 @@ def list_shareable_messages(
 
     db = get_firestore_client()
     collection_name = current_app.config["FIRESTORE_COLLECTION_MESSAGES"]
-    query = db.collection(collection_name).where("user_id", "==", user_id)
+    query: Any = db.collection(collection_name)
+    if user_id:
+        query = query.where("user_id", "==", user_id)
     if status:
         query = query.where("status", "==", status)
 
