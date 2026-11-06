@@ -1,58 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { englishScraperApi, getApiBaseUrl, type EnglishLesson } from '@/services/api'
+import { useRouter } from 'vue-router'
+import { getApiBaseUrl } from '@/services/api'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
+import { useEndpointsStore } from '@/stores/endpoints'
 import type { AppearanceMode, AuthSignInMethod } from '@/types'
 
-let nextUrlId = 1
-const englishUrls = ref([{ id: 0, url: '' }])
-const englishResults = ref<Array<{ url: string; status: string; message: string; lesson?: EnglishLesson }>>([])
-const canFetchEnglish = computed(() => englishUrls.value.some(item => item.url.trim()))
-function addEnglishUrl() {
-  if (englishUrls.value.length < 20) englishUrls.value.push({ id: nextUrlId++, url: '' })
-}
-async function fetchEnglishUrl() {
-  if (englishBusy.value) return
-  const urls = [...new Set(englishUrls.value.map(item => item.url.trim()).filter(Boolean))]
-  if (!urls.length) return
-  englishBusy.value = true
-  englishResults.value = []
-  try {
-    for (const [index, url] of urls.entries()) {
-      englishFeedback.value = `수업을 가져오는 중… ${index + 1}/${urls.length}`
-      try {
-        const result = await englishScraperApi.fetchUrl({ url })
-        const message = result.status === 'held' ? '수업을 가져왔습니다. 일부 내용은 확인이 필요합니다.' : '수업을 가져왔습니다.'
-        englishResults.value.push({ url, status: result.status, message, lesson: result.lesson })
-      } catch (error) {
-        englishResults.value.push({ url, status: 'failed', message: error instanceof Error ? error.message : '가져오기에 실패했습니다.' })
-      }
-    }
-    const failed = englishResults.value.filter(item => item.status === 'failed').length
-    englishFeedback.value = `완료 ${urls.length - failed}/${urls.length} · 실패 ${failed}`
-  } finally { englishBusy.value = false }
-}
-const heldEnglish = ref<Array<{ fields: Record<string, string>; missing_sections: string[]; url: string }>>([])
-async function reviewEnglish() {
-  try { heldEnglish.value = (await englishScraperApi.review()).lessons.filter(item => item.missing_sections.length) }
-  catch { englishFeedback.value = '검토 목록을 불러오지 못했습니다.' }
-}
-const englishBusy = ref(false)
-const englishFeedback = ref('')
-const englishOffset = ref<number | null>(0)
-async function syncEnglish() {
-  englishBusy.value = true
-  try {
-    const result = await englishScraperApi.sync(englishOffset.value ?? 0)
-    englishOffset.value = result.next_offset
-    englishFeedback.value = `새 메시지 ${result.created} · 검토 대기 ${result.held} · 실패 ${result.failed}`
-  } catch {
-    englishFeedback.value = '영어 수업을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.'
-  } finally { englishBusy.value = false }
-}
-
+const router = useRouter()
+const endpointsStore = useEndpointsStore()
 const notifStore = useNotificationsStore()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
@@ -191,6 +148,7 @@ onMounted(() => {
   checkBackendHealth()
   authStore.init()
   notifStore.checkPermission()
+  endpointsStore.loadEndpoints()
 })
 </script>
 
@@ -201,49 +159,34 @@ onMounted(() => {
       <p class="view-desc">화면 모드, 알림 권한, PWA 앱 설치 및 사용자 계정을 관리합니다.</p>
     </section>
 
-    <section class="settings-card" aria-labelledby="english-heading">
+    <!-- API Endpoints Management -->
+    <section class="settings-card" aria-labelledby="api-endpoints-heading">
       <div class="card-title-row">
-        <h3 id="english-heading" class="card-title">오늘의 영어</h3>
-        <span class="info-badge">외부 연동</span>
+        <h3 id="api-endpoints-heading" class="card-title">API 엔드포인트 관리 (API Endpoints)</h3>
+        <span class="info-badge">외부 데이터 연동</span>
       </div>
+      <p class="setting-caption">
+        자동 수집(auto-fetching)할 외부 REST API 엔드포인트와 스케줄, 재시도 정책을 등록하고 관리합니다.
+      </p>
 
-      <form @submit.prevent="fetchEnglishUrl" class="english-fetch-form">
-        <p class="setting-caption">조선일보 영어 수업 기사 또는 영어 섹션 주소를 입력하세요. URL을 최대 20개까지 추가할 수 있습니다.</p>
-        <div v-for="(item, index) in englishUrls" :key="item.id" class="english-url-row">
-          <label :for="`english-url-${item.id}`">기사 URL {{ index + 1 }}</label>
-          <div class="english-url-input-wrap">
-            <input :id="`english-url-${item.id}`" v-model="item.url" type="url" :required="index === 0" maxlength="2048" placeholder="https://www.chosun.com/…" :disabled="englishBusy" />
-            <button v-if="englishUrls.length > 1" type="button" class="remove-url-btn" :disabled="englishBusy" :aria-label="`URL ${index + 1} 삭제`" @click="englishUrls.splice(index, 1)">삭제</button>
-          </div>
+      <div class="api-endpoints-summary-box">
+        <div class="summary-text">
+          <strong class="summary-count">등록된 엔드포인트: {{ endpointsStore.endpoints.length }}개</strong>
+          <span class="summary-desc">스케줄 자동 수집 및 5회 재시도 규칙(1시간 간격) 설정 가능</span>
         </div>
-        <div class="english-btn-group">
-          <button class="add-english-url" type="button" :disabled="englishBusy || englishUrls.length >= 20" @click="addEnglishUrl">+ URL 추가</button>
-          <button class="fetch-english-btn" type="submit" :disabled="englishBusy || !canFetchEnglish">{{ englishBusy ? '가져오는 중…' : 'Fetch · 가져오기' }}</button>
-        </div>
-      </form>
-      <div aria-live="polite">
-        <article v-for="result in englishResults" :key="result.url" class="english-fetch-result">
-          <h4>{{ result.url }}</h4>
-          <p>{{ result.message }}</p>
-          <div v-if="result.lesson">
-            <div v-for="(text, field) in result.lesson.fields" :key="field">
-              <strong>{{ field }}</strong><p style="white-space: pre-wrap">{{ text }}</p>
-            </div>
-          </div>
-        </article>
+        <button
+          type="button"
+          class="setting-api-btn register-api-nav-btn"
+          aria-label="API 엔드포인트 등록 화면으로 이동"
+          @click="router.push('/register-api')"
+        >
+          <svg class="nav-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          <span>API 엔드포인트 등록 및 관리</span>
+        </button>
       </div>
-      <p class="setting-caption">입력한 기사 내용을 표시합니다. 영어 섹션 주소를 입력하면 최신 수업을 가져옵니다.</p>
-      <div v-if="authStore.isAdmin" class="english-admin-actions">
-        <button class="setting-sub-btn" :disabled="englishBusy" @click="syncEnglish">{{ englishBusy ? '가져오는 중…' : englishOffset ? '다음 수업 가져오기' : '최신 수업 다시 확인' }}</button>
-        <button class="setting-sub-btn" :disabled="englishBusy" @click="reviewEnglish">검토 대기 확인</button>
-      </div>
-      <p role="status" class="english-feedback-text">{{ englishFeedback }}</p>
-      <article v-for="lesson in heldEnglish" :key="lesson.url" class="held-english-card">
-        <h4>{{ lesson.fields.expression || '영어 수업' }}</h4>
-        <p>확인할 항목: {{ lesson.missing_sections.join(', ') }}</p>
-        <p style="white-space: pre-wrap">{{ lesson.fields.english_dialogue }}</p>
-        <a :href="lesson.url" target="_blank" rel="noopener noreferrer">원문 확인</a>
-      </article>
     </section>
     <!-- 1. Appearance Modes as a List (NO dropdown!) -->
     <section class="settings-card" aria-labelledby="appearance-heading">
@@ -934,8 +877,7 @@ onMounted(() => {
   gap: 8px;
 }
 
-.setting-action-btn,
-.fetch-english-btn {
+.setting-action-btn {
   width: 100%;
   padding: 12px 16px;
   border-radius: 8px;
@@ -952,24 +894,20 @@ onMounted(() => {
   transition: opacity 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
 }
 
-.setting-action-btn:hover:not(:disabled),
-.fetch-english-btn:hover:not(:disabled) {
+.setting-action-btn:hover:not(:disabled) {
   background-color: var(--accent-action-hover);
 }
 
-.setting-action-btn:active:not(:disabled),
-.fetch-english-btn:active:not(:disabled) {
+.setting-action-btn:active:not(:disabled) {
   transform: scale(0.99);
 }
 
-.setting-action-btn:disabled,
-.fetch-english-btn:disabled {
+.setting-action-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.setting-sub-btn,
-.add-english-url {
+.setting-sub-btn {
   width: 100%;
   padding: 10px 14px;
   border-radius: 8px;
@@ -986,20 +924,17 @@ onMounted(() => {
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
 
-.setting-sub-btn:hover:not(:disabled),
-.add-english-url:hover:not(:disabled) {
+.setting-sub-btn:hover:not(:disabled) {
   background-color: var(--bg-surface-hover);
   color: var(--text-primary);
   border-color: var(--border-strong);
 }
 
-.setting-sub-btn:active:not(:disabled),
-.add-english-url:active:not(:disabled) {
+.setting-sub-btn:active:not(:disabled) {
   transform: scale(0.99);
 }
 
-.setting-sub-btn:disabled,
-.add-english-url:disabled {
+.setting-sub-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -1312,131 +1247,69 @@ onMounted(() => {
   color: var(--badge-text);
 }
 
-/* English Scraper Section */
-.english-fetch-form {
+/* API Endpoints Section */
+.api-endpoints-summary-box {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.english-url-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.english-url-row label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.english-url-input-wrap {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.english-fetch-form input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 10px 12px;
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  color: var(--text-primary);
-  background-color: var(--bg-surface-elevated);
-  font: inherit;
-  font-size: 13px;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
-}
-
-.english-fetch-form input:focus {
-  outline: none;
-  border-color: var(--accent-action);
-}
-
-.english-fetch-form input:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.remove-url-btn {
-  flex-shrink: 0;
-  padding: 9px 12px;
-  border-radius: 8px;
-  background-color: var(--bg-surface-elevated);
-  color: var(--text-muted);
-  border: 1px solid var(--border-default);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
-}
-
-.remove-url-btn:hover:not(:disabled) {
-  color: var(--text-primary);
-  border-color: var(--border-strong);
-  background-color: var(--bg-surface-hover);
-}
-
-.remove-url-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.english-btn-group {
-  display: flex;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.english-btn-group .add-english-url {
-  flex: 1;
-}
-
-.english-btn-group .fetch-english-btn {
-  flex: 1.2;
-}
-
-@media (max-width: 380px) {
-  .english-btn-group {
-    flex-direction: column;
-  }
-}
-
-.english-admin-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 6px;
-}
-
-.english-fetch-result,
-.held-english-card {
-  padding: 12px;
+  padding: 14px;
   border-radius: 8px;
   background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-default);
-  margin-top: 8px;
-  overflow-wrap: anywhere;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 12.5px;
 }
 
-.english-fetch-result h4,
-.held-english-card h4 {
-  margin: 0;
-  font-size: 13px;
+.summary-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.summary-count {
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--text-primary);
 }
 
-.english-feedback-text {
+.summary-desc {
   font-size: 12px;
   color: var(--text-muted);
-  margin: 4px 0 0;
+}
+
+.setting-api-btn {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background-color: var(--accent-action);
+  color: var(--accent-action-text);
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: opacity 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
+}
+
+.setting-api-btn:hover {
+  background-color: var(--accent-action-hover);
+}
+
+.setting-api-btn:active {
+  transform: scale(0.99);
+}
+
+.register-api-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-decoration: none;
+}
+
+.nav-btn-icon {
+  width: 14px;
+  height: 14px;
 }
 </style>

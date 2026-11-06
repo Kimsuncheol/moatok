@@ -49,7 +49,7 @@ describe('RegisterEndpointView Component', () => {
     await presetBtn.trigger('click')
 
     const urlInput = wrapper.find('#endpoint-url').element as HTMLInputElement
-    expect(urlInput.value).toBe(DEFAULT_ENGLISH_SCRAPPER_URL)
+    expect(urlInput.value).toBe(DEFAULT_ENGLISH_SCRAPPER_URL + '/api/v1/lessons/fetch')
     expect(urlInput.value).toContain('english-scrapper')
   })
 

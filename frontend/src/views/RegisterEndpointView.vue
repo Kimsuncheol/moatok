@@ -5,6 +5,7 @@ import {
   useEndpointsStore,
   DEFAULT_ENGLISH_SCRAPPER_URL
 } from '@/stores/endpoints'
+import ScheduleWidget from '@/components/ScheduleWidget.vue'
 
 const router = useRouter()
 const endpointsStore = useEndpointsStore()
@@ -32,7 +33,7 @@ const actionFeedback = ref<string | null>(null)
 // Fill form with english_scrapper url for testing
 function fillEnglishScrapperTestUrl() {
   form.value.name = 'English Scraper API'
-  form.value.url = DEFAULT_ENGLISH_SCRAPPER_URL
+  form.value.url = DEFAULT_ENGLISH_SCRAPPER_URL.replace(/\/+$/, '') + '/api/v1/lessons/fetch'
   form.value.method = 'POST'
   form.value.sourceType = 'english_scrapper'
   form.value.enableSchedule = true
@@ -184,7 +185,7 @@ onMounted(() => {
     <div class="test-preset-box">
       <div class="preset-info">
         <strong class="preset-title">🧪 API endpoint for testing</strong>
-        <span class="preset-sub">english_scrapper url 사전 설정</span>
+        <span class="preset-sub">POST /api/v1/lessons/fetch · 최신 영어 수업 가져오기</span>
       </div>
       <button
         type="button"
@@ -333,6 +334,13 @@ onMounted(() => {
                 </li>
               </ul>
             </div>
+
+            <!-- Schedule-X Calendar Widget -->
+            <ScheduleWidget
+              v-model:scheduled-time="form.scheduledTime"
+              :endpoint-name="form.name || 'API Endpoint'"
+              :enabled="form.enableSchedule"
+            />
           </div>
         </div>
 

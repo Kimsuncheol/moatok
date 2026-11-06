@@ -29,7 +29,7 @@ export function createDefaultEnglishEndpoint(): ApiEndpoint {
   return {
     id: 'endpoint_english_scrapper_default',
     name: 'English Scraper API',
-    url: DEFAULT_ENGLISH_SCRAPPER_URL,
+    url: DEFAULT_ENGLISH_SCRAPPER_URL.replace(/\/+$/, '') + '/api/v1/lessons/fetch',
     method: 'POST',
     sourceType: 'english_scrapper',
     schedule: createDefaultSchedule({
@@ -174,46 +174,10 @@ export const useEndpointsStore = defineStore('endpoints', () => {
         targetUrl.includes('english_scrapper')
 
       if (isEnglish) {
-        // Test connectivity using backend integration or probe
-        try {
-          const res = await englishScraperApi.status()
-          const result = {
-            success: true,
-            message: `연결 성공 (200 OK) - english_scrapper 엔드포인트가 정상 활성화되어 있습니다.`,
-            statusCode: 200,
-            details: res
-          }
-          testResult.value = result
-          return result
-        } catch {
-          // Fallback to fetch test
-          const controller = new AbortController()
-          const timer = setTimeout(() => controller.abort(), 8000)
-          try {
-            const probeRes = await fetch(targetUrl.replace(/\/+$/, '') + '/health', {
-              method: 'GET',
-              signal: controller.signal,
-              mode: 'no-cors'
-            })
-            clearTimeout(timer)
-            const result = {
-              success: true,
-              message: `연결 확인 완료 - english_scrapper 서버에 접근 가능합니다.`,
-              statusCode: probeRes.status || 200
-            }
-            testResult.value = result
-            return result
-          } catch (e: any) {
-            clearTimeout(timer)
-            const result = {
-              success: true, // Mark verified format
-              message: `엔드포인트 URL 확인 완료 (${targetUrl}). 네트워크 또는 CORS 설정에 따라 서버에서 수집이 진행됩니다.`,
-              statusCode: 200
-            }
-            testResult.value = result
-            return result
-          }
-        }
+        const res = await englishScraperApi.fetchUrl({url: 'https://www.chosun.com/national/nie/english/'})
+        const result = {success: true, message: '실제 영어 수업 가져오기 성공', statusCode: 200, details: res}
+        testResult.value = result
+        return result
       }
 
       // Generic endpoint test
@@ -286,23 +250,9 @@ export const useEndpointsStore = defineStore('endpoints', () => {
 
     try {
       if (endpoint.sourceType === 'english_scrapper' || endpoint.url.includes('english-scrapper')) {
-        // Attempt fetch from english scraper
-        let lessonTitle = '오늘의 영어 회화 브리핑'
-        let lessonBody =
-          '[모아톡 브리핑] 오늘의 영어 표현\n\n핵심 표현과 원문 대화를 확인하고 카카오톡으로 공유하세요.\n\n🔗 ' +
-          endpoint.url
-
-        try {
-          const syncRes = await englishScraperApi.sync(0)
-          if (syncRes.created > 0 || syncRes.held > 0) {
-            lessonTitle = `[오늘의 영어] 최신 수업 수집 완료 (${syncRes.created}건)`
-            lessonBody = `[모아톡 브리핑] 오늘의 영어 최신 수업이 성공적으로 수집되었습니다.\n\n신규 생성: ${syncRes.created}건\n검토 대기: ${syncRes.held}건\n\n🔗 ${endpoint.url}`
-          }
-        } catch {
-          // If offline / no live backend response, provide structured content
-          lessonTitle = '[오늘의 영어] Let bygones be bygones'
-          lessonBody = `[모아톡 브리핑] [오늘의 영어] Let bygones be bygones\n\n지난 일은 잊어버리자 (과거는 과거일 뿐이다)\n\nA: Are you still mad at him?\nB: No, let bygones be bygones.\n\n🔗 ${endpoint.url}`
-        }
+        const result = await englishScraperApi.fetchUrl({url: 'https://www.chosun.com/national/nie/english/'})
+        const lessonTitle = result.lesson.fields.expression || '오늘의 영어'
+        const lessonBody = Object.values(result.lesson.fields).join('\n\n') + '\n\n' + result.lesson.url
 
         // On success:
         endpoint.schedule.lastStatus = 'success'
@@ -322,7 +272,7 @@ export const useEndpointsStore = defineStore('endpoints', () => {
           id: `smsg_ep_${Date.now()}`,
           title: lessonTitle,
           body: lessonBody,
-          target_url: endpoint.url,
+          target_url: result.lesson.url,
           source_name: endpoint.name,
           source_id: endpoint.id,
           endpoint_id: endpoint.id,

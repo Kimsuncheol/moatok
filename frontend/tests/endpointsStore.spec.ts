@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { englishScraperApi } from '@/services/api'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useEndpointsStore, DEFAULT_ENGLISH_SCRAPPER_URL } from '@/stores/endpoints'
 import { useMessagesStore } from '@/stores/messages'
@@ -18,7 +19,7 @@ describe('Endpoints Store', () => {
     expect(store.endpoints.length).toBeGreaterThanOrEqual(1)
     const englishEp = store.endpoints.find((e) => e.sourceType === 'english_scrapper')
     expect(englishEp).toBeDefined()
-    expect(englishEp?.url).toBe(DEFAULT_ENGLISH_SCRAPPER_URL)
+    expect(englishEp?.url).toBe(DEFAULT_ENGLISH_SCRAPPER_URL + '/api/v1/lessons/fetch')
     expect(englishEp?.schedule.maxRetries).toBe(5)
     expect(englishEp?.schedule.retryIntervalHours).toBe(1)
   })
@@ -81,6 +82,7 @@ describe('Endpoints Store', () => {
   })
 
   it('successfully fetches and places pending briefing card in Pending view', async () => {
+    vi.spyOn(englishScraperApi, 'fetchUrl').mockResolvedValueOnce({status: 'fetched', lesson: {url: 'https://www.chosun.com/example/', fields: {expression: 'Actual lesson'}, missing_sections: []}})
     const store = useEndpointsStore()
     const messagesStore = useMessagesStore()
 
@@ -97,5 +99,6 @@ describe('Endpoints Store', () => {
     expect(message).toBeDefined()
     expect(message?.status).toBe('pending')
     expect(message?.fetch_status).toBe('success')
+    expect(message?.title).toBe('Actual lesson')
   })
 })

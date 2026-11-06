@@ -12,8 +12,14 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@preact/signals": "^2.11.4",
+    "@schedule-x/calendar": "^4.9.1",
+    "@schedule-x/theme-default": "^4.9.1",
+    "@schedule-x/vue": "^4.1.0",
     "firebase": "^10.13.2",
     "pinia": "^2.2.4",
+    "preact": "^11.1.1",
+    "temporal-polyfill": "^1.0.8",
     "vue": "^3.5.12",
     "vue-router": "^4.4.5"
   },

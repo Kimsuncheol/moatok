@@ -2,14 +2,21 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import SettingsView from '@/views/SettingsView.vue'
-import { englishScraperApi } from '@/services/api'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useThemeStore } from '@/stores/theme'
 import { useAuthStore } from '@/stores/auth'
 
+const mockRouterPush = vi.fn()
+vi.mock('vue-router', () => ({
+  useRouter: () => ({
+    push: mockRouterPush
+  })
+}))
+
 describe('SettingsView Component', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    mockRouterPush.mockReset()
     vi.restoreAllMocks()
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -151,27 +158,24 @@ describe('SettingsView Component', () => {
     await logoutBtn.trigger('click')
     expect(logoutSpy).toHaveBeenCalledTimes(1)
   })
-  it('fetches multiple URLs and continues after an individual failure', async () => {
-    const auth = useAuthStore()
-    auth.profile = { uid: 'admin', email: null, role: 'admin', is_admin: true }
-    const fetchLesson = vi.spyOn(englishScraperApi, 'fetchUrl').mockRejectedValueOnce(new Error('First URL failed')).mockResolvedValue({
-      status: 'fetched',
-      lesson: { url: 'https://www.chosun.com/example', fields: { expression: 'Hello there' }, missing_sections: [] }
-    })
+  it('does not display the 오늘의 영어 area in SettingsView', async () => {
     const wrapper = mount(SettingsView)
     await flushPromises()
-    auth.profile = { uid: 'admin', email: null, role: 'admin', is_admin: true }
-    await wrapper.vm.$nextTick()
-    await wrapper.find('#english-url-0').setValue('https://www.chosun.com/example')
-    await wrapper.find('.add-english-url').trigger('click')
-    await wrapper.find('#english-url-1').setValue('https://www.chosun.com/second')
-    await wrapper.find('.english-fetch-form').trigger('submit')
+
+    expect(wrapper.text()).not.toContain('오늘의 영어')
+    expect(wrapper.find('.english-fetch-form').exists()).toBe(false)
+  })
+
+  it('wires register-api view to Settings view and navigates on click', async () => {
+    const wrapper = mount(SettingsView)
     await flushPromises()
-    expect(fetchLesson).toHaveBeenNthCalledWith(1, { url: 'https://www.chosun.com/example' })
-    expect(fetchLesson).toHaveBeenNthCalledWith(2, { url: 'https://www.chosun.com/second' })
-    expect(wrapper.text()).toContain('First URL failed')
-    expect(wrapper.text()).toContain('Hello there')
-    expect(wrapper.text()).toContain('수업을 가져왔습니다')
+
+    const navBtn = wrapper.find('.register-api-nav-btn')
+    expect(navBtn.exists()).toBe(true)
+    expect(navBtn.text()).toContain('API 엔드포인트 등록 및 관리')
+
+    await navBtn.trigger('click')
+    expect(mockRouterPush).toHaveBeenCalledWith('/register-api')
   })
 
   it('does not report HTML from Hosting as a healthy backend', async () => {
