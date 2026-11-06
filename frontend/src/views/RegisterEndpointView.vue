@@ -30,6 +30,17 @@ const formError = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
 const actionFeedback = ref<string | null>(null)
 
+function fillJapaneseScrapperTestUrl() {
+  form.value.name = 'Japanese Lesson · 2026-11-05'
+  form.value.url = 'https://japanese-scraper.onrender.com/api/articles/XFZL3HSUX5B6DCRGGBCWWUFYJU'
+  form.value.method = 'GET'
+  form.value.sourceType = 'generic_api'
+  form.value.headersText = ''
+  form.value.enableSchedule = false
+  formError.value = null
+  successMessage.value = '✓ 2026-11-05 일본어 수업 테스트 엔드포인트 정보가 입력되었습니다.'
+}
+
 // Fill form with english_scrapper url for testing
 function fillEnglishScrapperTestUrl() {
   form.value.name = 'English Scraper API'
@@ -194,6 +205,21 @@ onMounted(() => {
         @click="fillEnglishScrapperTestUrl"
       >
         테스트 엔드포인트 채우기
+      </button>
+    </div>
+
+    <div class="test-preset-box">
+      <div class="preset-info">
+        <strong class="preset-title">🧪 Japanese lesson endpoint for testing</strong>
+        <span class="preset-sub">GET · 2026-11-05 · 비가 소강 상태가 되다</span>
+      </div>
+      <button
+        type="button"
+        class="preset-fill-btn"
+        aria-label="japanese_scrapper 2026-11-05 테스트 엔드포인트 자동 입력"
+        @click="fillJapaneseScrapperTestUrl"
+      >
+        일본어 테스트 엔드포인트 채우기
       </button>
     </div>
 
