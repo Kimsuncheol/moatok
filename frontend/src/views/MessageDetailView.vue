@@ -1038,4 +1038,9 @@ async function handleConfirmShared() {
   border-radius: 8px;
   border: 1px solid var(--border-subtle);
 }
+
+.fetch-action-btn {
+  font-weight: 400;
+  letter-spacing: -0.3px;
+}
 </style>

@@ -458,4 +458,9 @@ function handleFetchClick(e: Event) {
     transform: rotate(360deg);
   }
 }
+
+.action-btn.fetch-btn {
+  font-weight: 400;
+  letter-spacing: -0.3px;
+}
 </style>

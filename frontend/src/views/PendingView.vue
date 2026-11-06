@@ -762,4 +762,9 @@ onMounted(() => {
   gap: 12px;
   padding: 0 16px;
 }
+
+.retry-btn.fetch-btn {
+  font-weight: 400;
+  letter-spacing: -0.3px;
+}
 </style>
