@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { connectMyChat, disconnectMyChat } from '@/services/kakaoMyChat'
+import { myChatConnected, connectMyChat, disconnectMyChat } from '@/services/kakaoMyChat'
 const kakaoBusy = ref(false)
 const kakaoFeedback = ref('')
-async function manageKakao(disconnect = false) {
+async function manageKakao() {
+  if (kakaoBusy.value) return
+  const disconnect = myChatConnected.value
   kakaoBusy.value = true
   try {
     if (disconnect) await disconnectMyChat()
@@ -204,8 +206,8 @@ onMounted(() => {
     <section class="settings-card">
       <h3 class="card-title">카카오 연결 유지</h3>
       <p class="setting-caption">계정을 한 번 연결하면 이 브라우저에서 로그인 상태를 유지하고 필요할 때 자동 복원합니다. 팝업을 허용해 주세요.</p>
-      <button type="button" class="setting-action-btn" :disabled="kakaoBusy" @click="manageKakao()">카카오 연결 / 복원</button>
-      <button type="button" class="setting-sub-btn" :disabled="kakaoBusy" @click="manageKakao(true)">카카오 연결 해제</button>
+      <p class="setting-caption" role="status">{{ myChatConnected ? '연결됨' : '연결 안 됨' }}</p>
+      <button type="button" :class="myChatConnected ? 'setting-sub-btn' : 'setting-action-btn'" :disabled="kakaoBusy" @click="manageKakao()">{{ kakaoBusy ? '처리 중…' : myChatConnected ? '카카오 연결 해제' : '카카오 계정 연결' }}</button>
       <p role="status">{{ kakaoFeedback }}</p>
     </section>
     <!-- 1. Appearance Modes as a List (NO dropdown!) -->

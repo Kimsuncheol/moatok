@@ -1,13 +1,16 @@
+import { readonly, ref } from 'vue'
 import type { ShareMessage } from '@/types'
 import { getApiBaseUrl } from './api'
 import { initKakaoSdk, loadKakaoSdkScript } from './kakao'
 
+const connected = ref(false)
+export const myChatConnected = readonly(connected)
 let token = ''
 let expiresAt = 0
 let sending = false
 let connecting = false
 let forceLogin = false
-export function clearMyChatConnection() { token = ''; expiresAt = 0; forceLogin = false }
+export function clearMyChatConnection() { token = ''; expiresAt = 0; forceLogin = false; connected.value = false }
 
 export async function connectMyChat(action: 'session' | 'disconnect' = 'session'): Promise<void> {
   if (connecting) throw new Error('이미 카카오 연결이 진행 중입니다.')
@@ -28,6 +31,7 @@ export async function connectMyChat(action: 'session' | 'disconnect' = 'session'
         if (action === 'disconnect' && event.data.disconnected === true) { clearMyChatConnection(); resolve(); return }
         if (typeof event.data.access_token !== 'string' || !(event.data.expires_in > 0)) return reject(new Error(event.data.error || '카카오 연결에 실패했습니다.'))
         forceLogin = false
+        connected.value = true
         token = event.data.access_token
         expiresAt = Date.now() + Number(event.data.expires_in) * 1000 - 30_000
         resolve()
@@ -54,7 +58,7 @@ export async function sendToMyChat(message: ShareMessage): Promise<void> {
   const template = buildMyChatTemplate(message)
   sending = true
   try {
-    if (!token || Date.now() >= expiresAt) { token = ''; expiresAt = 0; await connectMyChat() }
+    if (!token || Date.now() >= expiresAt) { clearMyChatConnection(); await connectMyChat() }
     if (!await loadKakaoSdkScript() || !initKakaoSdk() || !window.Kakao?.API || !window.Kakao.Auth) throw new Error('카카오 JavaScript 키 또는 SDK 설정이 필요합니다.')
     window.Kakao.Auth.setAccessToken(token, false)
     const result = await window.Kakao.API.request({url: '/v2/api/talk/memo/default/send', data: {template_object: template}})
@@ -65,4 +69,4 @@ export async function sendToMyChat(message: ShareMessage): Promise<void> {
   } finally { sending = false }
 }
 
-export async function disconnectMyChat() { clearMyChatConnection(); await connectMyChat('disconnect') }
+export async function disconnectMyChat() { await connectMyChat('disconnect') }
