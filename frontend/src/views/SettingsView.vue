@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { englishScraperApi, type EnglishLesson } from '@/services/api'
+import { englishScraperApi, getApiBaseUrl, type EnglishLesson } from '@/services/api'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
@@ -24,7 +24,7 @@ async function fetchEnglishUrl() {
       englishFeedback.value = `수업을 가져오는 중… ${index + 1}/${urls.length}`
       try {
         const result = await englishScraperApi.fetchUrl({ url })
-        const message = result.status === 'held' ? '검토 대기로 저장했습니다.' : result.status === 'duplicate' ? '이미 저장된 수업입니다.' : '공유 대기에 저장했습니다.'
+        const message = result.status === 'held' ? '수업을 가져왔습니다. 일부 내용은 확인이 필요합니다.' : '수업을 가져왔습니다.'
         englishResults.value.push({ url, status: result.status, message, lesson: result.lesson })
       } catch (error) {
         englishResults.value.push({ url, status: 'failed', message: error instanceof Error ? error.message : '가져오기에 실패했습니다.' })
@@ -115,8 +115,9 @@ const appearanceOptions: AppearanceOption[] = [
 async function checkBackendHealth() {
   backendStatus.value = 'checking'
   try {
-    const res = await fetch('/health')
-    if (res.ok) {
+    const res = await fetch(`${getApiBaseUrl()}/health`)
+    const health = res.ok ? await res.json() : null
+    if (res.ok && health?.status === 'ok') {
       backendStatus.value = 'healthy'
     } else {
       backendStatus.value = 'unreachable'
@@ -200,10 +201,11 @@ onMounted(() => {
       <p class="view-desc">화면 모드, 알림 권한, PWA 앱 설치 및 사용자 계정을 관리합니다.</p>
     </section>
 
-    <section v-if="authStore.isAdmin" class="settings-card">
+    <section class="settings-card">
       <h3 class="card-title">오늘의 영어</h3>
+
       <form @submit.prevent="fetchEnglishUrl" class="english-fetch-form">
-        <p class="setting-caption">조선일보 영어 수업 기사 주소를 입력하세요. URL을 최대 20개까지 추가할 수 있습니다.</p>
+        <p class="setting-caption">조선일보 영어 수업 기사 또는 영어 섹션 주소를 입력하세요. URL을 최대 20개까지 추가할 수 있습니다.</p>
         <div v-for="(item, index) in englishUrls" :key="item.id" class="english-url-row">
           <label :for="`english-url-${item.id}`">기사 URL {{ index + 1 }}</label>
           <input :id="`english-url-${item.id}`" v-model="item.url" type="url" :required="index === 0" maxlength="2048" placeholder="https://www.chosun.com/…" :disabled="englishBusy" />
@@ -223,9 +225,9 @@ onMounted(() => {
           </div>
         </article>
       </div>
-      <p class="setting-caption">저장된 영어 수업을 가져와 공유 대기 메시지를 만듭니다. 불완전한 수업은 검토 대기로 보관합니다.</p>
-      <button :disabled="englishBusy" @click="syncEnglish">{{ englishBusy ? '가져오는 중…' : englishOffset ? '다음 수업 가져오기' : '최신 수업 다시 확인' }}</button>
-      <button :disabled="englishBusy" @click="reviewEnglish">검토 대기 확인</button>
+      <p class="setting-caption">입력한 기사 내용을 표시합니다. 영어 섹션 주소를 입력하면 최신 수업을 가져옵니다.</p>
+      <button v-if="authStore.isAdmin" :disabled="englishBusy" @click="syncEnglish">{{ englishBusy ? '가져오는 중…' : englishOffset ? '다음 수업 가져오기' : '최신 수업 다시 확인' }}</button>
+      <button v-if="authStore.isAdmin" :disabled="englishBusy" @click="reviewEnglish">검토 대기 확인</button>
       <p role="status">{{ englishFeedback }}</p>
       <article v-for="lesson in heldEnglish" :key="lesson.url">
         <h4>{{ lesson.fields.expression || '영어 수업' }}</h4>

@@ -202,4 +202,11 @@ describe('API Client & Token Interceptor', () => {
       body: '수정된 브리핑 문구'
     })
   })
+  it('reports a missing backend when Hosting returns the app HTML', async () => {
+    global.fetch = vi.fn().mockResolvedValue(new Response('<!DOCTYPE html><html></html>', {
+      status: 200, headers: { 'Content-Type': 'text/html' }
+    }))
+    await expect(api.getProfile()).rejects.toMatchObject({ code: 'backend_not_configured', status: 503 })
+  })
+
 })

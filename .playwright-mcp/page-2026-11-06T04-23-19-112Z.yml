@@ -1,0 +1,138 @@
+- generic [ref=f1e3]:
+  - banner [ref=f1e4]:
+    - generic [ref=f1e5]:
+      - generic [ref=f1e6]:
+        - generic [ref=f1e7]: MOATOK
+        - generic [ref=f1e8]:
+          - heading "모아톡" [level=1] [ref=f1e9]
+          - generic [ref=f1e10]: 카카오톡 공유 비서
+      - button "새로고침" [ref=f1e12] [cursor=pointer]
+  - main [ref=f1e17]:
+    - generic [ref=f1e18]:
+      - generic [ref=f1e19]:
+        - heading "환경 설정" [level=2] [ref=f1e20]
+        - paragraph [ref=f1e21]: 화면 모드, 알림 권한, PWA 앱 설치 및 사용자 계정을 관리합니다.
+      - generic [ref=f1e22]:
+        - heading "오늘의 영어" [level=3] [ref=f1e23]
+        - generic [ref=f1e24]:
+          - paragraph [ref=f1e25]: 조선일보 영어 수업 기사 또는 영어 섹션 주소를 입력하세요. URL을 최대 20개까지 추가할 수 있습니다.
+          - generic [ref=f1e26]:
+            - generic [ref=f1e27]: 기사 URL 1
+            - textbox "기사 URL 1" [ref=f1e28]:
+              - /placeholder: https://www.chosun.com/…
+          - button "+ URL 추가" [ref=f1e29] [cursor=pointer]
+          - button "Fetch · 가져오기" [disabled] [ref=f1e30] [cursor=pointer]
+        - paragraph [ref=f1e31]: 입력한 기사 내용을 표시합니다. 영어 섹션 주소를 입력하면 최신 수업을 가져옵니다.
+        - status
+      - region [ref=f1e32]:
+        - generic [ref=f1e33]:
+          - heading "화면 테마 모드 (Appearance)" [level=3] [ref=f1e34]
+          - generic [ref=f1e35]: 모노크롬 테마
+        - paragraph [ref=f1e36]: 시스템 설정에 맞추거나 라이트/다크 모드를 목록에서 선택하여 전환합니다.
+        - radiogroup "화면 테마 모드 목록" [ref=f1e37]:
+          - radio "시스템 설정 (System) 적용 중 기기 운영체제의 다크/라이트 모드 설정에 자동으로 동기화됩니다." [checked] [ref=f1e38] [cursor=pointer]:
+            - generic [ref=f1e39]:
+              - generic [ref=f1e40]:
+                - generic [aria-hidden] [ref=f1e41]: ⚙️
+                - strong [ref=f1e42]: 시스템 설정 (System)
+                - generic [ref=f1e43]: 적용 중
+              - paragraph [ref=f1e44]: 기기 운영체제의 다크/라이트 모드 설정에 자동으로 동기화됩니다.
+          - radio [ref=f1e47] [cursor=pointer]:
+            - generic [ref=f1e48]:
+              - generic [ref=f1e49]:
+                - generic [aria-hidden] [ref=f1e50]: ☀️
+                - strong [ref=f1e51]: 라이트 모드 (Light)
+              - paragraph [ref=f1e52]: 밝고 선명한 단색 고대비 모노크롬 테마입니다.
+          - radio [ref=f1e54] [cursor=pointer]:
+            - generic [ref=f1e55]:
+              - generic [ref=f1e56]:
+                - generic [aria-hidden] [ref=f1e57]: 🌙
+                - strong [ref=f1e58]: 다크 모드 (Dark)
+              - paragraph [ref=f1e59]: 눈의 피로를 줄이고 배터리를 절약하는 트루 블랙 OLED 최적화 테마입니다.
+      - region [ref=f1e61]:
+        - generic [ref=f1e62]:
+          - heading "푸시 알림 (Push Notifications)" [level=3] [ref=f1e63]
+          - generic [ref=f1e64]: 미설정 (Default)
+        - paragraph [ref=f1e65]: 백엔드 스케줄러가 새 브리핑을 수집했을 때 모바일 기기로 푸시 알림을 수신합니다.
+        - generic [ref=f1e66]:
+          - generic [ref=f1e67]:
+            - generic [ref=f1e68]: "브라우저 알림 권한 상태:"
+            - generic [ref=f1e69]: default (권한 요청 필요)
+          - generic [ref=f1e70]:
+            - generic [ref=f1e71]: "Web Push API 지원 여부:"
+            - generic [ref=f1e72]: 지원됨
+          - generic [ref=f1e73]:
+            - generic [ref=f1e74]: "등록된 기기 ID:"
+            - generic [ref=f1e75]: pwa_f8n55zb8x6_mw4gxuqe
+        - button "푸시 알림 권한 허용하기" [ref=f1e77] [cursor=pointer]
+      - region [ref=f1e78]:
+        - generic [ref=f1e79]:
+          - heading "PWA 앱 설치 안내 (Platform Guide)" [level=3] [ref=f1e80]
+          - generic [ref=f1e81]: PWA 가이드
+        - paragraph [ref=f1e82]: 모아톡을 홈 화면에 앱 형태로 설치하여 독립형 전체화면 실행과 원활한 푸시 알림을 경험하세요.
+        - navigation "기기별 설치 안내 선택" [ref=f1e83]:
+          - button "🤖 Android" [ref=f1e84] [cursor=pointer]
+          - button "🍎 iOS (Safari)" [ref=f1e86] [cursor=pointer]
+          - button "💻 Desktop (PC) 현재 기기" [ref=f1e88] [cursor=pointer]:
+            - generic [ref=f1e89]: 💻 Desktop (PC)
+            - generic [ref=f1e90]: 현재 기기
+        - generic [ref=f1e92]:
+          - strong [ref=f1e94]: Desktop (Chrome / Edge / Safari) 설치 방법
+          - list [ref=f1e95]:
+            - listitem [ref=f1e96]:
+              - text: Chrome 또는 Edge 브라우저 주소창 우측의
+              - strong [ref=f1e97]: 설치 아이콘(⊕)
+              - text: 을 클릭합니다.
+            - listitem [ref=f1e98]:
+              - text: 또는 브라우저 메뉴(⋮) >
+              - strong [ref=f1e99]: "'Moatok 설치'"
+              - text: 를 선택합니다.
+            - listitem [ref=f1e100]: 설치 후 데스크톱 독립 창 및 작업 표시줄에 고정하여 편리하게 사용합니다.
+      - region [ref=f1e101]:
+        - generic [ref=f1e102]:
+          - heading "사용자 계정 (Firebase Auth)" [level=3] [ref=f1e103]
+          - generic [ref=f1e104]: 확인 중
+        - generic [ref=f1e105]:
+          - paragraph [ref=f1e106]: 로그인하여 브리핑을 검토하고 보호된 백엔드 API에 접근합니다.
+          - generic [ref=f1e107]:
+            - button "이메일 로그인" [ref=f1e108] [cursor=pointer]
+            - button "게스트 (익명)" [ref=f1e109] [cursor=pointer]
+            - button "Google" [ref=f1e110] [cursor=pointer]
+          - generic [ref=f1e111]:
+            - generic [ref=f1e112]:
+              - generic [ref=f1e113]: 이메일
+              - textbox "이메일" [disabled] [ref=f1e114]:
+                - /placeholder: user@example.com
+            - generic [ref=f1e115]:
+              - generic [ref=f1e116]: 비밀번호
+              - textbox "비밀번호" [disabled] [ref=f1e117]:
+                - /placeholder: 6자 이상 비밀번호
+            - generic [ref=f1e118]:
+              - button "로그인" [disabled] [ref=f1e119]
+              - button "새 계정 회원가입" [disabled] [ref=f1e120] [cursor=pointer]
+      - region [ref=f1e121]:
+        - generic [ref=f1e122]:
+          - heading "카카오톡 공유 정책 및 시스템 상태" [level=3] [ref=f1e123]
+          - generic [ref=f1e124]: 필독
+        - generic [ref=f1e125]:
+          - paragraph [ref=f1e126]:
+            - strong [ref=f1e127]: Moatok은 카카오톡 채팅방에 자동으로 게시하지 않습니다.
+          - list [ref=f1e128]:
+            - listitem [ref=f1e129]:
+              - strong [ref=f1e130]: "사용자 주도 전송:"
+              - text: 카카오 플랫폼 운영 정책 및 계정 안전을 위해, 사용자가 직접 내용을 검토한 후 대상 오픈채팅방이나 친구를 선택하여 공유하는 방식을 준수합니다.
+            - listitem [ref=f1e131]:
+              - strong [ref=f1e132]: "안전한 백엔드 역할:"
+              - text: Python Flask 백엔드는 RSS 수집, 사실 기반 요약 포맷팅, Firestore 중복 방지 저장 및 PWA 푸시 알림까지만 자동으로 수행합니다.
+            - listitem [ref=f1e133]:
+              - strong [ref=f1e134]: "백엔드 연결 상태:"
+              - text: ✓ 정상 연결됨 (/health OK)
+  - navigation "하단 내비게이션" [ref=f1e135]:
+    - link "2 Pending" [ref=f1e136] [cursor=pointer]:
+      - /url: /
+      - generic [ref=f1e137]: "2"
+      - generic [ref=f1e142]: Pending
+    - link "History" [ref=f1e143] [cursor=pointer]:
+      - /url: /history
+    - link "Settings" [ref=f1e150] [cursor=pointer]:
+      - /url: /settings

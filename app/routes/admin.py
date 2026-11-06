@@ -353,8 +353,8 @@ def english_scrapper_review_lessons():
     return jsonify(lessons=[doc.to_dict() for doc in docs])
 
 
+@share_messages_bp.post('/english-lessons/fetch')
 @admin_bp.post('/integrations/english-scrapper/fetch')
-@require_admin
 def english_scrapper_fetch():
     from app.extensions import get_firestore_client
     from app.services.english_scraper import EnglishScraperClient, import_saved_lesson, validate_english_article_url
@@ -370,7 +370,7 @@ def english_scrapper_fetch():
         return jsonify(error='validation_error', message=str(exc)), 400
     try:
         saved = EnglishScraperClient().scrape_article(url)
-        result = import_saved_lesson(saved, db=get_firestore_client(),
+        result = import_saved_lesson(saved, db=get_firestore_client(), notify=False,
             title=payload.get('title', '').strip(), note=payload.get('note', '').strip())
         return jsonify(result)
     except Exception:

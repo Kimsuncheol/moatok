@@ -1,3 +1,4 @@
+import { fetchEnglishLesson } from './englishLessons'
 import type { ShareMessage, UserProfile } from '@/types'
 
 export class ApiError extends Error {
@@ -131,7 +132,15 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     throw apiError
   }
 
-  return response.json() as Promise<T>
+  const contentType = response.headers?.get('content-type') || ''
+  if (contentType.includes('text/html')) {
+    throw new ApiError(503, '가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.', 'backend_not_configured')
+  }
+  try {
+    return await response.json() as T
+  } catch {
+    throw new ApiError(502, '서버에서 올바른 데이터를 받지 못했습니다. 잠시 후 다시 시도해 주세요.', 'invalid_api_response')
+  }
 }
 
 export const api = {
@@ -213,7 +222,7 @@ export interface EnglishLesson {
   url: string
 }
 export const englishScraperApi = {
-  fetchUrl: (payload: { url: string; title?: string; note?: string }) => request<{ status: string; lesson: EnglishLesson; message_id?: string }>('/api/v1/admin/integrations/english-scrapper/fetch', { method: 'POST', body: JSON.stringify(payload) }),
+  fetchUrl: fetchEnglishLesson,
   review: () => request<{ lessons: EnglishLesson[] }>('/api/v1/admin/integrations/english-scrapper/lessons'),
   status: () => request<{ enabled: boolean; url: string; last_sync: Record<string, unknown> | null }>('/api/v1/admin/integrations/english-scrapper'),
   sync: (offset = 0) => request<{ created: number; held: number; failed: number; next_offset: number | null }>('/api/v1/admin/integrations/english-scrapper/sync', { method: 'POST', body: JSON.stringify({ offset }) }),

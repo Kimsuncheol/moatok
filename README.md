@@ -710,10 +710,15 @@ The existing FCM and user-initiated Kakao sharing flow is reused. No upstream
 credentials are needed for the deployed read API. Deployment and enabling the
 scheduled integration are separate from these source changes.
 
-Admins can also enter a Chosun English article URL in Settings → 오늘의 영어 and
-press **Fetch · 가져오기**. Use **+ URL 추가** to add up to 20 article URLs. Fetch processes unique URLs
-sequentially, displays a result for each, and continues if an individual URL fails. This calls the scraper's extraction endpoint, retrieves
-the saved result using its returned Location, and uses the same import/deduplication
-path as scheduled syncing. Extracted fields are shown immediately; incomplete
-lessons stay held. Re-fetching preserves existing share text, including prior edits.
-This flow requires the new backend fetch route as well as the updated frontend.
+Anyone can enter a Chosun English article or section URL in Settings → 오늘의 영어.
+Use **+ URL 추가** to add up to 20 URLs. Fetch processes unique URLs sequentially,
+shows each result, and continues if an individual URL fails.
+
+Public Fetch calls `https://english-scrapper.onrender.com/api/v1/lessons/fetch`
+directly, without Firebase authentication or a Moatok backend. The scraper allows
+Moatok's Hosting origins through CORS. Section URLs resolve to the newest listed
+lesson; article URLs extract that article. Extraction does not depend on Firestore.
+These results are displayed in the form, not saved to Moatok's sharing queue.
+The separate admin/scheduled import pipeline above still requires a Moatok backend
+and working persistent storage. Set `VITE_ENGLISH_SCRAPER_URL` at build time to
+change the upstream service, and allow the corresponding frontend origin there.

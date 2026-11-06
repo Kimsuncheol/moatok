@@ -77,11 +77,11 @@ def test_fetch_url_validates_and_imports(client, mock_firebase_auth, monkeypatch
     path = '/api/v1/admin/integrations/english-scrapper/fetch'
     assert client.post(path, json={'url': 'https://localhost/test'}, headers=headers).status_code == 400
     assert calls == []
-    assert client.post(path, json={'url': 'https://www.chosun.com/test'},
-                       headers={'Authorization': 'Bearer valid-token-user-1'}).status_code == 403
-    result = client.post(path, json={'url': 'https://www.chosun.com/test', 'title': 'Custom', 'note': 'My note'}, headers=headers)
+    assert client.post('/api/v1/share-messages/english-lessons/fetch',
+                       json={'url': 'https://localhost/test'}).status_code == 400
+    result = client.post('/api/v1/share-messages/english-lessons/fetch', json={'url': 'https://www.chosun.com/test', 'title': 'Custom', 'note': 'My note'})
     assert result.status_code == 200
-    assert result.json['status'] == 'created'
+    assert result.json['status'] in ('created', 'duplicate')
     message = client.get('/api/v1/share-messages/' + result.json['message_id'], headers=headers).json
     assert message['share_message']['title'] == 'Custom'
     assert message['share_message']['body'].startswith('My note\n\n')

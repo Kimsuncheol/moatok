@@ -155,7 +155,7 @@ describe('SettingsView Component', () => {
     const auth = useAuthStore()
     auth.profile = { uid: 'admin', email: null, role: 'admin', is_admin: true }
     const fetchLesson = vi.spyOn(englishScraperApi, 'fetchUrl').mockRejectedValueOnce(new Error('First URL failed')).mockResolvedValue({
-      status: 'created', message_id: 'msg-1',
+      status: 'fetched',
       lesson: { url: 'https://www.chosun.com/example', fields: { expression: 'Hello there' }, missing_sections: [] }
     })
     const wrapper = mount(SettingsView)
@@ -171,7 +171,15 @@ describe('SettingsView Component', () => {
     expect(fetchLesson).toHaveBeenNthCalledWith(2, { url: 'https://www.chosun.com/second' })
     expect(wrapper.text()).toContain('First URL failed')
     expect(wrapper.text()).toContain('Hello there')
-    expect(wrapper.text()).toContain('공유 대기에 저장했습니다')
+    expect(wrapper.text()).toContain('수업을 가져왔습니다')
+  })
+
+  it('does not report HTML from Hosting as a healthy backend', async () => {
+    global.fetch = vi.fn().mockResolvedValue(new Response('<html>App shell</html>', {status: 200}))
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('정상 연결됨 (/health OK)')
+    expect(wrapper.text()).toContain('연결 실패')
   })
 
 })
