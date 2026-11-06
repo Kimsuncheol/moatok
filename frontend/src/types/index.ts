@@ -53,6 +53,35 @@ export interface ShareMessage {
   updated_at: string
   items?: ShareableItem[]
   kakao_share_payload?: KakaoSharePayload
+  fetch_status?: 'idle' | 'fetching' | 'success' | 'failed'
+  endpoint_id?: string
+  fetch_attempts?: number
+  failed_reason?: string
+}
+
+export interface ApiSchedule {
+  enabled: boolean
+  scheduledTime: string
+  retryIntervalHours: number
+  maxRetries: number
+  currentAttempts: number
+  lastRunAt: string | null
+  nextRunAt: string | null
+  lastStatus: 'idle' | 'fetching' | 'success' | 'failed'
+  lastError?: string | null
+}
+
+export interface ApiEndpoint {
+  id: string
+  name: string
+  url: string
+  method: 'GET' | 'POST'
+  headers?: Record<string, string>
+  payload?: string
+  sourceType?: 'english_scrapper' | 'generic_api'
+  schedule: ApiSchedule
+  createdAt: string
+  updatedAt: string
 }
 
 export interface UserProfile {

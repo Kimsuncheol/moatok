@@ -23,6 +23,11 @@ const router = createRouter({
       component: SettingsView
     },
     {
+      path: '/register-api',
+      name: 'register-api',
+      component: () => import('@/views/RegisterEndpointView.vue')
+    },
+    {
       path: '/messages/:id',
       name: 'message-detail',
       component: MessageDetailView,

@@ -201,18 +201,25 @@ onMounted(() => {
       <p class="view-desc">화면 모드, 알림 권한, PWA 앱 설치 및 사용자 계정을 관리합니다.</p>
     </section>
 
-    <section class="settings-card">
-      <h3 class="card-title">오늘의 영어</h3>
+    <section class="settings-card" aria-labelledby="english-heading">
+      <div class="card-title-row">
+        <h3 id="english-heading" class="card-title">오늘의 영어</h3>
+        <span class="info-badge">외부 연동</span>
+      </div>
 
       <form @submit.prevent="fetchEnglishUrl" class="english-fetch-form">
         <p class="setting-caption">조선일보 영어 수업 기사 또는 영어 섹션 주소를 입력하세요. URL을 최대 20개까지 추가할 수 있습니다.</p>
         <div v-for="(item, index) in englishUrls" :key="item.id" class="english-url-row">
           <label :for="`english-url-${item.id}`">기사 URL {{ index + 1 }}</label>
-          <input :id="`english-url-${item.id}`" v-model="item.url" type="url" :required="index === 0" maxlength="2048" placeholder="https://www.chosun.com/…" :disabled="englishBusy" />
-          <button v-if="englishUrls.length > 1" type="button" :disabled="englishBusy" :aria-label="`URL ${index + 1} 삭제`" @click="englishUrls.splice(index, 1)">삭제</button>
+          <div class="english-url-input-wrap">
+            <input :id="`english-url-${item.id}`" v-model="item.url" type="url" :required="index === 0" maxlength="2048" placeholder="https://www.chosun.com/…" :disabled="englishBusy" />
+            <button v-if="englishUrls.length > 1" type="button" class="remove-url-btn" :disabled="englishBusy" :aria-label="`URL ${index + 1} 삭제`" @click="englishUrls.splice(index, 1)">삭제</button>
+          </div>
         </div>
-        <button class="add-english-url" type="button" :disabled="englishBusy || englishUrls.length >= 20" @click="addEnglishUrl">+ URL 추가</button>
-        <button type="submit" :disabled="englishBusy || !canFetchEnglish">{{ englishBusy ? '가져오는 중…' : 'Fetch · 가져오기' }}</button>
+        <div class="english-btn-group">
+          <button class="add-english-url" type="button" :disabled="englishBusy || englishUrls.length >= 20" @click="addEnglishUrl">+ URL 추가</button>
+          <button class="fetch-english-btn" type="submit" :disabled="englishBusy || !canFetchEnglish">{{ englishBusy ? '가져오는 중…' : 'Fetch · 가져오기' }}</button>
+        </div>
       </form>
       <div aria-live="polite">
         <article v-for="result in englishResults" :key="result.url" class="english-fetch-result">
@@ -226,10 +233,12 @@ onMounted(() => {
         </article>
       </div>
       <p class="setting-caption">입력한 기사 내용을 표시합니다. 영어 섹션 주소를 입력하면 최신 수업을 가져옵니다.</p>
-      <button v-if="authStore.isAdmin" :disabled="englishBusy" @click="syncEnglish">{{ englishBusy ? '가져오는 중…' : englishOffset ? '다음 수업 가져오기' : '최신 수업 다시 확인' }}</button>
-      <button v-if="authStore.isAdmin" :disabled="englishBusy" @click="reviewEnglish">검토 대기 확인</button>
-      <p role="status">{{ englishFeedback }}</p>
-      <article v-for="lesson in heldEnglish" :key="lesson.url">
+      <div v-if="authStore.isAdmin" class="english-admin-actions">
+        <button class="setting-sub-btn" :disabled="englishBusy" @click="syncEnglish">{{ englishBusy ? '가져오는 중…' : englishOffset ? '다음 수업 가져오기' : '최신 수업 다시 확인' }}</button>
+        <button class="setting-sub-btn" :disabled="englishBusy" @click="reviewEnglish">검토 대기 확인</button>
+      </div>
+      <p role="status" class="english-feedback-text">{{ englishFeedback }}</p>
+      <article v-for="lesson in heldEnglish" :key="lesson.url" class="held-english-card">
         <h4>{{ lesson.fields.expression || '영어 수업' }}</h4>
         <p>확인할 항목: {{ lesson.missing_sections.join(', ') }}</p>
         <p style="white-space: pre-wrap">{{ lesson.fields.english_dialogue }}</p>
@@ -925,7 +934,8 @@ onMounted(() => {
   gap: 8px;
 }
 
-.setting-action-btn {
+.setting-action-btn,
+.fetch-english-btn {
   width: 100%;
   padding: 12px 16px;
   border-radius: 8px;
@@ -935,14 +945,31 @@ onMounted(() => {
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: opacity 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
 }
 
-.setting-action-btn:disabled {
-  opacity: 0.6;
+.setting-action-btn:hover:not(:disabled),
+.fetch-english-btn:hover:not(:disabled) {
+  background-color: var(--accent-action-hover);
+}
+
+.setting-action-btn:active:not(:disabled),
+.fetch-english-btn:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.setting-action-btn:disabled,
+.fetch-english-btn:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-.setting-sub-btn {
+.setting-sub-btn,
+.add-english-url {
   width: 100%;
   padding: 10px 14px;
   border-radius: 8px;
@@ -952,6 +979,29 @@ onMounted(() => {
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.setting-sub-btn:hover:not(:disabled),
+.add-english-url:hover:not(:disabled) {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.setting-sub-btn:active:not(:disabled),
+.add-english-url:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.setting-sub-btn:disabled,
+.add-english-url:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .denied-guidance-box,
@@ -1261,11 +1311,132 @@ onMounted(() => {
   background-color: var(--badge-bg);
   color: var(--badge-text);
 }
-</style>
 
-<style scoped>
-.english-fetch-form { display: grid; gap: 0.65rem; margin: 1rem 0; }
-.english-url-row { display: grid; gap: 0.5rem; }
-.english-fetch-result { overflow-wrap: anywhere; }
-.english-fetch-form input, .english-fetch-form textarea { width: 100%; box-sizing: border-box; padding: 0.8rem; border: 1px solid var(--border-color, #777); border-radius: 8px; color: inherit; background: transparent; font: inherit; }
+/* English Scraper Section */
+.english-fetch-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.english-url-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.english-url-row label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.english-url-input-wrap {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.english-fetch-form input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  color: var(--text-primary);
+  background-color: var(--bg-surface-elevated);
+  font: inherit;
+  font-size: 13px;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.english-fetch-form input:focus {
+  outline: none;
+  border-color: var(--accent-action);
+}
+
+.english-fetch-form input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.remove-url-btn {
+  flex-shrink: 0;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-muted);
+  border: 1px solid var(--border-default);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.remove-url-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+  background-color: var(--bg-surface-hover);
+}
+
+.remove-url-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.english-btn-group {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.english-btn-group .add-english-url {
+  flex: 1;
+}
+
+.english-btn-group .fetch-english-btn {
+  flex: 1.2;
+}
+
+@media (max-width: 380px) {
+  .english-btn-group {
+    flex-direction: column;
+  }
+}
+
+.english-admin-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.english-fetch-result,
+.held-english-card {
+  padding: 12px;
+  border-radius: 8px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+}
+
+.english-fetch-result h4,
+.held-english-card h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.english-feedback-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 4px 0 0;
+}
 </style>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { ShareMessage } from '@/types'
 
 const props = defineProps<{
@@ -9,7 +9,10 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'select', message: ShareMessage): void
   (e: 'review', message: ShareMessage): void
+  (e: 'fetch', message: ShareMessage): void
 }>()
+
+const isFetching = ref(false)
 
 function extractDomain(url?: string): string {
   if (!url) return ''
@@ -19,6 +22,10 @@ function extractDomain(url?: string): string {
     return ''
   }
 }
+
+const isFailed = computed(
+  () => props.message.status === 'failed' || props.message.fetch_status === 'failed'
+)
 
 const isPending = computed(() => props.message.status === 'pending' || !props.message.kakao_shared)
 
@@ -32,6 +39,7 @@ const sourceName = computed(() => {
 })
 
 const statusLabel = computed(() => {
+  if (isFailed.value) return '수집 실패'
   if (props.message.kakao_shared) return '카카오톡 공유됨'
   switch (props.message.status) {
     case 'shared':
@@ -40,7 +48,7 @@ const statusLabel = computed(() => {
     case 'notified':
       return '알림 발송됨'
     case 'failed':
-      return '실패'
+      return '수집 실패'
     case 'archived':
       return '보관됨'
     case 'pending':
@@ -91,12 +99,21 @@ function handleReviewClick(e: Event) {
   e.stopPropagation()
   emit('review', props.message)
 }
+
+function handleFetchClick(e: Event) {
+  e.stopPropagation()
+  isFetching.value = true
+  emit('fetch', props.message)
+  setTimeout(() => {
+    isFetching.value = false
+  }, 1000)
+}
 </script>
 
 <template>
   <article
     class="message-card"
-    :class="{ 'is-pending': isPending }"
+    :class="{ 'is-pending': isPending && !isFailed, 'is-failed': isFailed }"
     tabindex="0"
     role="article"
     :aria-label="`${message.title} (${sourceName}, ${statusLabel})`"
@@ -108,7 +125,11 @@ function handleReviewClick(e: Event) {
       <div class="status-container">
         <span
           class="status-badge"
-          :class="isPending ? 'badge-pending' : 'badge-shared'"
+          :class="{
+            'badge-failed': isFailed,
+            'badge-pending': isPending && !isFailed,
+            'badge-shared': !isPending && !isFailed
+          }"
           :aria-label="`상태: ${statusLabel}`"
         >
           {{ statusLabel }}
@@ -170,7 +191,34 @@ function handleReviewClick(e: Event) {
         </svg>
       </button>
 
+      <!-- If data fetch failed: provide users with a Fetch button, replacing the retry button -->
       <button
+        v-if="isFailed"
+        type="button"
+        class="action-btn fetch-btn retry-btn btn-primary"
+        :class="{ 'is-fetching': isFetching }"
+        :disabled="isFetching"
+        :aria-label="`${message.title} 데이터 가져오기 (Fetch)`"
+        @click.stop="handleFetchClick"
+      >
+        <svg
+          class="btn-icon"
+          :class="{ spinning: isFetching }"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          aria-hidden="true"
+        >
+          <polyline points="23 4 23 10 17 10" />
+          <polyline points="1 20 1 14 7 14" />
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+        </svg>
+        <span>{{ isFetching ? '가져오는 중...' : 'Fetch' }}</span>
+      </button>
+
+      <button
+        v-else
         type="button"
         class="action-btn quick-share-btn"
         :class="isPending ? 'btn-primary' : 'btn-secondary'"
@@ -219,6 +267,10 @@ function handleReviewClick(e: Event) {
   border-left: 4px solid var(--accent-action);
 }
 
+.message-card.is-failed {
+  border-left: 4px solid var(--border-strong, #737373);
+}
+
 .card-header {
   display: flex;
   align-items: center;
@@ -244,6 +296,12 @@ function handleReviewClick(e: Event) {
 .badge-pending {
   background-color: var(--badge-pending-bg);
   color: var(--badge-pending-text);
+}
+
+.badge-failed {
+  background-color: var(--badge-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
 }
 
 .badge-shared {
@@ -386,5 +444,18 @@ function handleReviewClick(e: Event) {
 .btn-icon {
   width: 14px;
   height: 14px;
+}
+
+.btn-icon.spinning {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

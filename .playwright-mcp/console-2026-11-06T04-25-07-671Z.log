@@ -1,3 +1,208 @@
 [      23ms] [ERROR] Failed to find a valid digest in the 'integrity' attribute for resource 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js' with computed SHA-384 integrity 'TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4'. The resource has been blocked. @ https://moatalk-e6fe1.web.app/settings:0
 [    8540ms] [ERROR] Failed to load resource: the server responded with a status of 503 () @ https://english-scrapper.onrender.com/api/v1/series/check:0
 [   22287ms] [ERROR] Failed to find a valid digest in the 'integrity' attribute for resource 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js' with computed SHA-384 integrity 'TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4'. The resource has been blocked. @ https://moatalk-e6fe1.web.app/settings:0
+[ 1118180ms] [ERROR] Failed to find a valid digest in the 'integrity' attribute for resource 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js' with computed SHA-384 integrity 'TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4'. The resource has been blocked. @ https://moatalk-e6fe1.web.app/settings:0
+[ 1125640ms] [ERROR] Failed to find a valid digest in the 'integrity' attribute for resource 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js' with computed SHA-384 integrity 'TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4'. The resource has been blocked. @ https://moatalk-e6fe1.web.app/settings:0
+[ 1413899ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1415137ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1416093ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1416282ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1453514ms] [WARNING] API fetch history failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.c (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:1005) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1454686ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1455650ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1456439ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1456690ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1456872ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1457050ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1457734ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1457904ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1485092ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1672555ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1673121ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1673289ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1673464ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1674619ms] [WARNING] API fetch history failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.c (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:1005) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1739106ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1740652ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1741279ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1742125ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 1742895ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 2131915ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 2534046ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 2535033ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 2556559ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 2557725ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 2558541ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 2559053ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 2559229ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 2563792ms] [ERROR] The script has an unsupported MIME type ('text/html'). @ :0
+[ 2563794ms] [WARNING] FCM registration encountered an error: FirebaseError: Messaging: We are unable to register the default service worker. Failed to register a ServiceWorker for scope ('https://moatalk-e6fe1.web.app/firebase-cloud-messaging-push-scope') with script ('https://moatalk-e6fe1.web.app/firebase-messaging-sw.js'): The script has an unsupported MIME type ('text/html'). (messaging/failed-service-worker-registration).
+    at ow (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2005:158)
+    at async aw (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2020:53)
+    at async xd (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2050:283)
+    at async Proxy.a (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:16371)
+    at async r (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:16986) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2139
+[ 2565728ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:2140:18797) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 2726343ms] [ERROR] Failed to find a valid digest in the 'integrity' attribute for resource 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js' with computed SHA-384 integrity 'TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4'. The resource has been blocked. @ https://moatalk-e6fe1.web.app/:0
+[ 2726361ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:30:22037)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:42:715) @ https://moatalk-e6fe1.web.app/assets/index-CDZ-LG9i.js:41
+[ 2733099ms] [ERROR] Failed to find a valid digest in the 'integrity' attribute for resource 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js' with computed SHA-384 integrity 'TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4'. The resource has been blocked. @ https://moatalk-e6fe1.web.app/settings:0
+[ 2740725ms] [ERROR] Cross-Origin-Opener-Policy policy would block the window.closed call. @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:1361
+[ 2740726ms] [ERROR] Cross-Origin-Opener-Policy policy would block the window.closed call. @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:1361
+[ 2744680ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:30:22085)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:42:715) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:41
+[ 2761741ms] [WARNING] Backend share initiation report notice: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:30:22085)
+    at async Ci (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:2140:11037)
+    at async Ld (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:2140:12197)
+    at async u (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:2140:13814) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:2139
+[ 2762642ms] [WARNING] Backend mark-shared call failed (local state updated): ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:30:22085)
+    at async Proxy.g (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:42:2931)
+    at async u (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:2140:13859) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:41
+[ 2774908ms] [WARNING] API fetch history failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:30:22085)
+    at async Proxy.c (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:42:1005) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:41
+[ 2780352ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:30:22085)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:42:715) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:41
+[ 2809655ms] [ERROR] Failed to find a valid digest in the 'integrity' attribute for resource 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js' with computed SHA-384 integrity 'TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4'. The resource has been blocked. @ https://moatalk-e6fe1.web.app/settings:0
+[ 2811309ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:30:22085)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:42:715) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:41
+[ 2814945ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:30:22085)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:2140:18877) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:41
+[ 2816574ms] [WARNING] API fetch failed, retaining existing messages: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:30:22085)
+    at async Proxy.u (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:42:1555) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:41
+[ 2818448ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:30:22085)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:2140:18877) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:41
+[ 2819070ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:30:22085)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:2140:18877) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:41
+[ 2819329ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:30:22085)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:2140:18877) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:41
+[ 2819825ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:30:22085)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:2140:18877) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:41
+[ 2856063ms] [ERROR] Failed to find a valid digest in the 'integrity' attribute for resource 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js' with computed SHA-384 integrity 'TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4'. The resource has been blocked. @ https://moatalk-e6fe1.web.app/settings:0
+[ 2857279ms] [ERROR] Failed to find a valid digest in the 'integrity' attribute for resource 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js' with computed SHA-384 integrity 'TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4'. The resource has been blocked. @ https://moatalk-e6fe1.web.app/settings:0
+[ 2858213ms] [ERROR] Failed to find a valid digest in the 'integrity' attribute for resource 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js' with computed SHA-384 integrity 'TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4'. The resource has been blocked. @ https://moatalk-e6fe1.web.app/settings:0
+[ 2861189ms] [ERROR] Failed to find a valid digest in the 'integrity' attribute for resource 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js' with computed SHA-384 integrity 'TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4'. The resource has been blocked. @ https://moatalk-e6fe1.web.app/settings:0
+[ 2939048ms] [WARNING] API fetch history failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:30:22085)
+    at async Proxy.c (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:42:1005) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:41
+[ 2939967ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:30:22085)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:42:715) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:41
+[ 2953590ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:30:22085)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:2140:18877) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:41
+[ 2955686ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:30:22085)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:42:715)
+    at async p (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:2140:18877) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:41
+[ 3313160ms] [ERROR] Failed to find a valid digest in the 'integrity' attribute for resource 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js' with computed SHA-384 integrity 'TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4'. The resource has been blocked. @ https://moatalk-e6fe1.web.app/settings:0

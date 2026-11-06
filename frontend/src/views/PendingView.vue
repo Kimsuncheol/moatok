@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessagesStore } from '@/stores/messages'
+import { useEndpointsStore } from '@/stores/endpoints'
 import type { ShareMessage } from '@/types'
 import MessageCard from '@/components/MessageCard.vue'
 import ShareModal from '@/components/ShareModal.vue'
@@ -9,9 +10,11 @@ import NotificationBanner from '@/components/NotificationBanner.vue'
 
 const router = useRouter()
 const messagesStore = useMessagesStore()
+const endpointsStore = useEndpointsStore()
 
 const selectedMessage = ref<ShareMessage | null>(null)
 const isModalOpen = ref(false)
+const fetchFeedback = ref<string | null>(null)
 
 // Pull-to-refresh mobile touch state
 const touchStartY = ref(0)
@@ -72,7 +75,32 @@ function openReviewModal(msg: ShareMessage) {
   isModalOpen.value = true
 }
 
+const isPreviewMode = ref(false)
+
+function dismissErrorToPreview() {
+  messagesStore.error = null
+  isPreviewMode.value = true
+}
+
+async function handleFetchCard(msg: ShareMessage) {
+  fetchFeedback.value = null
+  if (msg.endpoint_id) {
+    const res = await endpointsStore.triggerFetch(msg.endpoint_id, true)
+    if (res.success) {
+      fetchFeedback.value = '✓ 데이터를 성공적으로 가져왔습니다.'
+      setTimeout(() => {
+        if (fetchFeedback.value?.startsWith('✓')) fetchFeedback.value = null
+      }, 4000)
+    } else {
+      fetchFeedback.value = `⚠️ 수동 가져오기 실패: ${res.message}`
+    }
+  } else {
+    await refresh()
+  }
+}
+
 onMounted(() => {
+  endpointsStore.loadEndpoints()
   messagesStore.fetchPending()
 })
 </script>
@@ -114,6 +142,12 @@ onMounted(() => {
 
     <NotificationBanner />
 
+    <!-- Fetch feedback banner -->
+    <div v-if="fetchFeedback" class="fetch-feedback-banner" role="status" aria-live="polite">
+      <span>{{ fetchFeedback }}</span>
+      <button type="button" class="feedback-close-btn" aria-label="닫기" @click="fetchFeedback = null">✕</button>
+    </div>
+
     <!-- View Header with Title, Count, and Refresh Action -->
     <header class="view-header">
       <div class="header-main-row">
@@ -127,28 +161,43 @@ onMounted(() => {
           </span>
         </div>
 
-        <button
-          type="button"
-          class="refresh-action-btn"
-          :disabled="messagesStore.loading || messagesStore.refreshing"
-          :aria-label="messagesStore.refreshing ? '새로고침 진행 중' : '브리핑 목록 새로고침'"
-          @click="refresh"
-        >
-          <svg
-            class="refresh-icon"
-            :class="{ spinning: messagesStore.refreshing }"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            aria-hidden="true"
+        <div class="header-action-group">
+          <button
+            type="button"
+            class="register-api-btn"
+            aria-label="API 엔드포인트 등록"
+            @click="router.push('/register-api')"
           >
-            <path d="M23 4v6h-6" />
-            <path d="M1 20v-6h6" />
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-          </svg>
-          <span class="refresh-btn-text">새로고침</span>
-        </button>
+            <svg class="nav-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            <span>API 등록</span>
+          </button>
+
+          <button
+            type="button"
+            class="refresh-action-btn"
+            :disabled="messagesStore.loading || messagesStore.refreshing"
+            :aria-label="messagesStore.refreshing ? '새로고침 진행 중' : '브리핑 목록 새로고침'"
+            @click="refresh"
+          >
+            <svg
+              class="refresh-icon"
+              :class="{ spinning: messagesStore.refreshing }"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+            >
+              <path d="M23 4v6h-6" />
+              <path d="M1 20v-6h6" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+            <span class="refresh-btn-text">새로고침</span>
+          </button>
+        </div>
       </div>
 
       <p class="view-desc">
@@ -190,14 +239,24 @@ onMounted(() => {
         <h2 class="error-title">브리핑을 불러오지 못했습니다</h2>
         <p class="error-desc">{{ messagesStore.error }}</p>
       </div>
-      <button
-        type="button"
-        class="retry-btn"
-        aria-label="브리핑 목록 다시 시도"
-        @click="refresh"
-      >
-        다시 시도
-      </button>
+      <div class="error-actions-group">
+        <button
+          type="button"
+          class="retry-btn fetch-btn"
+          aria-label="브리핑 목록 다시 시도"
+          @click="refresh"
+        >
+          Fetch
+        </button>
+        <button
+          v-if="messagesStore.pendingCount > 0"
+          type="button"
+          class="preview-sample-btn"
+          @click="dismissErrorToPreview"
+        >
+          샘플 브리핑 둘러보기 ({{ messagesStore.pendingCount }}건)
+        </button>
+      </div>
     </div>
 
     <!-- 3. Empty State -->
@@ -228,12 +287,20 @@ onMounted(() => {
       role="feed"
       aria-label="공유 대기 브리핑 목록"
     >
+      <div v-if="isPreviewMode" class="preview-mode-banner" role="status">
+        <div class="preview-banner-text">
+          <span class="preview-badge">미리보기</span>
+          <span>서버 연결 전 로컬 샘플 브리핑을 표시 중입니다.</span>
+        </div>
+        <button type="button" class="preview-dismiss-btn" aria-label="안내 닫기" @click="isPreviewMode = false">✕</button>
+      </div>
       <MessageCard
         v-for="msg in messagesStore.pendingMessages"
         :key="msg.id"
         :message="msg"
         @select="handleCardSelect"
         @review="openReviewModal"
+        @fetch="handleFetchCard"
       />
     </div>
 
@@ -336,6 +403,62 @@ onMounted(() => {
   font-size: 13px;
   color: var(--text-muted);
   line-height: 1.4;
+}
+
+.header-action-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.register-api-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background-color: var(--accent-action);
+  color: var(--accent-action-text);
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  min-height: 36px;
+  transition: all 0.15s ease;
+}
+
+.register-api-btn:hover {
+  background-color: var(--accent-action-hover);
+  opacity: 0.9;
+}
+
+.nav-btn-icon {
+  width: 13px;
+  height: 13px;
+}
+
+.fetch-feedback-banner {
+  margin: 0 16px 4px 16px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.feedback-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 4px;
 }
 
 .refresh-action-btn {
@@ -480,6 +603,15 @@ onMounted(() => {
   margin-top: 4px;
 }
 
+.error-actions-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
 .retry-btn {
   padding: 8px 16px;
   border-radius: 6px;
@@ -490,6 +622,69 @@ onMounted(() => {
   cursor: pointer;
   min-height: 40px;
   border: none;
+  transition: opacity 0.15s ease;
+}
+
+.retry-btn:hover {
+  opacity: 0.85;
+}
+
+.preview-sample-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 40px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.preview-sample-btn:hover {
+  background-color: var(--bg-surface-hover);
+  border-color: var(--border-strong);
+}
+
+.preview-mode-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.preview-banner-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.preview-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background-color: var(--badge-bg);
+  color: var(--badge-text);
+}
+
+.preview-dismiss-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 6px;
+  margin-left: auto;
 }
 
 /* Empty State */

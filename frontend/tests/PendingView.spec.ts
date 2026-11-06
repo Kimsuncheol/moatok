@@ -113,4 +113,39 @@ describe('PendingView Component', () => {
     await wrapper.find('.refresh-action-btn').trigger('click')
     expect(refreshSpy).toHaveBeenCalledWith(true)
   })
+
+  it('navigates to register api view when clicking the API 등록 button (wired to home view)', async () => {
+    const wrapper = mount(PendingView)
+
+    const registerBtn = wrapper.find('.register-api-btn')
+    expect(registerBtn.exists()).toBe(true)
+    expect(registerBtn.text()).toContain('API 등록')
+
+    await registerBtn.trigger('click')
+    expect(mockRouterPush).toHaveBeenCalledWith('/register-api')
+  })
+
+  it('handles fetch event from failed cards in Pending view', async () => {
+    const store = useMessagesStore()
+    const failedMsg: ShareMessage = {
+      id: 'failed_msg_1',
+      title: '실패한 엔드포인트 브리핑',
+      body: '5회 시도 후 실패',
+      endpoint_id: 'ep_123',
+      status: 'failed',
+      fetch_status: 'failed',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+    store.pendingMessages = [failedMsg]
+
+    const wrapper = mount(PendingView)
+    const card = wrapper.findComponent({ name: 'MessageCard' })
+    expect(card.exists()).toBe(true)
+
+    // Trigger fetch from the card
+    await card.vm.$emit('fetch', failedMsg)
+    // Verify component handles it without error
+    expect(wrapper.exists()).toBe(true)
+  })
 })

@@ -92,4 +92,47 @@ describe('MessageCard Component', () => {
     expect(wrapper.emitted('review')).toBeTruthy()
     expect(wrapper.emitted('review')![0]).toEqual([sampleMessage])
   })
+
+  it('renders fetch button replacing retry button when message data fetch has failed', () => {
+    const failedMessage: ShareMessage = {
+      ...sampleMessage,
+      status: 'failed',
+      fetch_status: 'failed',
+      failed_reason: '5회 재시도 초과'
+    }
+
+    const wrapper = mount(MessageCard, {
+      props: {
+        message: failedMessage
+      }
+    })
+
+    // Status badge shows failed
+    expect(wrapper.find('.status-badge').text()).toBe('수집 실패')
+    expect(wrapper.find('.status-badge').classes()).toContain('badge-failed')
+
+    // Fetch button is present instead of normal quick-share
+    const fetchBtn = wrapper.find('.fetch-btn')
+    expect(fetchBtn.exists()).toBe(true)
+    expect(fetchBtn.text()).toContain('Fetch')
+    expect(wrapper.find('.quick-share-btn').exists()).toBe(false)
+  })
+
+  it('emits fetch event when clicking the fetch button on a failed card', async () => {
+    const failedMessage: ShareMessage = {
+      ...sampleMessage,
+      status: 'failed',
+      fetch_status: 'failed'
+    }
+
+    const wrapper = mount(MessageCard, {
+      props: {
+        message: failedMessage
+      }
+    })
+
+    await wrapper.find('.fetch-btn').trigger('click')
+    expect(wrapper.emitted('fetch')).toBeTruthy()
+    expect(wrapper.emitted('fetch')![0]).toEqual([failedMessage])
+  })
 })
