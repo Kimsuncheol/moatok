@@ -1,0 +1,10 @@
+# Only backend build inputs may be uploaded to Cloud Build.
+*
+!Dockerfile
+!requirements.txt
+!gunicorn.conf.py
+!wsgi.py
+!app/
+!app/**
+app/**/__pycache__/
+app/**/*.pyc

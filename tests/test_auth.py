@@ -24,6 +24,7 @@ def test_missing_token_returns_consistent_401_json(client, method, path):
     """All protected endpoints must reject requests missing a Bearer token with a consistent 401 JSON error."""
     response = client.open(path, method=method)
     assert response.status_code == 401
+    assert response.headers["Cache-Control"] == "private, no-store"
 
     payload = response.get_json()
     assert payload["error"] == "unauthorized"

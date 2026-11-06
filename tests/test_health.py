@@ -6,6 +6,7 @@ from __future__ import annotations
 def test_health_endpoint_returns_ok(client):
     response = client.get("/health")
     assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
 
     payload = response.get_json()
     assert payload["status"] == "ok"

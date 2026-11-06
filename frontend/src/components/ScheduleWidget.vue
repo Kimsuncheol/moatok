@@ -1,15 +1,6 @@
 <script setup lang="ts">
-import 'temporal-polyfill/global'
-import { Temporal } from 'temporal-polyfill'
-import { ref, computed, watch, onMounted, shallowRef } from 'vue'
-import { ScheduleXCalendar } from '@schedule-x/vue'
-import {
-  createCalendar,
-  viewDay,
-  viewWeek,
-  viewMonthAgenda
-} from '@schedule-x/calendar'
-import '@schedule-x/theme-default/dist/index.css'
+import { computed } from 'vue'
+import { useThemeStore } from '@/stores/theme'
 
 interface Props {
   scheduledTime?: string
@@ -27,39 +18,119 @@ const emit = defineEmits<{
   (e: 'update:scheduledTime', value: string): void
 }>()
 
-const calendarApp = shallowRef<any>(null)
-const isCalendarReady = ref(false)
-const containerRef = ref<HTMLElement | null>(null)
+const themeStore = useThemeStore()
 
-const quickPresets = [
-  { label: '아침 07:00', time: '07:00' },
-  { label: '오전 09:00', time: '09:00' },
-  { label: '점심 12:30', time: '12:30' },
-  { label: '저녁 18:00', time: '18:00' },
-  { label: '밤 21:00', time: '21:00' }
-]
+// React to appearance mode (light / dark / system)
+const isDarkMode = computed(() => themeStore.resolvedTheme === 'dark')
 
-function parseTime(timeStr: string) {
-  const [h, m] = (timeStr || '09:00').split(':').map((n) => parseInt(n, 10))
-  return {
-    hour: isNaN(h) ? 9 : Math.min(Math.max(h, 0), 23),
-    minute: isNaN(m) ? 0 : Math.min(Math.max(m, 0), 59)
+const currentThemeLabel = computed(() => {
+  if (themeStore.mode === 'system') {
+    return isDarkMode.value ? '다크 모드 (시스템 연동)' : '라이트 모드 (시스템 연동)'
   }
+  return isDarkMode.value ? '다크 모드' : '라이트 모드'
+})
+
+// Parse HH:mm
+function parseTime(timeStr: string) {
+  const parts = (timeStr || '09:00').split(':')
+  let h = parseInt(parts[0], 10)
+  let m = parseInt(parts[1], 10)
+  if (isNaN(h)) h = 9
+  if (isNaN(m)) m = 0
+  h = Math.min(Math.max(h, 0), 23)
+  m = Math.min(Math.max(m, 0), 59)
+  return { hour: h, minute: m }
 }
 
-function formatTimeString(hour: number, minute: number): string {
+function formatTime(hour: number, minute: number): string {
   const hh = String(hour).padStart(2, '0')
   const mm = String(minute).padStart(2, '0')
   return `${hh}:${mm}`
 }
 
+const parsed = computed(() => parseTime(props.scheduledTime))
+
+const isPM = computed(() => parsed.value.hour >= 12)
+const displayHour12 = computed(() => {
+  const h = parsed.value.hour % 12
+  return h === 0 ? 12 : h
+})
+const displayPeriod = computed(() => (parsed.value.hour >= 12 ? 'PM' : 'AM'))
+
+function updateHour(newHour: number) {
+  const normalized = (newHour + 24) % 24
+  emit('update:scheduledTime', formatTime(normalized, parsed.value.minute))
+}
+
+function updateMinute(newMinute: number) {
+  const normalized = (newMinute + 60) % 60
+  emit('update:scheduledTime', formatTime(parsed.value.hour, normalized))
+}
+
+function togglePeriod() {
+  const current = parsed.value.hour
+  if (current >= 12) {
+    updateHour(current - 12)
+  } else {
+    updateHour(current + 12)
+  }
+}
+
+function handleNativeTimeChange(e: Event) {
+  const val = (e.target as HTMLInputElement).value
+  if (val) {
+    emit('update:scheduledTime', val)
+  }
+}
+
+// Quick presets
+const quickPresets = [
+  { label: '🌅 아침 07:00', time: '07:00' },
+  { label: '🏢 출근 09:00', time: '09:00' },
+  { label: '🍽️ 점심 12:30', time: '12:30' },
+  { label: '🌆 퇴근 18:00', time: '18:00' },
+  { label: '🌙 밤 21:00', time: '21:00' }
+]
+
+const minuteOptions = [0, 15, 30, 45]
+
+// 24-hour slots with 5-attempt calculation
+const hours24 = computed(() => {
+  const scheduledHour = parsed.value.hour
+  const slots = []
+
+  for (let h = 0; h < 24; h++) {
+    // Check if this hour matches one of the 5 attempts
+    let attemptNumber: number | null = null
+    for (let i = 0; i < 5; i++) {
+      if ((scheduledHour + i) % 24 === h) {
+        attemptNumber = i + 1
+        break
+      }
+    }
+
+    const isDaytime = h >= 6 && h < 18
+    slots.push({
+      hour: h,
+      label: `${String(h).padStart(2, '0')}:00`,
+      displayH: `${h}시`,
+      isDaytime,
+      isScheduled: attemptNumber === 1,
+      attemptNumber,
+      isRetry: attemptNumber !== null && attemptNumber > 1
+    })
+  }
+  return slots
+})
+
+// 5-Attempt Detailed Timeline
 const scheduleTimeline = computed(() => {
-  const { hour, minute } = parseTime(props.scheduledTime)
+  const { hour, minute } = parsed.value
   const steps = []
 
   for (let attempt = 1; attempt <= 5; attempt++) {
     const attemptHour = (hour + (attempt - 1)) % 24
-    const timeFormatted = formatTimeString(attemptHour, minute)
+    const timeFormatted = formatTime(attemptHour, minute)
     const isFirst = attempt === 1
     const isLast = attempt === 5
 
@@ -88,154 +159,218 @@ const scheduleTimeline = computed(() => {
   return steps
 })
 
-function buildCalendarEvents() {
-  const today = Temporal.Now.plainDateISO()
-  const timeZone = Temporal.Now.timeZoneId()
-  const { hour, minute } = parseTime(props.scheduledTime)
-
-  return scheduleTimeline.value.map((step) => {
-    const attemptHour = (hour + (step.attempt - 1)) % 24
-    // If wrapped to next day, handle date offset
-    const dayOffset = Math.floor((hour + (step.attempt - 1)) / 24)
-    const targetDate = dayOffset > 0 ? today.add({ days: dayOffset }) : today
-
-    const start = targetDate.toZonedDateTime({
-      plainTime: { hour: attemptHour, minute },
-      timeZone
-    })
-    const end = start.add({ minutes: 30 })
-
-    return {
-      id: `fetch-slot-${step.attempt}`,
-      title: `[${step.time}] ${step.label} (${props.endpointName || 'API'})`,
-      start,
-      end
-    }
-  })
+function selectHourFromBar(h: number) {
+  updateHour(h)
 }
-
-function initCalendar() {
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
-    return
-  }
-
-  try {
-    const today = Temporal.Now.plainDateISO()
-    const events = buildCalendarEvents()
-
-    calendarApp.value = createCalendar({
-      views: [viewDay, viewWeek, viewMonthAgenda],
-      defaultView: viewDay.name,
-      selectedDate: today,
-      events
-    })
-    isCalendarReady.value = true
-  } catch (err) {
-    console.error('Failed to initialize Schedule-X calendar:', err)
-  }
-}
-
-function updateCalendarEvents() {
-  if (!calendarApp.value || !calendarApp.value.events) return
-  try {
-    const events = buildCalendarEvents()
-    calendarApp.value.events.set(events)
-  } catch (err) {
-    console.error('Failed to update calendar events:', err)
-  }
-}
-
-function handleSelectPreset(time: string) {
-  emit('update:scheduledTime', time)
-}
-
-watch(
-  () => [props.scheduledTime, props.endpointName],
-  () => {
-    updateCalendarEvents()
-  }
-)
-
-onMounted(() => {
-  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-    if (containerRef.value && (containerRef.value.isConnected || document.body.contains(containerRef.value))) {
-      initCalendar()
-    }
-  }
-})
 </script>
 
 <template>
   <div
-    ref="containerRef"
-    class="schedule-widget-container"
-    :class="{ 'is-disabled': !enabled }"
+    class="schedule-widget"
+    :class="[
+      isDarkMode ? 'theme-dark' : 'theme-light',
+      { 'is-disabled': !enabled }
+    ]"
+    role="region"
+    aria-label="API 수집 시각 및 스케줄 설정"
   >
+    <!-- Widget Header with Appearance Mode Badge -->
     <div class="widget-header">
-      <div class="header-titles">
-        <h4 class="widget-title">
-          <svg class="calendar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-            <line x1="16" y1="2" x2="16" y2="6" />
-            <line x1="8" y1="2" x2="8" y2="6" />
-            <line x1="3" y1="10" x2="21" y2="10" />
+      <div class="title-row">
+        <h4 class="widget-heading">
+          <svg class="clock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
           </svg>
-          Schedule-X 일정 시각화
+          수집 시각 선택 (What time)
         </h4>
-        <span class="widget-badge">Schedule-X v4</span>
+        <div class="theme-indicator-badge" :title="`현재 테마: ${currentThemeLabel}`">
+          <span class="theme-dot"></span>
+          <span class="theme-label">{{ currentThemeLabel }}</span>
+        </div>
       </div>
-      <p class="widget-caption">
-        설정된 시각 기준 1차 시도 및 실패 시 1시간 간격으로 최대 5회 재시도 일정이 캘린더에 자동 반영됩니다.
+      <p class="widget-desc">
+        매일 자동으로 API 데이터를 가져올 시각을 선택하세요. 실패 시 1시간 간격으로 최대 5회 자동 재시도됩니다.
       </p>
     </div>
 
-    <!-- Quick Time Preset Chips -->
-    <div class="preset-chips-row" role="group" aria-label="빠른 시각 선택">
-      <span class="chips-label">빠른 선택:</span>
-      <div class="chips-list">
-        <button
-          v-for="preset in quickPresets"
-          :key="preset.time"
-          type="button"
-          class="preset-chip"
-          :class="{ active: scheduledTime === preset.time }"
-          @click="handleSelectPreset(preset.time)"
-        >
-          {{ preset.label }}
-        </button>
-      </div>
-    </div>
+    <!-- Main Time Picker Card -->
+    <div class="time-picker-card">
+      <div class="clock-display-section">
+        <span class="section-label">선택된 수집 시각</span>
 
-    <!-- Schedule-X Interactive Calendar View -->
-    <div class="calendar-card">
-      <div class="calendar-view-header">
-        <span class="view-indicator">일별 / 주별 수집 타임라인</span>
-        <span class="current-selected-time">기준 시각: <strong>{{ scheduledTime }}</strong></span>
-      </div>
-
-      <div v-if="isCalendarReady && calendarApp" class="sx-wrapper">
-        <ScheduleXCalendar :calendar-app="calendarApp" />
-      </div>
-      <div v-else class="calendar-loading-fallback">
-        <span>캘린더 로딩 중...</span>
-      </div>
-    </div>
-
-    <!-- Step-by-Step 5 Attempt Policy Summary Timeline -->
-    <div class="attempts-timeline" aria-label="5회 재시도 상세 일정">
-      <div
-        v-for="step in scheduleTimeline"
-        :key="step.attempt"
-        class="timeline-node"
-        :class="{ 'first-node': step.isFirst, 'last-node': step.isLast }"
-      >
-        <div class="node-time-badge font-mono">{{ step.time }}</div>
-        <div class="node-info">
-          <div class="node-title-row">
-            <span class="node-number">{{ step.attempt }}회차</span>
-            <strong class="node-label">{{ step.label }}</strong>
+        <!-- Digital Clock & Stepper Controls -->
+        <div class="digital-clock-controls">
+          <!-- Hour Control -->
+          <div class="stepper-unit">
+            <button
+              type="button"
+              class="stepper-btn"
+              aria-label="시간 증가"
+              @click="updateHour(parsed.hour + 1)"
+            >
+              ▲
+            </button>
+            <div class="time-digit font-mono">{{ String(parsed.hour).padStart(2, '0') }}</div>
+            <button
+              type="button"
+              class="stepper-btn"
+              aria-label="시간 감소"
+              @click="updateHour(parsed.hour - 1)"
+            >
+              ▼
+            </button>
+            <span class="unit-text">시 (Hour)</span>
           </div>
-          <span class="node-desc">{{ step.description }}</span>
+
+          <div class="clock-colon">:</div>
+
+          <!-- Minute Control -->
+          <div class="stepper-unit">
+            <button
+              type="button"
+              class="stepper-btn"
+              aria-label="분 5분 증가"
+              @click="updateMinute(parsed.minute + 5)"
+            >
+              ▲
+            </button>
+            <div class="time-digit font-mono">{{ String(parsed.minute).padStart(2, '0') }}</div>
+            <button
+              type="button"
+              class="stepper-btn"
+              aria-label="분 5분 감소"
+              @click="updateMinute(parsed.minute - 5)"
+            >
+              ▼
+            </button>
+            <span class="unit-text">분 (Min)</span>
+          </div>
+
+          <!-- AM/PM & 12h representation -->
+          <div class="period-toggle-unit">
+            <button
+              type="button"
+              class="period-badge-btn"
+              :class="{ 'is-pm': isPM }"
+              @click="togglePeriod"
+              aria-label="오전/오후 전환"
+            >
+              {{ displayPeriod }}
+            </button>
+            <span class="period-sub font-mono">{{ displayHour12 }}:{{ String(parsed.minute).padStart(2, '0') }}</span>
+          </div>
+        </div>
+
+        <!-- Quick Minute Chips -->
+        <div class="minute-chips-row">
+          <span class="chips-sub-label">분 단위:</span>
+          <div class="chips-group">
+            <button
+              v-for="m in minuteOptions"
+              :key="m"
+              type="button"
+              class="minute-chip"
+              :class="{ active: parsed.minute === m }"
+              @click="updateMinute(m)"
+            >
+              :{{ String(m).padStart(2, '0') }}분
+            </button>
+          </div>
+
+          <!-- Native input fallback for direct mobile keyboards -->
+          <label class="native-picker-wrapper" title="직접 시각 입력">
+            <span class="native-picker-text">직접 입력:</span>
+            <input
+              type="time"
+              :value="scheduledTime"
+              class="native-time-field font-mono"
+              @input="handleNativeTimeChange"
+              aria-label="수집 시각 직접 입력"
+            />
+          </label>
+        </div>
+      </div>
+
+      <!-- Quick Preset Buttons -->
+      <div class="presets-section">
+        <span class="section-label">자주 사용하는 시간</span>
+        <div class="presets-grid" role="group" aria-label="추천 시간 프리셋">
+          <button
+            v-for="preset in quickPresets"
+            :key="preset.time"
+            type="button"
+            class="preset-card-btn"
+            :class="{ active: scheduledTime === preset.time }"
+            @click="emit('update:scheduledTime', preset.time)"
+          >
+            <span class="preset-name">{{ preset.label }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 24-Hour Interactive Visual Ruler -->
+      <div class="ruler-section">
+        <div class="ruler-header">
+          <span class="section-label">24시간 타임라인에서 시간 클릭</span>
+          <span class="ruler-legend">
+            <span class="legend-item"><span class="legend-dot dot-scheduled"></span>1차 실행</span>
+            <span class="legend-item"><span class="legend-dot dot-retry"></span>재시도(2~5차)</span>
+          </span>
+        </div>
+
+        <div class="ruler-bar-container" role="listbox" aria-label="24시간 슬롯 선택">
+          <button
+            v-for="slot in hours24"
+            :key="slot.hour"
+            type="button"
+            class="ruler-slot-btn"
+            :class="{
+              'is-scheduled': slot.isScheduled,
+              'is-retry': slot.isRetry,
+              'is-day': slot.isDaytime,
+              'is-night': !slot.isDaytime
+            }"
+            :aria-selected="slot.isScheduled"
+            :title="`${slot.label} 선택`"
+            @click="selectHourFromBar(slot.hour)"
+          >
+            <span class="slot-icon">{{ slot.isDaytime ? '☀️' : '🌙' }}</span>
+            <span class="slot-hour font-mono">{{ slot.displayH }}</span>
+            <span v-if="slot.attemptNumber" class="slot-badge">
+              {{ slot.attemptNumber === 1 ? '1차' : `${slot.attemptNumber}차` }}
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5-Attempt Execution Pipeline Timeline -->
+    <div class="pipeline-card" aria-label="5회 재시도 자동 실행 타임라인">
+      <div class="pipeline-header">
+        <strong class="pipeline-title">⚡ 수집 및 5회 재시도 타임라인</strong>
+        <span class="pipeline-badge">최대 5회 (1시간 간격)</span>
+      </div>
+
+      <div class="pipeline-nodes-list">
+        <div
+          v-for="step in scheduleTimeline"
+          :key="step.attempt"
+          class="pipeline-node"
+          :class="{ 'node-initial': step.isFirst, 'node-final': step.isLast }"
+        >
+          <div class="node-time font-mono">{{ step.time }}</div>
+          <div class="node-marker">
+            <span class="marker-circle"></span>
+            <span v-if="!step.isLast" class="marker-line"></span>
+          </div>
+          <div class="node-content">
+            <div class="node-label-row">
+              <span class="step-num">{{ step.attempt }}회차</span>
+              <strong class="step-title">{{ step.label }}</strong>
+            </div>
+            <p class="step-subtext">{{ step.description }}</p>
+          </div>
         </div>
       </div>
     </div>
@@ -243,300 +378,556 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.schedule-widget-container {
+/* Base Structure */
+.schedule-widget {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background: var(--color-bg-card, #ffffff);
-  border: 1px solid var(--color-border, #e5e5e5);
   border-radius: 12px;
   padding: 16px;
-  margin-top: 14px;
-  transition: opacity 0.2s ease;
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
 }
 
-.schedule-widget-container.is-disabled {
-  opacity: 0.5;
+.schedule-widget.is-disabled {
+  opacity: 0.45;
   pointer-events: none;
 }
 
+/* Light Theme Styling */
+.schedule-widget.theme-light {
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-default, #dee2e6);
+  color: var(--text-primary, #121212);
+}
+
+.schedule-widget.theme-light .time-picker-card,
+.schedule-widget.theme-light .pipeline-card {
+  background: var(--bg-surface-elevated, #f8f9fa);
+  border: 1px solid var(--border-subtle, #e9ecef);
+}
+
+.schedule-widget.theme-light .stepper-unit {
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-default, #ced4da);
+}
+
+.schedule-widget.theme-light .stepper-btn {
+  background: var(--bg-surface-elevated, #f1f3f5);
+  color: var(--text-secondary, #495057);
+}
+
+.schedule-widget.theme-light .stepper-btn:hover {
+  background: var(--bg-surface-hover, #e9ecef);
+  color: var(--text-primary, #121212);
+}
+
+.schedule-widget.theme-light .minute-chip,
+.schedule-widget.theme-light .preset-card-btn,
+.schedule-widget.theme-light .ruler-slot-btn {
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-default, #dee2e6);
+  color: var(--text-primary, #212529);
+}
+
+.schedule-widget.theme-light .minute-chip.active,
+.schedule-widget.theme-light .preset-card-btn.active {
+  background: var(--accent-action, #000000);
+  color: var(--accent-action-text, #ffffff);
+  border-color: var(--accent-action, #000000);
+}
+
+.schedule-widget.theme-light .ruler-slot-btn.is-scheduled {
+  background: var(--accent-action, #000000);
+  color: #ffffff;
+  border-color: var(--accent-action, #000000);
+}
+
+.schedule-widget.theme-light .ruler-slot-btn.is-retry {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.schedule-widget.theme-light .pipeline-node {
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-subtle, #e9ecef);
+}
+
+.schedule-widget.theme-light .pipeline-node.node-initial {
+  border-left: 3px solid #000000;
+}
+
+.schedule-widget.theme-light .pipeline-node.node-final {
+  border-left: 3px solid #e11d48;
+  background: #fff1f2;
+}
+
+/* Dark Theme Styling (OLED Contrast) */
+.schedule-widget.theme-dark {
+  background: var(--bg-surface, #0a0a0a);
+  border: 1px solid var(--border-default, #2a2a2a);
+  color: var(--text-primary, #f5f5f5);
+}
+
+.schedule-widget.theme-dark .time-picker-card,
+.schedule-widget.theme-dark .pipeline-card {
+  background: var(--bg-surface-elevated, #141414);
+  border: 1px solid var(--border-subtle, #1c1c1c);
+}
+
+.schedule-widget.theme-dark .stepper-unit {
+  background: #000000;
+  border: 1px solid #333333;
+}
+
+.schedule-widget.theme-dark .stepper-btn {
+  background: #1a1a1a;
+  color: #a3a3a3;
+}
+
+.schedule-widget.theme-dark .stepper-btn:hover {
+  background: #262626;
+  color: #ffffff;
+}
+
+.schedule-widget.theme-dark .minute-chip,
+.schedule-widget.theme-dark .preset-card-btn,
+.schedule-widget.theme-dark .ruler-slot-btn {
+  background: #000000;
+  border: 1px solid #2a2a2a;
+  color: #e5e5e5;
+}
+
+.schedule-widget.theme-dark .minute-chip.active,
+.schedule-widget.theme-dark .preset-card-btn.active {
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+  font-weight: 700;
+}
+
+.schedule-widget.theme-dark .ruler-slot-btn.is-scheduled {
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+  font-weight: 700;
+}
+
+.schedule-widget.theme-dark .ruler-slot-btn.is-retry {
+  background: #272005;
+  border-color: #d97706;
+  color: #fbbf24;
+}
+
+.schedule-widget.theme-dark .pipeline-node {
+  background: #0a0a0a;
+  border: 1px solid #222222;
+}
+
+.schedule-widget.theme-dark .pipeline-node.node-initial {
+  border-left: 3px solid #ffffff;
+}
+
+.schedule-widget.theme-dark .pipeline-node.node-final {
+  border-left: 3px solid #f43f5e;
+  background: #21090f;
+}
+
+/* Header & Titles */
 .widget-header {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.header-titles {
+.title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
 }
 
-.widget-title {
+.widget-heading {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.95rem;
+  font-size: 0.98rem;
   font-weight: 700;
-  color: var(--color-text-primary, #111111);
   margin: 0;
 }
 
-.calendar-icon {
+.clock-icon {
   width: 18px;
   height: 18px;
-  stroke: currentColor;
 }
 
-.widget-badge {
-  font-size: 0.7rem;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: var(--color-bg-secondary, #f3f3f3);
-  color: var(--color-text-secondary, #666666);
-  border: 1px solid var(--color-border, #e5e5e5);
+.theme-indicator-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: rgba(128, 128, 128, 0.12);
+  border: 1px solid rgba(128, 128, 128, 0.25);
   font-weight: 600;
 }
 
-.widget-caption {
-  font-size: 0.78rem;
-  color: var(--color-text-secondary, #666666);
+.theme-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.widget-desc {
+  font-size: 0.8rem;
+  opacity: 0.75;
   margin: 0;
   line-height: 1.4;
 }
 
-/* Quick Presets */
-.preset-chips-row {
+/* Time Picker Card */
+.time-picker-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 10px;
+}
+
+.section-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+
+/* Digital Clock */
+.clock-display-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.digital-clock-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
 }
 
-.chips-label {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--color-text-secondary, #555555);
-}
-
-.chips-list {
+.stepper-unit {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 8px;
+  overflow: hidden;
+  width: 72px;
 }
 
-.preset-chip {
-  font-size: 0.75rem;
-  padding: 4px 10px;
-  border-radius: 20px;
-  border: 1px solid var(--color-border, #dddddd);
-  background: var(--color-bg-card, #ffffff);
-  color: var(--color-text-primary, #222222);
+.stepper-btn {
+  width: 100%;
+  padding: 4px 0;
+  border: none;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.time-digit {
+  font-size: 1.9rem;
+  font-weight: 800;
+  padding: 4px 0;
+  line-height: 1;
+}
+
+.unit-text {
+  font-size: 0.65rem;
+  opacity: 0.6;
+  padding-bottom: 4px;
+}
+
+.clock-colon {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.5;
+  margin-top: -16px;
+}
+
+.period-toggle-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+}
+
+.period-badge-btn {
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid currentColor;
+  background: transparent;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
-.preset-chip:hover {
-  background: var(--color-bg-secondary, #f0f0f0);
+.period-sub {
+  font-size: 0.72rem;
+  opacity: 0.6;
 }
 
-.preset-chip.active {
-  background: var(--color-text-primary, #000000);
-  color: var(--color-bg-primary, #ffffff);
-  border-color: var(--color-text-primary, #000000);
-  font-weight: 700;
-}
-
-/* Calendar Card */
-.calendar-card {
-  border: 1px solid var(--color-border, #e5e5e5);
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--color-bg-card, #ffffff);
-}
-
-.calendar-view-header {
+/* Minute Chips Row */
+.minute-chips-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--color-bg-secondary, #f9f9f9);
-  border-bottom: 1px solid var(--color-border, #e5e5e5);
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.chips-sub-label {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  font-weight: 600;
+}
+
+.chips-group {
+  display: flex;
+  gap: 6px;
+}
+
+.minute-chip {
   font-size: 0.78rem;
-  color: var(--color-text-secondary, #666666);
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.current-selected-time strong {
-  color: var(--color-text-primary, #111111);
+.native-picker-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
 }
 
-.sx-wrapper {
-  min-height: 340px;
-  max-height: 480px;
-  overflow-y: auto;
-  position: relative;
+.native-picker-text {
+  font-size: 0.72rem;
+  opacity: 0.6;
 }
 
-.calendar-loading-fallback {
-  padding: 40px 16px;
-  text-align: center;
-  font-size: 0.85rem;
-  color: var(--color-text-secondary, #888888);
+.native-time-field {
+  padding: 3px 6px;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  background: transparent;
+  color: inherit;
 }
 
-/* Attempts Timeline */
-.attempts-timeline {
+/* Presets Section */
+.presets-section {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding-top: 4px;
 }
 
-.timeline-node {
+.presets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+  gap: 6px;
+}
+
+.preset-card-btn {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+/* 24-Hour Ruler */
+.ruler-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ruler-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ruler-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.68rem;
+  opacity: 0.8;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.dot-scheduled {
+  background: currentColor;
+}
+
+.dot-retry {
+  background: #f59e0b;
+}
+
+.ruler-bar-container {
+  display: flex;
+  overflow-x: auto;
+  gap: 4px;
+  padding: 6px 2px;
+  scrollbar-width: thin;
+}
+
+.ruler-slot-btn {
+  flex: 0 0 46px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 2px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.slot-icon {
+  font-size: 0.7rem;
+}
+
+.slot-hour {
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.slot-badge {
+  font-size: 0.58rem;
+  padding: 1px 3px;
+  border-radius: 3px;
+  margin-top: 2px;
+  font-weight: 800;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Pipeline Card */
+.pipeline-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 10px;
+}
+
+.pipeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pipeline-title {
+  font-size: 0.85rem;
+}
+
+.pipeline-badge {
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(128, 128, 128, 0.15);
+  font-weight: 600;
+}
+
+.pipeline-nodes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pipeline-node {
   display: flex;
   align-items: flex-start;
   gap: 12px;
   padding: 8px 12px;
   border-radius: 8px;
-  background: var(--color-bg-secondary, #fafafa);
-  border: 1px solid var(--color-border, #eeeeee);
   font-size: 0.8rem;
+  transition: transform 0.15s ease;
 }
 
-.timeline-node.first-node {
-  border-left: 3px solid var(--color-text-primary, #000000);
-}
-
-.timeline-node.last-node {
-  border-left: 3px solid #e11d48;
-  background: rgba(225, 29, 72, 0.04);
-}
-
-.node-time-badge {
-  font-size: 0.85rem;
-  font-weight: 700;
-  padding: 2px 6px;
-  background: var(--color-bg-card, #ffffff);
-  border: 1px solid var(--color-border, #cccccc);
-  border-radius: 4px;
-  color: var(--color-text-primary, #111111);
+.node-time {
+  font-size: 0.88rem;
+  font-weight: 800;
   white-space: nowrap;
+  min-width: 50px;
 }
 
-.node-info {
+.node-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 4px;
+}
+
+.marker-circle {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.node-content {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.node-title-row {
+.node-label-row {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.node-number {
-  font-size: 0.7rem;
+.step-num {
+  font-size: 0.68rem;
   padding: 1px 4px;
   border-radius: 3px;
-  background: var(--color-bg-card, #ffffff);
-  border: 1px solid var(--color-border, #e0e0e0);
-  color: var(--color-text-secondary, #666666);
+  background: rgba(128, 128, 128, 0.15);
+  font-weight: 600;
 }
 
-.node-label {
-  font-size: 0.8rem;
-  color: var(--color-text-primary, #111111);
+.step-title {
+  font-size: 0.82rem;
 }
 
-.node-desc {
+.step-subtext {
   font-size: 0.72rem;
-  color: var(--color-text-secondary, #777777);
+  opacity: 0.75;
+  margin: 0;
   line-height: 1.3;
-}
-
-/* Dark mode overrides */
-:global(.dark) .schedule-widget-container,
-:global([data-theme='dark']) .schedule-widget-container {
-  background: #0d0d0d;
-  border-color: #222222;
-}
-
-:global(.dark) .widget-title,
-:global([data-theme='dark']) .widget-title {
-  color: #ffffff;
-}
-
-:global(.dark) .widget-badge,
-:global([data-theme='dark']) .widget-badge {
-  background: #1a1a1a;
-  border-color: #333333;
-  color: #aaaaaa;
-}
-
-:global(.dark) .preset-chip,
-:global([data-theme='dark']) .preset-chip {
-  background: #161616;
-  border-color: #333333;
-  color: #e0e0e0;
-}
-
-:global(.dark) .preset-chip.active,
-:global([data-theme='dark']) .preset-chip.active {
-  background: #ffffff;
-  color: #000000;
-  border-color: #ffffff;
-}
-
-:global(.dark) .calendar-card,
-:global([data-theme='dark']) .calendar-card {
-  background: #111111;
-  border-color: #222222;
-}
-
-:global(.dark) .calendar-view-header,
-:global([data-theme='dark']) .calendar-view-header {
-  background: #181818;
-  border-color: #262626;
-  color: #aaaaaa;
-}
-
-:global(.dark) .timeline-node,
-:global([data-theme='dark']) .timeline-node {
-  background: #141414;
-  border-color: #242424;
-}
-
-:global(.dark) .node-time-badge,
-:global([data-theme='dark']) .node-time-badge {
-  background: #202020;
-  border-color: #333333;
-  color: #ffffff;
-}
-
-:global(.dark) .node-title-row strong,
-:global([data-theme='dark']) .node-title-row strong {
-  color: #ffffff;
-}
-
-/* Custom styling for Schedule-X inside Moatok monochrome UI */
-:deep(.sx__calendar) {
-  font-family: inherit;
-}
-
-:deep(.sx__date-grid-event),
-:deep(.sx__time-grid-event) {
-  background-color: #111111 !important;
-  color: #ffffff !important;
-  border-left: 3px solid #ffffff !important;
-}
-
-:global(.dark) :deep(.sx__date-grid-event),
-:global(.dark) :deep(.sx__time-grid-event),
-:global([data-theme='dark']) :deep(.sx__date-grid-event),
-:global([data-theme='dark']) :deep(.sx__time-grid-event) {
-  background-color: #262626 !important;
-  color: #ffffff !important;
-  border-left: 3px solid #60a5fa !important;
 }
 </style>

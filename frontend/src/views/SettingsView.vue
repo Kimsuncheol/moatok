@@ -72,7 +72,7 @@ const appearanceOptions: AppearanceOption[] = [
 async function checkBackendHealth() {
   backendStatus.value = 'checking'
   try {
-    const res = await fetch(`${getApiBaseUrl()}/health`)
+    const res = await fetch(`${getApiBaseUrl()}/health`, { cache: 'no-store' })
     const health = res.ok ? await res.json() : null
     if (res.ok && health?.status === 'ok') {
       backendStatus.value = 'healthy'

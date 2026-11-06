@@ -1,9 +1,15 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { setActivePinia, createPinia } from 'pinia'
 import ScheduleWidget from '@/components/ScheduleWidget.vue'
+import { useThemeStore } from '@/stores/theme'
 
 describe('ScheduleWidget Component', () => {
-  it('renders Schedule-X widget title and 5-attempt retry timeline', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('renders time-only selection heading and 5-attempt retry pipeline', () => {
     const wrapper = mount(ScheduleWidget, {
       props: {
         scheduledTime: '09:00',
@@ -12,12 +18,11 @@ describe('ScheduleWidget Component', () => {
       }
     })
 
-    expect(wrapper.text()).toContain('Schedule-X 일정 시각화')
-    expect(wrapper.text()).toContain('Schedule-X v4')
-    expect(wrapper.text()).toContain('기준 시각: 09:00')
+    expect(wrapper.text()).toContain('수집 시각 선택 (What time)')
+    expect(wrapper.text()).toContain('매일 자동으로 API 데이터를 가져올 시각을 선택하세요')
 
-    // 5 attempts timeline nodes
-    const nodes = wrapper.findAll('.timeline-node')
+    // 5 attempts pipeline nodes
+    const nodes = wrapper.findAll('.pipeline-node')
     expect(nodes.length).toBe(5)
 
     // Check step 1: 09:00
@@ -34,26 +39,69 @@ describe('ScheduleWidget Component', () => {
     expect(nodes[4].text()).toContain('실패 시 Pending 뷰에 Fetch 버튼 제공')
   })
 
-  it('updates timeline when scheduledTime prop changes', async () => {
+  it('dynamically adapts styling to current appearance mode (light / dark)', async () => {
+    const themeStore = useThemeStore()
+
+    // Test Light Mode
+    themeStore.setMode('light')
     const wrapper = mount(ScheduleWidget, {
       props: {
-        scheduledTime: '14:30',
-        endpointName: 'Test Endpoint',
+        scheduledTime: '09:00',
         enabled: true
       }
     })
 
-    const nodes = wrapper.findAll('.timeline-node')
-    expect(nodes[0].text()).toContain('14:30')
-    expect(nodes[1].text()).toContain('15:30')
-    expect(nodes[4].text()).toContain('18:30')
+    expect(wrapper.classes()).toContain('theme-light')
+    expect(wrapper.text()).toContain('라이트 모드')
 
-    await wrapper.setProps({ scheduledTime: '22:15' })
-    const updatedNodes = wrapper.findAll('.timeline-node')
-    expect(updatedNodes[0].text()).toContain('22:15')
-    expect(updatedNodes[1].text()).toContain('23:15')
-    // Next day wrap around
-    expect(updatedNodes[2].text()).toContain('00:15')
+    // Switch to Dark Mode
+    themeStore.setMode('dark')
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.classes()).toContain('theme-dark')
+    expect(wrapper.text()).toContain('다크 모드')
+  })
+
+  it('updates time when steppers or period buttons are clicked', async () => {
+    const wrapper = mount(ScheduleWidget, {
+      props: {
+        scheduledTime: '09:00',
+        enabled: true
+      }
+    })
+
+    // Stepper hour increment (09 -> 10)
+    const stepperBtns = wrapper.findAll('.stepper-btn')
+    // First stepper-btn is hour increment ▲
+    await stepperBtns[0].trigger('click')
+
+    expect(wrapper.emitted('update:scheduledTime')).toBeTruthy()
+    expect(wrapper.emitted('update:scheduledTime')![0]).toEqual(['10:00'])
+
+    // Click AM/PM period toggle button (09:00 AM -> 21:00 PM)
+    const periodBtn = wrapper.find('.period-badge-btn')
+    await periodBtn.trigger('click')
+
+    const emitted = wrapper.emitted('update:scheduledTime')!
+    expect(emitted[emitted.length - 1]).toEqual(['21:00'])
+  })
+
+  it('allows clicking an hour slot in the 24-hour visual ruler', async () => {
+    const wrapper = mount(ScheduleWidget, {
+      props: {
+        scheduledTime: '09:00',
+        enabled: true
+      }
+    })
+
+    const slots = wrapper.findAll('.ruler-slot-btn')
+    expect(slots.length).toBe(24)
+
+    // Click 14:00 slot (index 14)
+    await slots[14].trigger('click')
+
+    expect(wrapper.emitted('update:scheduledTime')).toBeTruthy()
+    expect(wrapper.emitted('update:scheduledTime')![0]).toEqual(['14:00'])
   })
 
   it('emits update:scheduledTime when quick preset button is clicked', async () => {
@@ -65,7 +113,7 @@ describe('ScheduleWidget Component', () => {
       }
     })
 
-    const presets = wrapper.findAll('.preset-chip')
+    const presets = wrapper.findAll('.preset-card-btn')
     expect(presets.length).toBeGreaterThanOrEqual(4)
 
     // Click 18:00 preset

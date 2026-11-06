@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from werkzeug.exceptions import HTTPException
 
 from app.config import Config, get_config
@@ -57,6 +57,10 @@ def _register_error_handlers(app: Flask) -> None:
 def _register_cors_and_security_headers(app: Flask) -> None:
     @app.after_request
     def apply_headers(response):
+        if request.path.startswith("/api/"):
+            response.headers["Cache-Control"] = "private, no-store"
+        elif request.path == "/health":
+            response.headers["Cache-Control"] = "no-store"
         allowed_origins = app.config.get("CORS_ALLOWED_ORIGINS", "*")
         response.headers["Access-Control-Allow-Origin"] = allowed_origins
         response.headers["Access-Control-Allow-Headers"] = (

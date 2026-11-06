@@ -73,6 +73,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   let response = await fetch(url, {
     ...options,
+    cache: 'no-store',
     headers
   })
 
@@ -96,6 +97,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
           headers.set('Authorization', `Bearer ${refreshedToken}`)
           response = await fetch(url, {
             ...options,
+            cache: 'no-store',
             headers
           })
         }
