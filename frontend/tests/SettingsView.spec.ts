@@ -60,7 +60,7 @@ describe('SettingsView Component', () => {
     const wrapper = mount(SettingsView)
     await flushPromises()
 
-    const enableBtn = wrapper.find('.setting-action-btn')
+    const enableBtn = wrapper.find('[aria-labelledby="notif-heading"] .setting-action-btn')
     expect(enableBtn.exists()).toBe(true)
     expect(enableBtn.text()).toContain('푸시 알림 권한 허용하기')
 

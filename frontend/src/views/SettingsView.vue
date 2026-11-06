@@ -204,8 +204,8 @@ onMounted(() => {
     <section class="settings-card">
       <h3 class="card-title">카카오 연결 유지</h3>
       <p class="setting-caption">계정을 한 번 연결하면 이 브라우저에서 로그인 상태를 유지하고 필요할 때 자동 복원합니다. 팝업을 허용해 주세요.</p>
-      <button type="button" :disabled="kakaoBusy" @click="manageKakao()">카카오 연결 / 복원</button>
-      <button type="button" :disabled="kakaoBusy" @click="manageKakao(true)">카카오 연결 해제</button>
+      <button type="button" class="setting-action-btn" :disabled="kakaoBusy" @click="manageKakao()">카카오 연결 / 복원</button>
+      <button type="button" class="setting-sub-btn" :disabled="kakaoBusy" @click="manageKakao(true)">카카오 연결 해제</button>
       <p role="status">{{ kakaoFeedback }}</p>
     </section>
     <!-- 1. Appearance Modes as a List (NO dropdown!) -->

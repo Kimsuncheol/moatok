@@ -375,6 +375,7 @@ onMounted(() => {
 
 .header-main-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -382,6 +383,8 @@ onMounted(() => {
 
 .header-titles {
   display: flex;
+  flex-shrink: 0;
+  white-space: nowrap;
   align-items: center;
   gap: 8px;
 }
@@ -410,6 +413,8 @@ onMounted(() => {
 
 .header-action-group {
   display: flex;
+  flex-shrink: 0;
+  white-space: nowrap;
   align-items: center;
   gap: 8px;
 }
@@ -436,6 +441,7 @@ onMounted(() => {
 }
 
 .nav-btn-icon {
+  flex-shrink: 0;
   width: 13px;
   height: 13px;
 }
@@ -491,6 +497,7 @@ onMounted(() => {
 }
 
 .refresh-icon {
+  flex-shrink: 0;
   width: 14px;
   height: 14px;
 }

@@ -1143,15 +1143,23 @@ onMounted(() => {
 }
 
 .bottom-home-btn {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
   font-size: 13px;
   font-weight: 700;
-  color: var(--text-secondary);
-  text-decoration: underline;
-  padding: 8px 12px;
+  color: var(--text-primary);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .bottom-home-btn:hover {
-  color: var(--text-primary);
+  background-color: var(--bg-surface-hover);
+  border-color: var(--border-strong);
 }
 </style>
