@@ -206,3 +206,21 @@
     at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:42:715)
     at async p (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:2140:18877) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:41
 [ 3313160ms] [ERROR] Failed to find a valid digest in the 'integrity' attribute for resource 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js' with computed SHA-384 integrity 'TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4'. The resource has been blocked. @ https://moatalk-e6fe1.web.app/settings:0
+[ 3331958ms] [ERROR] Failed to find a valid digest in the 'integrity' attribute for resource 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js' with computed SHA-384 integrity 'TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4'. The resource has been blocked. @ https://moatalk-e6fe1.web.app/settings:0
+[ 3333242ms] [ERROR] Failed to find a valid digest in the 'integrity' attribute for resource 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js' with computed SHA-384 integrity 'TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4'. The resource has been blocked. @ https://moatalk-e6fe1.web.app/settings:0
+[ 3333927ms] [ERROR] Failed to find a valid digest in the 'integrity' attribute for resource 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js' with computed SHA-384 integrity 'TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4'. The resource has been blocked. @ https://moatalk-e6fe1.web.app/settings:0
+[ 3338819ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:30:22085)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:42:715) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:41
+[ 3375189ms] [ERROR] Failed to find a valid digest in the 'integrity' attribute for resource 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js' with computed SHA-384 integrity 'TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4'. The resource has been blocked. @ https://moatalk-e6fe1.web.app/:0
+[ 3375212ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:30:22085)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:42:715) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:41
+[ 3612908ms] [ERROR] Failed to find a valid digest in the 'integrity' attribute for resource 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js' with computed SHA-384 integrity 'TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4'. The resource has been blocked. @ https://moatalk-e6fe1.web.app/settings:0
+[ 3618733ms] [WARNING] API fetch failed, retaining existing messages: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:30:22085)
+    at async Proxy.u (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:42:1555) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:41
+[ 3622944ms] [WARNING] API fetch pending messages failed: ApiError: 가져오기 서버가 아직 연결되지 않았습니다. 서버 배포 및 API 연결이 필요합니다.
+    at qe (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:30:22085)
+    at async Proxy.l (https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:42:715) @ https://moatalk-e6fe1.web.app/assets/index-NrehKCsZ.js:41
+[ 3644355ms] [ERROR] Failed to load resource: the server responded with a status of 503 () @ https://english-scrapper.onrender.com/api/v1/lessons/fetch:0
