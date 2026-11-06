@@ -46,6 +46,17 @@ describe('MessageDetailView Component', () => {
     for (const button of buttons) expect(button.attributes('disabled')).toBeDefined()
   })
 
+  it('keeps Fetch enabled on failed endpoint messages while sharing stays disabled', async () => {
+    const store = useMessagesStore()
+    vi.spyOn(store, 'fetchById').mockResolvedValue({ ...sampleMessage, status: 'failed', endpoint_id: 'endpoint-test' })
+    const wrapper = mount(MessageDetailView, { props: { id: sampleMessage.id } })
+    await new Promise(resolve => setTimeout(resolve, 10))
+    const fetchButton = wrapper.find('.fetch-action-btn')
+    expect(fetchButton.text()).toContain('Fetch')
+    expect(fetchButton.attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('.mark-shared-btn').attributes('disabled')).toBeDefined()
+  })
+
   beforeEach(() => {
     setActivePinia(createPinia())
     mockRouterPush.mockReset()

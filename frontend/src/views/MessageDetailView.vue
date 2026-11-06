@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessagesStore } from '@/stores/messages'
+import { useEndpointsStore } from '@/stores/endpoints'
 import { useAuthStore } from '@/stores/auth'
 import { initiateKakaoShare } from '@/services/kakao'
 import type { ShareMessage } from '@/types'
@@ -16,6 +17,25 @@ const props = defineProps<{
 const router = useRouter()
 const messagesStore = useMessagesStore()
 const authStore = useAuthStore()
+const endpointsStore = useEndpointsStore()
+const isFetching = ref(false)
+
+async function handleFetch() {
+  if (isFetching.value || !message.value?.endpoint_id) return
+  isFetching.value = true
+  shareFeedback.value = null
+  try {
+    endpointsStore.loadEndpoints()
+    const result = await endpointsStore.triggerFetch(message.value.endpoint_id, true)
+    shareFeedback.value = result.message
+    if (result.success && result.shareMessage) {
+      message.value = result.shareMessage
+      await router.replace({ name: "message-detail", params: { id: result.shareMessage.id } })
+    }
+  } catch (error) {
+    shareFeedback.value = error instanceof Error ? error.message : "수집에 실패했습니다. 다시 시도해 주세요."
+  } finally { isFetching.value = false }
+}
 
 const message = ref<ShareMessage | null>(null)
 const loading = ref(true)
@@ -445,6 +465,16 @@ async function handleConfirmShared() {
 
       <!-- 5. Prominent "Share to KakaoTalk" Action Button -->
       <div class="action-buttons-group">
+        <button
+          v-if="isFailed && message.endpoint_id"
+          type="button"
+          class="prominent-kakao-btn fetch-action-btn"
+          :disabled="isFetching"
+          @click="handleFetch"
+        >
+          <span aria-hidden="true">↻</span>
+          <span>{{ isFetching ? '가져오는 중…' : 'Fetch' }}</span>
+        </button>
         <button
           type="button"
           class="prominent-kakao-btn"
