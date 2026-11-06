@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MyChatSend from '@/components/MyChatSend.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessagesStore } from '@/stores/messages'
@@ -214,6 +215,7 @@ async function handleConfirmShared() {
 </script>
 
 <template>
+  <MyChatSend v-if="message" :message="message" />
   <section v-if="englishLesson" class="english-lesson" style="padding: 1rem">
     <h2>영어 수업</h2>
     <p v-if="englishLesson.missing_sections.length">일부 내용은 확인이 필요합니다.</p>

@@ -12,6 +12,8 @@ interface Window {
   Kakao?: {
     init: (appKey: string) => void
     isInitialized: () => boolean
+    Auth?: { setAccessToken: (token: string, persist?: boolean) => void }
+    API?: { request: (options: any) => Promise<{result_code: number}> }
     Share: {
       sendDefault: (options: any) => void
       sendCustom: (options: any) => void

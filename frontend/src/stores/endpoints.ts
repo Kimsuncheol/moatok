@@ -259,14 +259,6 @@ export const useEndpointsStore = defineStore('endpoints', () => {
         endpoint.schedule.currentAttempts = 0
         endpoint.schedule.lastError = null
 
-        // Check if there was a previous failed card for this endpoint in pendingMessages, remove it
-        const failedIdx = messagesStore.pendingMessages.findIndex(
-          (m) => m.endpoint_id === endpoint.id || m.id === `failed_fetch_${endpoint.id}`
-        )
-        if (failedIdx !== -1) {
-          messagesStore.pendingMessages.splice(failedIdx, 1)
-        }
-
         // Add the newly fetched message
         const newMsg: ShareMessage = {
           id: `smsg_ep_${Date.now()}`,
@@ -284,14 +276,14 @@ export const useEndpointsStore = defineStore('endpoints', () => {
           items: [
             {
               title: lessonTitle,
-              url: endpoint.url,
+              url: result.lesson.url,
               source_name: endpoint.name,
               summary: '자동 수집 스케줄로 가져온 최신 브리핑입니다.'
             }
           ]
         }
 
-        messagesStore.pendingMessages.unshift(newMsg)
+        messagesStore.upsertLocalMessage(newMsg)
         saveEndpoints()
         return { success: true, message: '데이터를 성공적으로 가져왔습니다.', shareMessage: newMsg }
       }
@@ -314,14 +306,6 @@ export const useEndpointsStore = defineStore('endpoints', () => {
       endpoint.schedule.currentAttempts = 0
       endpoint.schedule.lastError = null
 
-      // Remove existing failed card if present
-      const failedIdx = messagesStore.pendingMessages.findIndex(
-        (m) => m.endpoint_id === endpoint.id || m.id === `failed_fetch_${endpoint.id}`
-      )
-      if (failedIdx !== -1) {
-        messagesStore.pendingMessages.splice(failedIdx, 1)
-      }
-
       const newMsg: ShareMessage = {
         id: `smsg_ep_${Date.now()}`,
         title,
@@ -337,7 +321,7 @@ export const useEndpointsStore = defineStore('endpoints', () => {
         updated_at: new Date().toISOString()
       }
 
-      messagesStore.pendingMessages.unshift(newMsg)
+      messagesStore.upsertLocalMessage(newMsg)
       saveEndpoints()
       return { success: true, message: '데이터를 성공적으로 가져왔습니다.', shareMessage: newMsg }
     } catch (err: any) {
@@ -355,9 +339,6 @@ export const useEndpointsStore = defineStore('endpoints', () => {
 
       // Post/update failed card in Pending view
       const failedCardId = `failed_fetch_${endpoint.id}`
-      const existingIdx = messagesStore.pendingMessages.findIndex(
-        (m) => m.id === failedCardId || m.endpoint_id === endpoint.id
-      )
 
       const failedMsg: ShareMessage = {
         id: failedCardId,
@@ -376,11 +357,7 @@ export const useEndpointsStore = defineStore('endpoints', () => {
         updated_at: new Date().toISOString()
       }
 
-      if (existingIdx !== -1) {
-        messagesStore.pendingMessages[existingIdx] = failedMsg
-      } else {
-        messagesStore.pendingMessages.unshift(failedMsg)
-      }
+      messagesStore.upsertLocalMessage(failedMsg)
 
       saveEndpoints()
       return {
@@ -422,14 +399,7 @@ export const useEndpointsStore = defineStore('endpoints', () => {
       updated_at: new Date().toISOString()
     }
 
-    const idx = messagesStore.pendingMessages.findIndex(
-      (m) => m.id === failedCardId || m.endpoint_id === endpoint.id
-    )
-    if (idx !== -1) {
-      messagesStore.pendingMessages[idx] = failedMsg
-    } else {
-      messagesStore.pendingMessages.unshift(failedMsg)
-    }
+    messagesStore.upsertLocalMessage(failedMsg)
 
     saveEndpoints()
     return failedMsg

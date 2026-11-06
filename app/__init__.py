@@ -91,6 +91,8 @@ def create_app(
     _register_error_handlers(app)
 
     # Register modular Blueprints
+    from app.routes.kakao import kakao_bp
+    app.register_blueprint(kakao_bp)
     app.register_blueprint(health_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)

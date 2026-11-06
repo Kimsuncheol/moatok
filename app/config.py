@@ -18,6 +18,15 @@ class Config:
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
     PORT: int = int(os.getenv("PORT", "8080"))
 
+    SECRET_KEY = os.getenv('FLASK_SECRET_KEY')
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    KAKAO_REST_API_KEY = os.getenv('KAKAO_REST_API_KEY')
+    KAKAO_CLIENT_SECRET = os.getenv('KAKAO_CLIENT_SECRET')
+    KAKAO_REDIRECT_URI = os.getenv('KAKAO_REDIRECT_URI')
+    KAKAO_FRONTEND_ORIGIN = os.getenv('KAKAO_FRONTEND_ORIGIN', 'https://moatalk-e6fe1.web.app')
+
     # GCP / Firebase settings
     # Note: In deployed environments (Cloud Run, GKE, App Engine), Application Default
     # Credentials (ADC) are used automatically without requiring a JSON key file.

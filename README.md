@@ -722,3 +722,46 @@ These results are displayed in the form, not saved to Moatok's sharing queue.
 The separate admin/scheduled import pipeline above still requires a Moatok backend
 and working persistent storage. Set `VITE_ENGLISH_SCRAPER_URL` at build time to
 change the upstream service, and allow the corresponding frontend origin there.
+
+### Send to My Chat
+
+Cards, message details and share previews provide **나와의 채팅에 보내기**.
+Connect the Kakao account, review the exact preview (text is limited to 200
+characters), then press **확인 후 전송**. Only Kakao's `result_code: 0` is treated as
+success; this does not mark a card as delivered to an Open Chat room. Sending
+has no automatic retry. The user must inspect My Chat if delivery is uncertain.
+
+Register a Kakao Developers app, enable Kakao Login and `talk_message` consent,
+register the frontend domain for JavaScript SDK and Product Link, and register
+the backend `/api/v1/kakao/callback` redirect URI. Set the public
+`VITE_KAKAO_JAVASCRIPT_KEY` at build time. Configure server-only
+`FLASK_SECRET_KEY` (a strong random value), `KAKAO_REST_API_KEY`,
+`KAKAO_CLIENT_SECRET` if required by the app, `KAKAO_REDIRECT_URI` and
+`KAKAO_FRONTEND_ORIGIN`. Deploy this Flask backend and configure
+`VITE_API_BASE_URL` accordingly. The OAuth popup connects directly to that backend;
+it requires HTTPS and returns the access token only to the configured frontend
+origin using postMessage. Tokens remain in memory and disappear on reload.
+Refresh tokens are not stored. No analytics or Firebase login is required for
+this separate Kakao account connection.
+
+Without the registered app and deployed OAuth backend, the UI reports a setup
+error; Firebase Hosting alone cannot exchange Kakao authorization codes.
+
+Production My Chat OAuth is hosted on `english-scrapper.onrender.com` using its
+`/api/v1/kakao/status`, `/login` and `/callback` endpoints. Configure
+`VITE_KAKAO_API_BASE_URL=https://english-scrapper.onrender.com` independently of
+Moatok's other REST APIs. The deployed frontend uses the Moatok app JavaScript
+key in the ignored `frontend/.env.production.local` file. Any other build system
+must supply that public key and OAuth base URL too. The REST key and client
+secret are configured only in Render's environment. Product links and the
+JavaScript SDK domain are registered for `https://moatalk-e6fe1.web.app`.
+
+### Fetched cards in Pending
+
+Successful endpoint fetches are saved in this browser's local storage and merged
+with backend results when Pending loads or refreshes. Empty or unavailable backend
+results do not erase local cards. Re-fetching the same article does not duplicate
+it, while different lesson days are retained. Local shared-card history is also
+restored on reload. Other open tabs receive storage updates. This is device-local
+storage, not account synchronization; clearing browser site data removes these
+cards. If storage is unavailable, the app warns that cards are session-only.

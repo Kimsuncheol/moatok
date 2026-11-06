@@ -1,0 +1,11 @@
+[   55735ms] [ERROR] Failed to find a valid digest in the 'integrity' attribute for resource 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js' with computed SHA-384 integrity 'TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4'. The resource has been blocked. @ https://moatalk-e6fe1.web.app/register-api:0
+[   64492ms] [ERROR] Failed to find a valid digest in the 'integrity' attribute for resource 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js' with computed SHA-384 integrity 'TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4'. The resource has been blocked. @ https://moatalk-e6fe1.web.app/register-api:0
+[  134479ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[  134481ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-Kh-aoHqr.js:31:21920)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-Kh-aoHqr.js:43:2169) @ https://moatalk-e6fe1.web.app/assets/index-Kh-aoHqr.js:42
+[  134937ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[  134938ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-Kh-aoHqr.js:31:21920)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-Kh-aoHqr.js:43:2169)
+    at async y (https://moatalk-e6fe1.web.app/assets/index-Kh-aoHqr.js:2159:18200) @ https://moatalk-e6fe1.web.app/assets/index-Kh-aoHqr.js:42

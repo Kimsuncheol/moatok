@@ -59,13 +59,69 @@ const SAMPLE_INITIAL_MESSAGES: ShareMessage[] = [
   }
 ]
 
+export const LOCAL_MESSAGES_KEY = 'moatok_local_fetched_messages_v1'
+function readLocalMessages(): ShareMessage[] {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(LOCAL_MESSAGES_KEY) || '[]')
+    return Array.isArray(parsed) ? parsed.filter(m => m && typeof m.id === 'string' &&
+      typeof m.title === 'string' && typeof m.body === 'string' && typeof m.endpoint_id === 'string') : []
+  } catch { return [] }
+}
+function isShared(message: ShareMessage) {
+  return message.kakao_shared || ['shared', 'shared_by_user'].includes(message.status || '')
+}
+function uniqueMessages(messages: ShareMessage[]) {
+  return [...new Map(messages.map(message => [message.id, message])).values()]
+}
+
 export const useMessagesStore = defineStore('messages', () => {
-  const pendingMessages = ref<ShareMessage[]>([...SAMPLE_INITIAL_MESSAGES])
-  const historyMessages = ref<ShareMessage[]>([])
+  const storageWarning = ref<string | null>(null)
+  const localMessages = ref<ShareMessage[]>(readLocalMessages())
+  const pendingMessages = ref<ShareMessage[]>(localMessages.value.length ? localMessages.value.filter(m => !isShared(m)) : [...SAMPLE_INITIAL_MESSAGES])
+  const historyMessages = ref<ShareMessage[]>(localMessages.value.filter(isShared))
   const selectedMessage = ref<ShareMessage | null>(null)
   const loading = ref<boolean>(false)
   const refreshing = ref<boolean>(false)
   const error = ref<string | null>(null)
+
+  function mergePending(remote: ShareMessage[]) {
+    const localIds = new Set(localMessages.value.map(m => m.id))
+    return uniqueMessages([...localMessages.value.filter(m => !isShared(m)), ...remote.filter(m => !localIds.has(m.id))])
+  }
+  function mergeHistory(remote: ShareMessage[]) {
+    return uniqueMessages([...localMessages.value.filter(isShared), ...remote])
+  }
+  function persistLocal(messages: ShareMessage[]) {
+    // A failed storage write must not be reported as a durable successful fetch.
+    try {
+      window.localStorage.setItem(LOCAL_MESSAGES_KEY, JSON.stringify(messages))
+      storageWarning.value = null
+    } catch {
+      storageWarning.value = '기기 저장소를 사용할 수 없어 이번 실행 중에만 브리핑이 유지됩니다.'
+    }
+    localMessages.value = messages
+  }
+  function upsertLocalMessage(message: ShareMessage) {
+    if (message.fetch_status === 'success') {
+      message.id = `local_${encodeURIComponent(message.target_url || message.id)}`
+    }
+    const existing = localMessages.value.find(m => m.id === message.id)
+    if (existing && isShared(existing)) return existing
+    const next = localMessages.value.filter(m => m.id !== message.id &&
+      !(m.endpoint_id === message.endpoint_id && m.fetch_status === 'failed'))
+    persistLocal([message, ...next])
+    pendingMessages.value = mergePending(pendingMessages.value.filter(m => !m.id.startsWith('smsg_sample_') &&
+      !(m.endpoint_id === message.endpoint_id && m.fetch_status === 'failed')))
+    return message
+  }
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', event => {
+      if (event.key !== LOCAL_MESSAGES_KEY) return
+      localMessages.value = readLocalMessages()
+      pendingMessages.value = mergePending(pendingMessages.value.filter(m => !m.endpoint_id && !m.id.startsWith('smsg_sample_')))
+      historyMessages.value = mergeHistory(historyMessages.value.filter(m => !m.endpoint_id))
+    })
+  }
 
   const pendingCount = computed(() => pendingMessages.value.length)
   const historyCount = computed(() => historyMessages.value.length)
@@ -81,7 +137,7 @@ export const useMessagesStore = defineStore('messages', () => {
     try {
       const res = await api.getPendingMessages()
       if (res && Array.isArray(res.messages)) {
-        pendingMessages.value = res.messages
+        pendingMessages.value = mergePending(res.messages)
       }
     } catch (err: any) {
       console.warn('API fetch pending messages failed:', err)
@@ -116,7 +172,7 @@ export const useMessagesStore = defineStore('messages', () => {
       } else {
         const historyRes = await api.getHistoryMessages()
         if (historyRes && Array.isArray(historyRes.messages)) {
-          historyMessages.value = historyRes.messages
+          historyMessages.value = mergeHistory(historyRes.messages)
         }
       }
     } catch (err: any) {
@@ -126,6 +182,7 @@ export const useMessagesStore = defineStore('messages', () => {
       loading.value = false
       refreshing.value = false
     }
+    historyMessages.value = mergeHistory(historyMessages.value)
     return historyMessages.value
   }
 
@@ -141,7 +198,7 @@ export const useMessagesStore = defineStore('messages', () => {
       // 1. Fetch pending messages
       const pendingRes = await api.getPendingMessages()
       if (pendingRes && Array.isArray(pendingRes.messages)) {
-        pendingMessages.value = pendingRes.messages
+        pendingMessages.value = mergePending(pendingRes.messages)
       }
 
       // 2. Fetch history messages supported by reliable backend events
@@ -158,13 +215,14 @@ export const useMessagesStore = defineStore('messages', () => {
       } else {
         const historyRes = await api.getHistoryMessages()
         if (historyRes && Array.isArray(historyRes.messages)) {
-          historyMessages.value = historyRes.messages
+          historyMessages.value = mergeHistory(historyRes.messages)
         }
       }
     } catch (err: any) {
       console.warn('API fetch failed, retaining existing messages:', err)
       error.value = err.message || '메시지 목록을 불러오지 못했습니다.'
     } finally {
+      historyMessages.value = mergeHistory(historyMessages.value)
       loading.value = false
       refreshing.value = false
     }
@@ -232,6 +290,11 @@ export const useMessagesStore = defineStore('messages', () => {
       selectedMessage.value = foundMsg
     }
 
+    if (foundMsg && localMessages.value.some(m => m.id === messageId)) {
+      persistLocal(localMessages.value.map(m => m.id === messageId ? foundMsg! : m))
+      return foundMsg
+    }
+
     // Call backend endpoint to persist
     try {
       const res = await api.markMessageShared(messageId, shareChannel)
@@ -276,6 +339,8 @@ export const useMessagesStore = defineStore('messages', () => {
   }
 
   return {
+    storageWarning,
+    upsertLocalMessage,
     pendingMessages,
     historyMessages,
     selectedMessage,

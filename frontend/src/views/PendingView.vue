@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessagesStore } from '@/stores/messages'
 import { useEndpointsStore } from '@/stores/endpoints'
@@ -76,6 +76,7 @@ function openReviewModal(msg: ShareMessage) {
 }
 
 const isPreviewMode = ref(false)
+const hasFetchedCards = computed(() => messagesStore.pendingMessages.some(message => !!message.endpoint_id))
 
 function dismissErrorToPreview() {
   messagesStore.error = null
@@ -205,9 +206,11 @@ onMounted(() => {
       </p>
     </header>
 
+    <p v-if="messagesStore.error && hasFetchedCards" role="status" class="fetch-feedback-banner">서버 목록을 불러오지 못했습니다. 이 기기에 저장된 브리핑을 표시합니다.</p>
+    <p v-if="messagesStore.storageWarning" role="status">{{ messagesStore.storageWarning }}</p>
     <!-- 1. Loading State (Accessible Skeleton Cards) -->
     <div
-      v-if="messagesStore.loading && !messagesStore.refreshing"
+      v-if="messagesStore.loading && !messagesStore.refreshing && !hasFetchedCards"
       class="loading-skeleton-list"
       role="status"
       aria-label="공유 대기 브리핑을 불러오는 중입니다"
@@ -230,7 +233,7 @@ onMounted(() => {
 
     <!-- 2. Error State -->
     <div
-      v-else-if="messagesStore.error && !messagesStore.loading"
+      v-else-if="messagesStore.error && !messagesStore.loading && !hasFetchedCards"
       class="error-state-card"
       role="alert"
     >
