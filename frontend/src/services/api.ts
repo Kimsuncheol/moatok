@@ -213,6 +213,7 @@ export interface EnglishLesson {
   url: string
 }
 export const englishScraperApi = {
+  fetchUrl: (payload: { url: string; title?: string; note?: string }) => request<{ status: string; lesson: EnglishLesson; message_id?: string }>('/api/v1/admin/integrations/english-scrapper/fetch', { method: 'POST', body: JSON.stringify(payload) }),
   review: () => request<{ lessons: EnglishLesson[] }>('/api/v1/admin/integrations/english-scrapper/lessons'),
   status: () => request<{ enabled: boolean; url: string; last_sync: Record<string, unknown> | null }>('/api/v1/admin/integrations/english-scrapper'),
   sync: (offset = 0) => request<{ created: number; held: number; failed: number; next_offset: number | null }>('/api/v1/admin/integrations/english-scrapper/sync', { method: 'POST', body: JSON.stringify({ offset }) }),

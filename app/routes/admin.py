@@ -351,3 +351,29 @@ def english_scrapper_review_lessons():
     from app.extensions import get_firestore_client
     docs = get_firestore_client().collection('english_lessons').limit(100).stream()
     return jsonify(lessons=[doc.to_dict() for doc in docs])
+
+
+@admin_bp.post('/integrations/english-scrapper/fetch')
+@require_admin
+def english_scrapper_fetch():
+    from app.extensions import get_firestore_client
+    from app.services.english_scraper import EnglishScraperClient, import_saved_lesson, validate_english_article_url
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify(error='validation_error', message='A JSON object is required.'), 400
+    try:
+        url = validate_english_article_url(payload.get('url'))
+        for key, limit in [('title', 100), ('note', 160)]:
+            if not isinstance(payload.get(key, ''), str) or len(payload.get(key, '')) > limit:
+                raise ValidationError(f'{key} must be text of at most {limit} characters.')
+    except (ValidationError, ValueError) as exc:
+        return jsonify(error='validation_error', message=str(exc)), 400
+    try:
+        saved = EnglishScraperClient().scrape_article(url)
+        result = import_saved_lesson(saved, db=get_firestore_client(),
+            title=payload.get('title', '').strip(), note=payload.get('note', '').strip())
+        return jsonify(result)
+    except Exception:
+        from flask import current_app
+        current_app.logger.exception('English URL fetch failed')
+        return jsonify(error='fetch_failed', message='Could not extract this lesson. Check the article URL and retry.'), 502

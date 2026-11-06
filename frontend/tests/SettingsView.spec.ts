@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import SettingsView from '@/views/SettingsView.vue'
+import { englishScraperApi } from '@/services/api'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useThemeStore } from '@/stores/theme'
 import { useAuthStore } from '@/stores/auth'
@@ -150,4 +151,27 @@ describe('SettingsView Component', () => {
     await logoutBtn.trigger('click')
     expect(logoutSpy).toHaveBeenCalledTimes(1)
   })
+  it('fetches multiple URLs and continues after an individual failure', async () => {
+    const auth = useAuthStore()
+    auth.profile = { uid: 'admin', email: null, role: 'admin', is_admin: true }
+    const fetchLesson = vi.spyOn(englishScraperApi, 'fetchUrl').mockRejectedValueOnce(new Error('First URL failed')).mockResolvedValue({
+      status: 'created', message_id: 'msg-1',
+      lesson: { url: 'https://www.chosun.com/example', fields: { expression: 'Hello there' }, missing_sections: [] }
+    })
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    auth.profile = { uid: 'admin', email: null, role: 'admin', is_admin: true }
+    await wrapper.vm.$nextTick()
+    await wrapper.find('#english-url-0').setValue('https://www.chosun.com/example')
+    await wrapper.find('.add-english-url').trigger('click')
+    await wrapper.find('#english-url-1').setValue('https://www.chosun.com/second')
+    await wrapper.find('.english-fetch-form').trigger('submit')
+    await flushPromises()
+    expect(fetchLesson).toHaveBeenNthCalledWith(1, { url: 'https://www.chosun.com/example' })
+    expect(fetchLesson).toHaveBeenNthCalledWith(2, { url: 'https://www.chosun.com/second' })
+    expect(wrapper.text()).toContain('First URL failed')
+    expect(wrapper.text()).toContain('Hello there')
+    expect(wrapper.text()).toContain('공유 대기에 저장했습니다')
+  })
+
 })

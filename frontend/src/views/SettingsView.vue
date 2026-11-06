@@ -1,11 +1,39 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { englishScraperApi } from '@/services/api'
+import { englishScraperApi, type EnglishLesson } from '@/services/api'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import type { AppearanceMode, AuthSignInMethod } from '@/types'
 
+let nextUrlId = 1
+const englishUrls = ref([{ id: 0, url: '' }])
+const englishResults = ref<Array<{ url: string; status: string; message: string; lesson?: EnglishLesson }>>([])
+const canFetchEnglish = computed(() => englishUrls.value.some(item => item.url.trim()))
+function addEnglishUrl() {
+  if (englishUrls.value.length < 20) englishUrls.value.push({ id: nextUrlId++, url: '' })
+}
+async function fetchEnglishUrl() {
+  if (englishBusy.value) return
+  const urls = [...new Set(englishUrls.value.map(item => item.url.trim()).filter(Boolean))]
+  if (!urls.length) return
+  englishBusy.value = true
+  englishResults.value = []
+  try {
+    for (const [index, url] of urls.entries()) {
+      englishFeedback.value = `수업을 가져오는 중… ${index + 1}/${urls.length}`
+      try {
+        const result = await englishScraperApi.fetchUrl({ url })
+        const message = result.status === 'held' ? '검토 대기로 저장했습니다.' : result.status === 'duplicate' ? '이미 저장된 수업입니다.' : '공유 대기에 저장했습니다.'
+        englishResults.value.push({ url, status: result.status, message, lesson: result.lesson })
+      } catch (error) {
+        englishResults.value.push({ url, status: 'failed', message: error instanceof Error ? error.message : '가져오기에 실패했습니다.' })
+      }
+    }
+    const failed = englishResults.value.filter(item => item.status === 'failed').length
+    englishFeedback.value = `완료 ${urls.length - failed}/${urls.length} · 실패 ${failed}`
+  } finally { englishBusy.value = false }
+}
 const heldEnglish = ref<Array<{ fields: Record<string, string>; missing_sections: string[]; url: string }>>([])
 async function reviewEnglish() {
   try { heldEnglish.value = (await englishScraperApi.review()).lessons.filter(item => item.missing_sections.length) }
@@ -174,6 +202,27 @@ onMounted(() => {
 
     <section v-if="authStore.isAdmin" class="settings-card">
       <h3 class="card-title">오늘의 영어</h3>
+      <form @submit.prevent="fetchEnglishUrl" class="english-fetch-form">
+        <p class="setting-caption">조선일보 영어 수업 기사 주소를 입력하세요. URL을 최대 20개까지 추가할 수 있습니다.</p>
+        <div v-for="(item, index) in englishUrls" :key="item.id" class="english-url-row">
+          <label :for="`english-url-${item.id}`">기사 URL {{ index + 1 }}</label>
+          <input :id="`english-url-${item.id}`" v-model="item.url" type="url" :required="index === 0" maxlength="2048" placeholder="https://www.chosun.com/…" :disabled="englishBusy" />
+          <button v-if="englishUrls.length > 1" type="button" :disabled="englishBusy" :aria-label="`URL ${index + 1} 삭제`" @click="englishUrls.splice(index, 1)">삭제</button>
+        </div>
+        <button class="add-english-url" type="button" :disabled="englishBusy || englishUrls.length >= 20" @click="addEnglishUrl">+ URL 추가</button>
+        <button type="submit" :disabled="englishBusy || !canFetchEnglish">{{ englishBusy ? '가져오는 중…' : 'Fetch · 가져오기' }}</button>
+      </form>
+      <div aria-live="polite">
+        <article v-for="result in englishResults" :key="result.url" class="english-fetch-result">
+          <h4>{{ result.url }}</h4>
+          <p>{{ result.message }}</p>
+          <div v-if="result.lesson">
+            <div v-for="(text, field) in result.lesson.fields" :key="field">
+              <strong>{{ field }}</strong><p style="white-space: pre-wrap">{{ text }}</p>
+            </div>
+          </div>
+        </article>
+      </div>
       <p class="setting-caption">저장된 영어 수업을 가져와 공유 대기 메시지를 만듭니다. 불완전한 수업은 검토 대기로 보관합니다.</p>
       <button :disabled="englishBusy" @click="syncEnglish">{{ englishBusy ? '가져오는 중…' : englishOffset ? '다음 수업 가져오기' : '최신 수업 다시 확인' }}</button>
       <button :disabled="englishBusy" @click="reviewEnglish">검토 대기 확인</button>
@@ -1210,4 +1259,11 @@ onMounted(() => {
   background-color: var(--badge-bg);
   color: var(--badge-text);
 }
+</style>
+
+<style scoped>
+.english-fetch-form { display: grid; gap: 0.65rem; margin: 1rem 0; }
+.english-url-row { display: grid; gap: 0.5rem; }
+.english-fetch-result { overflow-wrap: anywhere; }
+.english-fetch-form input, .english-fetch-form textarea { width: 100%; box-sizing: border-box; padding: 0.8rem; border: 1px solid var(--border-color, #777); border-radius: 8px; color: inherit; background: transparent; font: inherit; }
 </style>

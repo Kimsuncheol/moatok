@@ -10,6 +10,6 @@
     "build": "npm --prefix frontend run build",
     "build:prod": "npm --prefix frontend run build:prod",
     "test": "npm --prefix frontend test",
-    "deploy:hosting": "npm --prefix frontend run build:prod && firebase deploy --only hosting"
+    "deploy:hosting": "npm --prefix frontend run build:prod && firebase deploy --only hosting --project moatalk-e6fe1"
   }
 }

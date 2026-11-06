@@ -113,7 +113,9 @@ onMounted(async () => {
   try {
     message.value = await messagesStore.fetchById(props.id)
     if (message.value) {
-      try { englishLesson.value = (await englishScraperApi.lesson(props.id)).lesson } catch { /* Generic messages have no English lesson. */ }
+      void englishScraperApi.lesson(props.id).then(result => {
+        englishLesson.value = result.lesson
+      }).catch(() => { /* Generic messages have no English lesson. */ })
     }
   } finally {
     loading.value = false

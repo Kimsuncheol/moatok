@@ -709,3 +709,11 @@ signed-in users with access to the shared message catalog.
 The existing FCM and user-initiated Kakao sharing flow is reused. No upstream
 credentials are needed for the deployed read API. Deployment and enabling the
 scheduled integration are separate from these source changes.
+
+Admins can also enter a Chosun English article URL in Settings → 오늘의 영어 and
+press **Fetch · 가져오기**. Use **+ URL 추가** to add up to 20 article URLs. Fetch processes unique URLs
+sequentially, displays a result for each, and continues if an individual URL fails. This calls the scraper's extraction endpoint, retrieves
+the saved result using its returned Location, and uses the same import/deduplication
+path as scheduled syncing. Extracted fields are shown immediately; incomplete
+lessons stay held. Re-fetching preserves existing share text, including prior edits.
+This flow requires the new backend fetch route as well as the updated frontend.

@@ -45,6 +45,29 @@ class EnglishScraperClient:
     def get_article(self, external_id):
         return self.get('/api/v1/articles/' + quote(external_id, safe=''))
 
+    def scrape_article(self, article_url):
+        from app.services.url_validator import _default_urlopen
+        from urllib.request import Request
+        validate_english_article_url(article_url)
+        location = []
+        def post(request, timeout):
+            response = _default_urlopen(Request(request.full_url,
+                data=json.dumps({'article_url': article_url}).encode(),
+                headers={'Content-Type': 'application/json'}, method='POST'), timeout)
+            location.append(response.headers.get('Location', ''))
+            return response
+        probe = fetch_and_validate_source_url(
+            self.base + '/api/v1/scrape', allowed_domains=(self.host,),
+            timeout_seconds=90, max_bytes=2 * 1024 * 1024,
+            max_redirects=0, http_open=post)
+        if probe.status_code != 200:
+            raise ValidationError('English lesson extraction failed.')
+        path = location[-1] if location else ''
+        prefix = '/api/v1/articles/'
+        if not path.startswith(prefix) or '/' in path[len(prefix):] or not path[len(prefix):]:
+            raise ValidationError('Scraper did not return a saved article location.')
+        return self.get_article(path[len(prefix):])
+
     def get_job_status(self):
         return self.get('/api/v1/jobs/status')
 
@@ -92,14 +115,10 @@ def sync_english_lessons(*, client=None, db=None, offset=0, notify=True):
     """
     client = client or EnglishScraperClient()
     db = db or get_firestore_client()
-    from app.repositories.devices_repo import UserDeviceRepository
-    users = UserDeviceRepository(db=db).list_active_user_ids() if notify else []
     state = db.collection('integration_status').document('english_scrapper')
     if offset is None:
         previous = state.get()
         offset = (previous.to_dict() or {}).get('next_offset') or 0
-    article_repo = ArticleRepository(db=db)
-    share_repo = ShareMessageRepository(db=db)
     stats = dict(processed=0, created=0, duplicate=0, held=0, failed=0)
     errors = []
     try:
@@ -117,24 +136,9 @@ def sync_english_lessons(*, client=None, db=None, offset=0, notify=True):
             lesson = prepare_lesson(saved)
             if lesson['external_id'] != item['id']:
                 raise ValidationError('Lesson ID differs from listing.')
-            article, _ = article_repo.create_or_get_with_status(
-                source_id='english_scrapper', source_url=current_app.config['ENGLISH_SCRAPER_URL'],
-                canonical_url=lesson['url'], stable_id=lesson['external_id'],
-                title=lesson['title'], summary=lesson['fields'].get('korean_meaning'),
-                published_at=(saved['payload'].get('article') or {}).get('published_at'))
-            # Snapshot revisions separately; never overwrite user-edited share text.
-            db.collection('english_lessons').document(article['id']).set({
-                **lesson, 'article_id': article['id'], 'synced_at': utc_now()})
+            result = import_saved_lesson(saved, db=db, notify=notify)
             stats['processed'] += 1
-            if lesson['missing_sections']:
-                stats['held'] += 1
-                continue
-            message, created = share_repo.create_or_get_with_status(
-                article_id=article['id'], title=lesson['title'], body=lesson['body'],
-                target_url=lesson['url'], status='pending')
-            stats['created' if created else 'duplicate'] += 1
-            if notify and users and message.get('status') == 'pending' and share_repo.claim_initial_notification(message['id']):
-                notify_pending_share_message(message, share_repo=share_repo, target_user_ids=users)
+            stats[{'created': 'created', 'duplicate': 'duplicate', 'held': 'held'}[result['status']]] += 1
         except Exception:
             current_app.logger.exception('English lesson import failed')
             stats['failed'] += 1
@@ -145,3 +149,42 @@ def sync_english_lessons(*, client=None, db=None, offset=0, notify=True):
               'checked_at': utc_now().isoformat()}
     state.set(result)
     return result
+
+
+def import_saved_lesson(saved, *, db, notify=True, title=None, note=None):
+    from app.repositories.devices_repo import UserDeviceRepository
+    users = UserDeviceRepository(db=db).list_active_user_ids() if notify else []
+    article_repo = ArticleRepository(db=db)
+    share_repo = ShareMessageRepository(db=db)
+    lesson = prepare_lesson(saved)
+    article, _ = article_repo.create_or_get_with_status(
+        source_id='english_scrapper', source_url=current_app.config['ENGLISH_SCRAPER_URL'],
+        canonical_url=lesson['url'], stable_id=lesson['external_id'],
+        title=lesson['title'], summary=lesson['fields'].get('korean_meaning'),
+        published_at=(saved['payload'].get('article') or {}).get('published_at'))
+    # Snapshot revisions separately; never overwrite user-edited share text.
+    db.collection('english_lessons').document(article['id']).set({
+        **lesson, 'article_id': article['id'], 'synced_at': utc_now()})
+    if lesson['missing_sections']:
+        return {'status': 'held', 'lesson': lesson}
+    message, created = share_repo.create_or_get_with_status(
+        article_id=article['id'], title=title or lesson['title'], body=(note + '\n\n' if note else '') + lesson['body'],
+        target_url=lesson['url'], status='pending')
+    if notify and users and message.get('status') == 'pending' and share_repo.claim_initial_notification(message['id']):
+        notify_pending_share_message(message, share_repo=share_repo, target_user_ids=users)
+    return {'status': 'created' if created else 'duplicate', 'message_id': message['id'], 'lesson': lesson}
+
+
+def validate_english_article_url(value):
+    if not isinstance(value, str) or len(value) > 2048 or any(c.isspace() or ord(c) < 32 for c in value) or '\\' in value:
+        raise ValidationError('Enter a valid HTTPS Chosun article URL.')
+    parts = urlsplit(value)
+    try:
+        valid = (parts.scheme == 'https' and parts.hostname in {'chosun.com', 'www.chosun.com'}
+                 and not parts.username and not parts.password and parts.port in (None, 443)
+                 and parts.path not in ('', '/'))
+    except ValueError:
+        valid = False
+    if not valid:
+        raise ValidationError('Enter an HTTPS article URL on chosun.com or www.chosun.com.')
+    return value

@@ -64,3 +64,25 @@ def test_integration_admin_authorization_and_validation(client, mock_firebase_au
     assert client.get(base, headers=headers).status_code == 200
     assert client.post(base + '/sync', headers=headers, json={'offset': -1}).status_code == 400
     assert client.get('/api/v1/share-messages/missing/english-lesson').status_code == 401
+
+
+def test_fetch_url_validates_and_imports(client, mock_firebase_auth, monkeypatch):
+    from app.services.english_scraper import EnglishScraperClient
+    calls = []
+    def scrape(self, url):
+        calls.append(url)
+        return lesson()
+    monkeypatch.setattr(EnglishScraperClient, 'scrape_article', scrape)
+    headers = {'Authorization': 'Bearer valid-token-admin'}
+    path = '/api/v1/admin/integrations/english-scrapper/fetch'
+    assert client.post(path, json={'url': 'https://localhost/test'}, headers=headers).status_code == 400
+    assert calls == []
+    assert client.post(path, json={'url': 'https://www.chosun.com/test'},
+                       headers={'Authorization': 'Bearer valid-token-user-1'}).status_code == 403
+    result = client.post(path, json={'url': 'https://www.chosun.com/test', 'title': 'Custom', 'note': 'My note'}, headers=headers)
+    assert result.status_code == 200
+    assert result.json['status'] == 'created'
+    message = client.get('/api/v1/share-messages/' + result.json['message_id'], headers=headers).json
+    assert message['share_message']['title'] == 'Custom'
+    assert message['share_message']['body'].startswith('My note\n\n')
+    assert client.post(path, json={'url': 'https://www.chosun.com/test'}, headers=headers).json['status'] == 'duplicate'
