@@ -215,7 +215,6 @@ async function handleConfirmShared() {
 </script>
 
 <template>
-  <MyChatSend v-if="message" :message="message" />
   <section v-if="englishLesson" class="english-lesson" style="padding: 1rem">
     <h2>영어 수업</h2>
     <p v-if="englishLesson.missing_sections.length">일부 내용은 확인이 필요합니다.</p>
@@ -458,6 +457,8 @@ async function handleConfirmShared() {
           <span>{{ isSharing ? '카카오톡 연결 중...' : '카카오톡으로 공유하기' }}</span>
         </button>
 
+        <MyChatSend class="detail-my-chat" :message="message" />
+
         <!-- Explicit User Confirmation Button to Mark as Shared -->
         <button
           v-if="isPending"
@@ -479,6 +480,27 @@ async function handleConfirmShared() {
 </template>
 
 <style scoped>
+.detail-my-chat {
+  margin-top: 0;
+}
+
+.detail-my-chat :deep(> button) {
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--border-default);
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.detail-my-chat :deep(> button:hover) {
+  background-color: var(--bg-surface-hover);
+  border-color: var(--border-strong);
+}
+
 .detail-view {
   padding: 16px;
   display: flex;
