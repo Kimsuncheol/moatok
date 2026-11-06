@@ -1,5 +1,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { connectMyChat, disconnectMyChat } from '@/services/kakaoMyChat'
+const kakaoBusy = ref(false)
+const kakaoFeedback = ref('')
+async function manageKakao(disconnect = false) {
+  kakaoBusy.value = true
+  try {
+    if (disconnect) await disconnectMyChat()
+    else await connectMyChat()
+    kakaoFeedback.value = disconnect ? '카카오 연결을 해제했습니다.' : '카카오 연결이 유지됩니다. 새로고침 후에도 복원할 수 있습니다.'
+  } catch (error) { kakaoFeedback.value = error instanceof Error ? error.message : '카카오 연결에 실패했습니다.' }
+  finally { kakaoBusy.value = false }
+}
+
 import { useRouter } from 'vue-router'
 import { getApiBaseUrl } from '@/services/api'
 import { useNotificationsStore } from '@/stores/notifications'
@@ -187,6 +200,13 @@ onMounted(() => {
           <span>API 엔드포인트 등록 및 관리</span>
         </button>
       </div>
+    </section>
+    <section class="settings-card">
+      <h3 class="card-title">카카오 연결 유지</h3>
+      <p class="setting-caption">계정을 한 번 연결하면 이 브라우저에서 로그인 상태를 유지하고 필요할 때 자동 복원합니다. 팝업을 허용해 주세요.</p>
+      <button type="button" :disabled="kakaoBusy" @click="manageKakao()">카카오 연결 / 복원</button>
+      <button type="button" :disabled="kakaoBusy" @click="manageKakao(true)">카카오 연결 해제</button>
+      <p role="status">{{ kakaoFeedback }}</p>
     </section>
     <!-- 1. Appearance Modes as a List (NO dropdown!) -->
     <section class="settings-card" aria-labelledby="appearance-heading">

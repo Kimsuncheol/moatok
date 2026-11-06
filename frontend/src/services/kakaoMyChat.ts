@@ -6,9 +6,10 @@ let token = ''
 let expiresAt = 0
 let sending = false
 let connecting = false
-export function clearMyChatConnection() { token = ''; expiresAt = 0 }
+let forceLogin = false
+export function clearMyChatConnection() { token = ''; expiresAt = 0; forceLogin = false }
 
-export async function connectMyChat(): Promise<void> {
+export async function connectMyChat(action: 'session' | 'disconnect' = 'session'): Promise<void> {
   if (connecting) throw new Error('이미 카카오 연결이 진행 중입니다.')
   connecting = true
   const base = (import.meta.env.VITE_KAKAO_API_BASE_URL || getApiBaseUrl()).replace(/\/+$/, '')
@@ -24,7 +25,9 @@ export async function connectMyChat(): Promise<void> {
       const receive = (event: MessageEvent) => {
         if (event.origin !== origin || event.source !== popup || event.data?.type !== 'moatok-kakao-login') return
         cleanup()
+        if (action === 'disconnect' && event.data.disconnected === true) { clearMyChatConnection(); resolve(); return }
         if (typeof event.data.access_token !== 'string' || !(event.data.expires_in > 0)) return reject(new Error(event.data.error || '카카오 연결에 실패했습니다.'))
+        forceLogin = false
         token = event.data.access_token
         expiresAt = Date.now() + Number(event.data.expires_in) * 1000 - 30_000
         resolve()
@@ -32,7 +35,7 @@ export async function connectMyChat(): Promise<void> {
       const timer = setTimeout(() => { cleanup(); reject(new Error('카카오 연결 시간이 초과되었습니다.')) }, 180_000)
       const poll = setInterval(() => { if (popup.closed) { cleanup(); reject(new Error('카카오 연결 창이 닫혔습니다.')) } }, 1000)
       window.addEventListener('message', receive)
-      popup.location.href = base + '/api/v1/kakao/login'
+      popup.location.href = base + '/api/v1/kakao/' + (action === 'session' && forceLogin ? 'login' : action)
     })
   } finally { popup?.close(); connecting = false }
 }
@@ -49,15 +52,17 @@ export function buildMyChatTemplate(message: ShareMessage) {
 export async function sendToMyChat(message: ShareMessage): Promise<void> {
   if (sending) throw new Error('메시지를 전송 중입니다.')
   const template = buildMyChatTemplate(message)
-  if (!token || Date.now() >= expiresAt) { clearMyChatConnection(); throw new Error('먼저 카카오 계정을 연결해 주세요.') }
   sending = true
   try {
+    if (!token || Date.now() >= expiresAt) { token = ''; expiresAt = 0; await connectMyChat() }
     if (!await loadKakaoSdkScript() || !initKakaoSdk() || !window.Kakao?.API || !window.Kakao.Auth) throw new Error('카카오 JavaScript 키 또는 SDK 설정이 필요합니다.')
     window.Kakao.Auth.setAccessToken(token, false)
     const result = await window.Kakao.API.request({url: '/v2/api/talk/memo/default/send', data: {template_object: template}})
     if (result.result_code !== 0) throw new Error('카카오에서 전송 성공을 확인하지 못했습니다.')
   } catch (error: any) {
-    if (error?.code === -401 || error?.code === -402) { clearMyChatConnection(); throw new Error('카카오 연결 또는 메시지 동의를 다시 진행해 주세요.') }
+    if (error?.code === -401 || error?.code === -402) { clearMyChatConnection(); forceLogin = true; throw new Error('카카오 연결 또는 메시지 동의를 다시 진행해 주세요.') }
     throw error
   } finally { sending = false }
 }
+
+export async function disconnectMyChat() { clearMyChatConnection(); await connectMyChat('disconnect') }

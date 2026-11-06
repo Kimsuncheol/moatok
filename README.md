@@ -740,8 +740,16 @@ the backend `/api/v1/kakao/callback` redirect URI. Set the public
 `KAKAO_FRONTEND_ORIGIN`. Deploy this Flask backend and configure
 `VITE_API_BASE_URL` accordingly. The OAuth popup connects directly to that backend;
 it requires HTTPS and returns the access token only to the configured frontend
-origin using postMessage. Tokens remain in memory and disappear on reload.
-Refresh tokens are not stored. No analytics or Firebase login is required for
+origin using postMessage. Access tokens remain in memory. The deployed Render bridge maintains a persistent,
+authenticated-encryption cookie containing the refresh session; only the server
+can decrypt it. The cookie is Secure, HttpOnly, host-only and SameSite=Lax.
+A short first-party popup restores the session across reloads, avoiding reliance
+on third-party cookies. Refresh tokens rotate when Kakao provides a replacement.
+The encryption key is derived with domain separation from KAKAO_SESSION_SECRET
+or the existing server-side KAKAO_CLIENT_SECRET; changing it invalidates sessions.
+Settings provides connect/restore and disconnect controls. Disconnect clears
+the cookie and attempts to revoke the current Kakao tokens. Clearing browser
+cookies, expired refresh tokens, or revocation requires connecting again. No analytics or Firebase login is required for
 this separate Kakao account connection.
 
 Without the registered app and deployed OAuth backend, the UI reports a setup
@@ -765,3 +773,11 @@ it, while different lesson days are retained. Local shared-card history is also
 restored on reload. Other open tabs receive storage updates. This is device-local
 storage, not account synchronization; clearing browser site data removes these
 cards. If storage is unavailable, the app warns that cards are session-only.
+
+The persistent session uses the provider's refresh-token expiry, rather than an
+unbounded browser login. Restoring a still-valid access token does not contact
+the provider. Expired access tokens are renewed server-side. Temporary provider
+failures preserve the refresh cookie and show a retry message. A rejected refresh
+clears the session and starts a new login. No refresh tokens are exposed to
+frontend JavaScript or stored in localStorage. A new connection is needed once
+after upgrading from the old in-memory-only implementation.

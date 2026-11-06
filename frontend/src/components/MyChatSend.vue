@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { ShareMessage } from '@/types'
-import { connectMyChat, sendToMyChat, buildMyChatTemplate } from '@/services/kakaoMyChat'
+import { connectMyChat, disconnectMyChat, sendToMyChat, buildMyChatTemplate } from '@/services/kakaoMyChat'
 const props = defineProps<{message: ShareMessage}>()
 const expanded = ref(false)
 const busy = ref(false)
@@ -12,6 +12,12 @@ async function connect() {
   busy.value = true
   try { await connectMyChat(); feedback.value = '연결되었습니다. 본문을 확인하고 전송을 눌러 주세요.' }
   catch (error) { feedback.value = error instanceof Error ? error.message : '연결에 실패했습니다.' }
+  finally { busy.value = false }
+}
+async function disconnect() {
+  busy.value = true
+  try { await disconnectMyChat(); feedback.value = '이 브라우저의 카카오 연결을 해제했습니다.' }
+  catch (error) { feedback.value = error instanceof Error ? error.message : '연결 해제에 실패했습니다.' }
   finally { busy.value = false }
 }
 async function send() {
@@ -30,6 +36,8 @@ async function send() {
       <pre>{{ preview }}</pre>
       <p v-if="message.body.length > 200">카카오 텍스트 제한으로 본문은 200자 이내로 전송됩니다.</p>
       <button type="button" :disabled="busy" @click="connect">카카오 계정 연결</button>
+      <button type="button" :disabled="busy" @click="disconnect">카카오 연결 해제</button>
+      <p>로그인 상태는 이 브라우저에 유지됩니다. 다시 열면 연결을 자동 복원합니다. 팝업 허용이 필요합니다.</p>
       <button type="button" :disabled="busy || sent || !preview" @click="send">{{ sent ? '전송 완료' : busy ? '처리 중…' : '확인 후 전송' }}</button>
       <p role="status">{{ feedback }}</p>
     </div>

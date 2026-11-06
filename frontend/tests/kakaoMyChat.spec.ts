@@ -21,7 +21,8 @@ describe('Kakao My Chat', () => {
   it('never sends without a connected account', async () => {
     const request = vi.fn()
     window.Kakao = {init:vi.fn(), isInitialized:()=>true, Share:{sendDefault:vi.fn(), sendCustom:vi.fn()}, API:{request}, Auth:{setAccessToken:vi.fn()}}
-    await expect(sendToMyChat(message)).rejects.toThrow('연결')
+    vi.spyOn(window, 'open').mockReturnValue(null)
+    await expect(sendToMyChat(message)).rejects.toThrow('팝업')
     expect(request).not.toHaveBeenCalled()
   })
   it('reports blocked popups', async () => {
@@ -51,8 +52,31 @@ describe('Kakao My Chat', () => {
     expect(request).toHaveBeenCalledWith({url:'/v2/api/talk/memo/default/send', data:{template_object:buildMyChatTemplate(message)}})
     request.mockRejectedValueOnce({code:-402})
     await expect(sendToMyChat(message)).rejects.toThrow('동의')
-    await expect(sendToMyChat(message)).rejects.toThrow('연결')
+    vi.spyOn(window, 'open').mockReturnValue(null)
+    await expect(sendToMyChat(message)).rejects.toThrow('팝업')
     expect(request).toHaveBeenCalledTimes(2)
+    vi.unstubAllGlobals()
+  })
+
+  it('forces fresh OAuth after revoked message permission instead of restoring the rejected token', async () => {
+    const popup = {location:{href:''}, closed:false, close:vi.fn()}
+    vi.spyOn(window,'open').mockReturnValue(popup as unknown as Window)
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => new Response(JSON.stringify({configured:true}), {headers:{'Content-Type':'application/json'}})))
+    function reply() {
+      const event = new MessageEvent('message', {origin:window.location.origin, data:{type:'moatok-kakao-login',access_token:'access',expires_in:3600}})
+      Object.defineProperty(event,'source',{value:popup})
+      window.dispatchEvent(event)
+    }
+    const first = connectMyChat()
+    await new Promise(resolve=>setTimeout(resolve,10))
+    expect(popup.location.href).toContain('/kakao/session')
+    reply(); await first
+    window.Kakao = {init:vi.fn(),isInitialized:()=>true,Share:{sendDefault:vi.fn(),sendCustom:vi.fn()},Auth:{setAccessToken:vi.fn()},API:{request:vi.fn().mockRejectedValue({code:-402})}}
+    await expect(sendToMyChat(message)).rejects.toThrow('동의')
+    const second = connectMyChat()
+    await new Promise(resolve=>setTimeout(resolve,10))
+    expect(popup.location.href).toContain('/kakao/login')
+    reply(); await second
     vi.unstubAllGlobals()
   })
 
