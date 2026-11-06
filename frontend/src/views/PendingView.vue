@@ -764,7 +764,7 @@ onMounted(() => {
 }
 
 .retry-btn.fetch-btn {
-  font-weight: 400;
+  font-weight: 600;
   letter-spacing: -0.3px;
 }
 </style>
