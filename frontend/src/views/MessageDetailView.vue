@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import MyChatSend from '@/components/MyChatSend.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessagesStore } from '@/stores/messages'
@@ -52,6 +51,8 @@ const sourceName = computed(() => {
     '출처 미정'
   )
 })
+
+const isFailed = computed(() => message.value?.status === 'failed' || message.value?.fetch_status === 'failed')
 
 const isPending = computed(() => {
   if (!message.value) return false
@@ -177,7 +178,7 @@ async function saveAdminEdit() {
 
 // 2. KakaoTalk Share Action (User-Initiated)
 async function handleKakaoShare() {
-  if (!message.value) return
+  if (!message.value || isFailed.value) return
   isSharing.value = true
   shareFeedback.value = null
 
@@ -198,7 +199,7 @@ async function handleKakaoShare() {
 
 // 3. Explicit Mark as Shared by User
 async function handleConfirmShared() {
-  if (!message.value) return
+  if (!message.value || isFailed.value) return
   isMarkingShared.value = true
   try {
     const updated = await messagesStore.markAsShared(message.value.id, 'kakaotalk_web_pwa')
@@ -447,7 +448,7 @@ async function handleConfirmShared() {
         <button
           type="button"
           class="prominent-kakao-btn"
-          :disabled="isSharing"
+          :disabled="isSharing || isFailed"
           aria-label="카카오톡으로 공유하기 (카카오 공유 창 열기)"
           @click="handleKakaoShare"
         >
@@ -457,14 +458,13 @@ async function handleConfirmShared() {
           <span>{{ isSharing ? '카카오톡 연결 중...' : '카카오톡으로 공유하기' }}</span>
         </button>
 
-        <MyChatSend class="detail-my-chat" :message="message" />
 
         <!-- Explicit User Confirmation Button to Mark as Shared -->
         <button
           v-if="isPending"
           type="button"
           class="mark-shared-btn"
-          :disabled="isMarkingShared"
+          :disabled="isMarkingShared || isFailed"
           aria-label="카카오톡 전송 완료로 기록하기"
           @click="handleConfirmShared"
         >
@@ -480,26 +480,7 @@ async function handleConfirmShared() {
 </template>
 
 <style scoped>
-.detail-my-chat {
-  margin-top: 0;
-}
-
-.detail-my-chat :deep(> button) {
-  width: 100%;
-  min-height: 44px;
-  margin: 0;
-  padding: 12px 16px;
-  border: 1px solid var(--border-default);
-  background-color: var(--bg-surface-elevated);
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.detail-my-chat :deep(> button:hover) {
-  background-color: var(--bg-surface-hover);
-  border-color: var(--border-strong);
-}
+.action-buttons-group button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .detail-view {
   padding: 16px;

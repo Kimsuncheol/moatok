@@ -55,3 +55,119 @@
 [27863974ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/share-messages/local_https%253A%252F%252Fwww.chosun.com%252Fnational%252Fnie%252Fenglish%252F2026%252F11%252F06%252FR2BKECL2ZJAVPP6LG5DCDM5AVU%252F/english-lesson:0
 [28016956ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/share-messages/local_https%253A%252F%252Fwww.chosun.com%252Fnational%252Fnie%252Fenglish%252F2026%252F11%252F06%252FR2BKECL2ZJAVPP6LG5DCDM5AVU%252F/english-lesson:0
 [28018196ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/share-messages/local_https%253A%252F%252Fwww.chosun.com%252Fnational%252Fnie%252Fenglish%252F2026%252F11%252F06%252FR2BKECL2ZJAVPP6LG5DCDM5AVU%252F/english-lesson:0
+[28112090ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/share-messages/local_https%253A%252F%252Fwww.chosun.com%252Fnational%252Fnie%252Fenglish%252F2026%252F11%252F06%252FR2BKECL2ZJAVPP6LG5DCDM5AVU%252F/english-lesson:0
+[28113174ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/share-messages/local_https%253A%252F%252Fwww.chosun.com%252Fnational%252Fnie%252Fenglish%252F2026%252F11%252F06%252FR2BKECL2ZJAVPP6LG5DCDM5AVU%252F/english-lesson:0
+[28116147ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/share-messages/local_https%253A%252F%252Fwww.chosun.com%252Fnational%252Fnie%252Fenglish%252F2026%252F11%252F06%252FR2BKECL2ZJAVPP6LG5DCDM5AVU%252F/english-lesson:0
+[28118887ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/share-messages/local_https%253A%252F%252Fwww.chosun.com%252Fnational%252Fnie%252Fenglish%252F2026%252F11%252F06%252FR2BKECL2ZJAVPP6LG5DCDM5AVU%252F/english-lesson:0
+[28123685ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?limit=100:0
+[28123685ms] [WARNING] API fetch history failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:31:21917)
+    at async Proxy.g (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:43:2462) @ https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:42
+[28126075ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[28126075ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:31:21917)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:43:2169) @ https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:42
+[28164279ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?limit=100:0
+[28164280ms] [WARNING] API fetch history failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:31:21917)
+    at async Proxy.g (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:43:2462) @ https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:42
+[28169259ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[28169260ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:31:21917)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:43:2169) @ https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:42
+[28171029ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/share-messages/local_https%253A%252F%252Fwww.chosun.com%252Fnational%252Fnie%252Fenglish%252F2026%252F11%252F06%252FR2BKECL2ZJAVPP6LG5DCDM5AVU%252F/english-lesson:0
+[28175237ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?limit=100:0
+[28175238ms] [WARNING] API fetch history failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:31:21917)
+    at async Proxy.g (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:43:2462) @ https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:42
+[28178269ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[28178271ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:31:21917)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:43:2169) @ https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:42
+[28179917ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[28179918ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:31:21917)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:43:2169)
+    at async y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:2159:18767) @ https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:42
+[28180835ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[28180836ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:31:21917)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:43:2169)
+    at async y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:2159:18767) @ https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:42
+[28181756ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[28181757ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:31:21917)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:43:2169)
+    at async y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:2159:18767) @ https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:42
+[28498069ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?limit=100:0
+[28498070ms] [WARNING] API fetch history failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:31:21917)
+    at async Proxy.g (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:43:2462) @ https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:42
+[28500457ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[28500457ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:31:21917)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:43:2169) @ https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:42
+[28502028ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[28502029ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:31:21917)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:43:2169)
+    at async y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:2159:18767) @ https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:42
+[28535168ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?limit=100:0
+[28535169ms] [WARNING] API fetch history failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:31:21917)
+    at async Proxy.g (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:43:2462) @ https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:42
+[28538267ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[28538268ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:31:21917)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:43:2169) @ https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:42
+[28539818ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[28539818ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:31:21917)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:43:2169)
+    at async y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:2159:18767) @ https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:42
+[28540851ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[28540851ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:31:21917)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:43:2169)
+    at async y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:2159:18767) @ https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:42
+[28544589ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[28544589ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:31:21917)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:43:2169)
+    at async y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:2159:18767) @ https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:42
+[28545517ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[28545519ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:31:21917)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:43:2169)
+    at async y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:2159:18767) @ https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:42
+[28553376ms] [ERROR] Failed to load resource: the server responded with a status of 503 () @ https://english-scrapper.onrender.com/api/v1/lessons/fetch:0
+[28559232ms] [ERROR] Failed to load resource: the server responded with a status of 503 () @ https://english-scrapper.onrender.com/api/v1/lessons/fetch:0
+[28561183ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[28561183ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:31:21917)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:43:2169) @ https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:42
+[28566199ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/share-messages/failed_fetch_endpoint_english_scrapper_default/english-lesson:0
+[28570206ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[28570207ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:31:21917)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:43:2169) @ https://moatalk-e6fe1.web.app/assets/index-D54SEkVi.js:42
+[28571728ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/share-messages/failed_fetch_endpoint_english_scrapper_default/english-lesson:0
+[28989015ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/share-messages/failed_fetch_endpoint_english_scrapper_default/english-lesson:0
+[28991014ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/share-messages/failed_fetch_endpoint_english_scrapper_default/english-lesson:0
+[29084416ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[29084417ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-CXCvIFv4.js:31:21914)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-CXCvIFv4.js:43:2169) @ https://moatalk-e6fe1.web.app/assets/index-CXCvIFv4.js:42
+[29090178ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/share-messages/failed_fetch_endpoint_english_scrapper_default/english-lesson:0
+[29093865ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[29093866ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-CXCvIFv4.js:31:21914)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-CXCvIFv4.js:43:2169) @ https://moatalk-e6fe1.web.app/assets/index-CXCvIFv4.js:42
+[29711351ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[29711353ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at mt (https://moatalk-e6fe1.web.app/assets/index-CXCvIFv4.js:31:21914)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-CXCvIFv4.js:43:2169) @ https://moatalk-e6fe1.web.app/assets/index-CXCvIFv4.js:42
+[29718700ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://moatalk-e6fe1.web.app/api/v1/messages?status=pending&limit=50:0
+[29718701ms] [WARNING] API fetch pending messages failed: ApiError: API Error [401]: Missing Authorization Bearer token.
+    at pt (https://moatalk-e6fe1.web.app/assets/index-53QsVZk5.js:31:21914)
+    at async Proxy.y (https://moatalk-e6fe1.web.app/assets/index-53QsVZk5.js:43:2169) @ https://moatalk-e6fe1.web.app/assets/index-53QsVZk5.js:42

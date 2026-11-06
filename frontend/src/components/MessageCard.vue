@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import MyChatSend from '@/components/MyChatSend.vue'
 import { computed, ref } from 'vue'
 import type { ShareMessage } from '@/types'
 
@@ -121,7 +120,6 @@ function handleFetchClick(e: Event) {
     @click="handleCardClick"
     @keydown="handleKeyDown"
   >
-    <MyChatSend :message="message" />
     <!-- Header with Status, Source, and Creation Time -->
     <header class="card-header">
       <div class="status-container">

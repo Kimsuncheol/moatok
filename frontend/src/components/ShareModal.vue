@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import MyChatSend from '@/components/MyChatSend.vue'
 import { ref } from 'vue'
 import type { ShareMessage } from '@/types'
 import { initiateKakaoShare } from '@/services/kakao'
@@ -107,7 +106,6 @@ async function handleKakaoShare() {
         {{ noticeText }}
       </div>
 
-      <MyChatSend :message="message" />
       <div class="sheet-actions">
         <button
           type="button"
