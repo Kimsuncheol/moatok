@@ -781,3 +781,42 @@ failures preserve the refresh cookie and show a retry message. A rejected refres
 clears the session and starts a new login. No refresh tokens are exposed to
 frontend JavaScript or stored in localStorage. A new connection is needed once
 after upgrading from the old in-memory-only implementation.
+
+### Scheduled Open Chat via a local Mac helper
+
+Settings now exports one-time Open Chat schedules and provides
+`frontend/public/openchat-helper.py`. This is a separate opt-in desktop workflow;
+the API-based sharing workflow described above remains user initiated. No Open
+Chat API or cloud sender is used. Schedules are exported, not synchronized.
+
+Download the helper and JSON schedule into a folder, then run:
+
+```sh
+python3 openchat-helper.py import moatok-openchat.json
+python3 openchat-helper.py list
+python3 openchat-helper.py run --send
+```
+
+Use Python 3.9+ on macOS and grant Terminal Accessibility access. Keep the Mac
+awake, unlocked, online, and logged into KakaoTalk, with the intended Open Chat
+opened as a separate, non-minimized window. Enter its exact window title. Do not
+interact with KakaoTalk during scheduled sending. Duplicate room titles, multiple
+text areas, existing drafts, focus changes, and unsupported UI layouts fail closed.
+Room verification checks the window title and composer, not a stable Kakao room
+ID: use distinct room names and verify the intended window yourself before use.
+The helper never searches for or guesses a destination. Actual KakaoTalk UI
+compatibility must be checked on the target Mac; it has not been validated with
+a live message in development.
+
+The local SQLite ledger lives under `~/Library/Application Support/Moatok/` and
+contains message text. Each immutable schedule ID is claimed durably before UI
+interaction. Reimporting the same file and restarting cannot resend that ID.
+New exports have new IDs and are independent schedules. All UI attempts remain
+`review_required`, including those where the send key was issued: a keystroke is
+not proof of delivery. Inspect KakaoTalk, then run `confirm ID` to record your
+confirmation. Use `cancel ID` to cancel a pending job. Never recreate an uncertain
+job before inspecting the room and composer; a failed attempt can leave a draft.
+Jobs over five minutes late become `missed`. There is no automatic retry,
+recurrence, login startup, Firebase storage, or background cloud delivery for this
+local workflow. Closing Terminal stops processing; retain the database to retain
+duplicate protection. No live Kakao message is sent by installing or importing.

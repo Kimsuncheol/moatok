@@ -568,3 +568,13 @@ a {
   font-size: 13px;
   font-weight: 600;
 }
+
+.openchat-form { display: grid; gap: 1rem; margin-block: 1rem; }
+.openchat-form label { display: grid; gap: .5rem; color: var(--text-secondary); font-size: .875rem; font-weight: 500; }
+.openchat-form input, .openchat-form textarea { width: 100%; box-sizing: border-box; padding: .75rem; border: 1px solid var(--border-default); border-radius: .5rem; background: var(--bg-page); color: var(--text-primary); font-size: 1rem; font-weight: 400; font-family: inherit; }
+.openchat-schedule pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .75rem; font-weight: 400; color: var(--text-secondary); }
+.openchat-schedule summary, .openchat-schedule a { font-size: .875rem; font-weight: 500; color: var(--text-primary); }
+@media (max-width: 768px) {
+  * { scrollbar-width: none; }
+  *::-webkit-scrollbar { display: none; }
+}

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import MyChatAutomation from '@/components/MyChatAutomation.vue'
+import OpenChatSchedule from '@/components/OpenChatSchedule.vue'
 import { loginWithKakao } from '@/services/kakaoLogin'
 import { useRouter } from 'vue-router'
 import { getApiBaseUrl } from '@/services/api'
@@ -167,6 +168,7 @@ onMounted(() => {
         </button>
       </div>
     </section>
+    <OpenChatSchedule />
     <MyChatAutomation v-if="authStore.isAuthenticated" :key="authStore.userUid || 'account'" />
     <!-- 1. Appearance Modes as a List (NO dropdown!) -->
     <section class="settings-card" aria-labelledby="appearance-heading">
