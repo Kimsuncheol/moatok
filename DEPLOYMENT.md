@@ -54,3 +54,27 @@ virtual environments, frontend dependencies, logs, and test artifacts.
 
 Scheduler setup and enabling English lesson imports are separate operations;
 the internal collection job remains closed until its OIDC account is configured.
+
+## My Chat automation
+
+Settings now offers independent opt-ins for newly collected server content and a
+latest-five-content daily digest (default 09:00 Asia/Seoul). Both can be enabled;
+the digest may repeat content delivered individually. Browser-only content is not
+included. The five-minute authenticated Scheduler job calls
+`/api/v1/kakao/automation/run`. Content collection must also run independently.
+
+Configure `KAKAO_REST_API_KEY`, `KAKAO_CLIENT_SECRET` (when enabled in Kakao),
+`KAKAO_REDIRECT_URI` (the public backend `/api/v1/kakao/callback` URL),
+`KAKAO_FRONTEND_ORIGIN`, and a stable random `FLASK_SECRET_KEY` on Cloud Run.
+Register the redirect URI in Kakao Developers and enable `talk_message` consent.
+Users sign in to Moatok, connect Kakao under the automation section, select
+triggers, and save. Credentials are encrypted with a domain-separated key derived
+from the Flask secret, in `private_my_chat_accounts`; deny client Firestore access
+to this collection and all its subcollections. Never rotate the Flask secret
+without arranging reconnection or credential migration.
+
+The Scheduler OIDC identity must equal `SCHEDULER_SERVICE_ACCOUNT_EMAIL`; its
+OIDC audience must equal `SCHEDULER_OIDC_AUDIENCE`. Delivery receipts are claimed
+atomically before contacting Kakao. Uncertain results are held for review rather
+than retried automatically, to avoid duplicates. The UI reports connection/send
+errors. Disconnect disables triggers and removes the encrypted credentials.

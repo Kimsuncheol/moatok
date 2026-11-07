@@ -19,6 +19,7 @@ class Config:
     PORT: int = int(os.getenv("PORT", "8080"))
 
     SECRET_KEY = os.getenv('FLASK_SECRET_KEY')
+    SESSION_COOKIE_NAME = '__session'
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_SAMESITE = 'Lax'

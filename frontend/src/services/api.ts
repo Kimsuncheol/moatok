@@ -230,3 +230,17 @@ export const englishScraperApi = {
   sync: (offset = 0) => request<{ created: number; held: number; failed: number; next_offset: number | null }>('/api/v1/admin/integrations/english-scrapper/sync', { method: 'POST', body: JSON.stringify({ offset }) }),
   lesson: (id: string) => request<{ lesson: EnglishLesson }>(`/api/v1/share-messages/${encodeURIComponent(id)}/english-lesson`)
 }
+
+export interface MyChatAutomation {
+  connected: boolean
+  on_new: boolean
+  daily: boolean
+  daily_time: string
+  error: string
+}
+export const myChatAutomationApi = {
+  get: () => request<MyChatAutomation>('/api/v1/kakao/automation'),
+  save: (settings: MyChatAutomation) => request<MyChatAutomation>('/api/v1/kakao/automation', { method: 'PUT', body: JSON.stringify(settings) }),
+  disconnect: () => request<MyChatAutomation>('/api/v1/kakao/automation', { method: 'DELETE' }),
+  connect: () => request<{ url: string }>('/api/v1/kakao/automation/connect', { method: 'POST' })
+}

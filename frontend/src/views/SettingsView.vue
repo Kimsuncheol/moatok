@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import MyChatAutomation from '@/components/MyChatAutomation.vue'
 import { myChatConnected, connectMyChat, disconnectMyChat } from '@/services/kakaoMyChat'
 const kakaoBusy = ref(false)
 const kakaoFeedback = ref('')
@@ -210,6 +211,7 @@ onMounted(() => {
       <button type="button" :class="myChatConnected ? 'setting-sub-btn' : 'setting-action-btn'" :disabled="kakaoBusy" @click="manageKakao()">{{ kakaoBusy ? '처리 중…' : myChatConnected ? '카카오 연결 해제' : '카카오 계정 연결' }}</button>
       <p role="status">{{ kakaoFeedback }}</p>
     </section>
+    <MyChatAutomation />
     <!-- 1. Appearance Modes as a List (NO dropdown!) -->
     <section class="settings-card" aria-labelledby="appearance-heading">
       <div class="card-title-row">
@@ -638,7 +640,7 @@ onMounted(() => {
       </div>
       <div class="policy-content">
         <p class="policy-lead">
-          <strong>Moatok은 카카오톡 채팅방에 자동으로 게시하지 않습니다.</strong>
+          <strong>자동 전송은 동의한 계정의 나와의 채팅에서만 지원합니다.</strong>
         </p>
         <ul class="policy-list">
           <li>
