@@ -31,3 +31,18 @@ describe('automatic sending availability', () => {
     expect(wrapper.text()).toContain('Network unavailable')
   })
 })
+
+it('applies a selected time only after pressing 설정', async () => {
+  vi.mocked(api.status).mockResolvedValue({ configured: true })
+  vi.mocked(api.get).mockResolvedValue({ connected: true, on_new: false, daily: false, daily_time: '09:00', error: '' })
+  const wrapper = mount(MyChatAutomation)
+  await flushPromises()
+  await wrapper.get('.automation-time-trigger').trigger('click')
+  const selects = wrapper.findAll('select')
+  await selects[0].setValue('18')
+  await selects[1].setValue('30')
+  expect(wrapper.get('#automation-time-value').text()).toBe('09:00')
+  await wrapper.get('.automation-time-actions button:last-child').trigger('click')
+  expect(wrapper.get('#automation-time-value').text()).toBe('18:30')
+  expect(api.save).not.toHaveBeenCalled()
+})

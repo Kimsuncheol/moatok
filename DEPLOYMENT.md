@@ -103,3 +103,18 @@ secret, stable Flask secret, redirect URI, and frontend origin. Credentials are
 not stored in this repository. Readiness and live OAuth redirect/state checks
 passed; users still need to connect their own Kakao account before enabling
 triggers. Preserve these environment settings on subsequent deployments.
+
+## Kakao account login
+
+`/api/v1/kakao/signin` uses the same public-origin OAuth callback and state
+validation as the automatic-send connection. The backend retrieves the Kakao
+user ID with the exchanged access token and signs a Firebase custom token for
+`kakao:<provider-user-id>`. Kakao refresh credentials are encrypted under that
+same Firebase UID; triggers remain opt-in. Existing email/Google identities are
+not automatically merged with a Kakao identity. The obsolete browser-only
+connection card is no longer shown in Settings.
+
+The Cloud Run service account has the custom `kakaoFirebaseSigner` role on itself,
+containing only `iam.serviceAccounts.signBlob`. The IAM Credentials API must stay
+enabled. No service-account private key file is used. Firebase custom tokens
+are returned only to the configured frontend opener, never in a redirect URL.

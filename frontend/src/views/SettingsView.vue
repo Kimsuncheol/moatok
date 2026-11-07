@@ -1,21 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import MyChatAutomation from '@/components/MyChatAutomation.vue'
-import { myChatConnected, connectMyChat, disconnectMyChat } from '@/services/kakaoMyChat'
-const kakaoBusy = ref(false)
-const kakaoFeedback = ref('')
-async function manageKakao() {
-  if (kakaoBusy.value) return
-  const disconnect = myChatConnected.value
-  kakaoBusy.value = true
-  try {
-    if (disconnect) await disconnectMyChat()
-    else await connectMyChat()
-    kakaoFeedback.value = disconnect ? '카카오 연결을 해제했습니다.' : '카카오 연결이 유지됩니다. 새로고침 후에도 복원할 수 있습니다.'
-  } catch (error) { kakaoFeedback.value = error instanceof Error ? error.message : '카카오 연결에 실패했습니다.' }
-  finally { kakaoBusy.value = false }
-}
-
+import { loginWithKakao } from '@/services/kakaoLogin'
 import { useRouter } from 'vue-router'
 import { getApiBaseUrl } from '@/services/api'
 import { useNotificationsStore } from '@/stores/notifications'
@@ -144,6 +130,14 @@ async function handleGuestAuth() {
   }
 }
 
+async function handleKakaoAuth() {
+  if (authSubmitting.value) return
+  authSubmitting.value = true
+  try { await authStore.loginWithCustomToken(await loginWithKakao()) }
+  catch (error) { authStore.error = error instanceof Error ? error.message : '카카오 로그인에 실패했습니다.' }
+  finally { authSubmitting.value = false }
+}
+
 async function handleGoogleAuth() {
   authSubmitting.value = true
   try {
@@ -204,14 +198,7 @@ onMounted(() => {
         </button>
       </div>
     </section>
-    <section class="settings-card">
-      <h3 class="card-title">카카오 연결 유지</h3>
-      <p class="setting-caption">계정을 한 번 연결하면 이 브라우저에서 로그인 상태를 유지하고 필요할 때 자동 복원합니다. 팝업을 허용해 주세요.</p>
-      <p class="setting-caption" role="status">{{ myChatConnected ? '연결됨' : '연결 안 됨' }}</p>
-      <button type="button" :class="myChatConnected ? 'setting-sub-btn' : 'setting-action-btn'" :disabled="kakaoBusy" @click="manageKakao()">{{ kakaoBusy ? '처리 중…' : myChatConnected ? '카카오 연결 해제' : '카카오 계정 연결' }}</button>
-      <p role="status">{{ kakaoFeedback }}</p>
-    </section>
-    <MyChatAutomation />
+    <MyChatAutomation v-if="authStore.isAuthenticated" :key="authStore.userUid || 'account'" />
     <!-- 1. Appearance Modes as a List (NO dropdown!) -->
     <section class="settings-card" aria-labelledby="appearance-heading">
       <div class="card-title-row">
@@ -490,7 +477,7 @@ onMounted(() => {
         </div>
         <div class="detail-row">
           <span class="detail-label">계정 이메일:</span>
-          <span class="detail-value">{{ authStore.userEmail || '익명 게스트 계정' }}</span>
+          <span class="detail-value">{{ authStore.userEmail || (authStore.userUid?.startsWith('kakao:') ? '카카오 계정' : '익명 게스트 계정') }}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">계정 권한:</span>
@@ -518,6 +505,10 @@ onMounted(() => {
           로그인하여 브리핑을 검토하고 보호된 백엔드 API에 접근합니다.
         </p>
 
+        <button type="button" class="auth-primary-btn kakao-login-btn" :disabled="authSubmitting || authStore.isLoading" @click="handleKakaoAuth">
+          {{ authSubmitting ? '처리 중…' : '카카오톡으로 로그인' }}
+        </button>
+        <p class="setting-caption">카카오 로그인 시 나와의 채팅 연결도 함께 완료됩니다. 자동 전송은 원하는 항목을 선택하고 저장하면 시작됩니다.</p>
         <!-- Method Selector -->
         <div class="auth-method-selector">
           <button

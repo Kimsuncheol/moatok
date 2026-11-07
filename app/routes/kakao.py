@@ -5,6 +5,8 @@ import time
 from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 
+from firebase_admin import auth as firebase_auth
+
 from flask import Blueprint, current_app, jsonify, redirect, request, session
 
 kakao_bp = Blueprint('kakao', __name__, url_prefix='/api/v1/kakao')
@@ -24,6 +26,7 @@ def status():
 def login():
     if not ready():
         return jsonify(error='kakao_not_configured'), 503
+    session.pop('kakao_signin', None)
     session.pop('automation_uid', None)
     if request.args.get('automation'):
         try:
@@ -38,6 +41,14 @@ def login():
         'redirect_uri': current_app.config['KAKAO_REDIRECT_URI'],
         'response_type': 'code', 'scope': 'talk_message', 'state': state}))
     response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@kakao_bp.get('/signin')
+def signin():
+    response = login()
+    if ready():
+        session['kakao_signin'] = True
     return response
 
 
@@ -62,7 +73,19 @@ def callback():
             if not token.get('access_token') or 'talk_message' not in token.get('scope', '').split():
                 raise ValueError('Missing permission')
             uid = session.pop('automation_uid', None)
-            if uid:
+            if session.pop('kakao_signin', False):
+                req = Request('https://kapi.kakao.com/v2/user/me', headers={'Authorization': 'Bearer ' + token['access_token']})
+                with urlopen(req, timeout=15) as response:
+                    identity = json.load(response)
+                if type(identity.get('id')) is not int or identity['id'] <= 0:
+                    raise ValueError('Invalid Kakao identity')
+                uid = 'kakao:' + str(identity['id'])
+                if not token.get('refresh_token'):
+                    raise ValueError('Missing refresh token')
+                custom_token = firebase_auth.create_custom_token(uid, {'login_provider': 'kakao'})
+                store_tokens(uid, token)
+                result = {'type': 'moatok-kakao-login', 'firebase_token': custom_token.decode() if isinstance(custom_token, bytes) else custom_token}
+            elif uid:
                 if not token.get('refresh_token'):
                     raise ValueError('Missing refresh token')
                 store_tokens(uid, token)
