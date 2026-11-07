@@ -83,3 +83,28 @@ def test_cannot_enable_without_credentials(client, mock_firebase_auth):
     response = client.put('/api/v1/kakao/automation', headers={'Authorization': 'Bearer valid-token-user-1'},
                           json={'on_new': True, 'daily': False, 'daily_time': '09:00'})
     assert response.status_code == 409
+
+
+def test_proxy_host_does_not_split_oauth_cookie_origins(app, client, mock_firebase_auth):
+    from test_kakao_oauth import configure
+    from urllib.parse import urlsplit, parse_qs
+    configure(app)
+    public = 'https://moatalk-e6fe1.web.app'
+    app.config['KAKAO_REDIRECT_URI'] = public + '/api/v1/kakao/callback'
+    result = client.post('/api/v1/kakao/automation/connect',
+                         base_url='https://internal-service.run.app',
+                         headers={'Authorization': 'Bearer valid-token-user-1'})
+    assert result.status_code == 200
+    assert result.json['url'].startswith(public + '/api/v1/kakao/login?')
+    assert 'no-store' in result.headers['Cache-Control']
+    url = urlsplit(result.json['url'])
+    login = client.get(url.path + '?' + url.query, base_url=public)
+    assert login.status_code == 302
+    assert 'no-store' in login.headers['Cache-Control']
+    state = parse_qs(urlsplit(login.location).query)['state'][0]
+    # The browser returns from Kakao to the public origin with its state cookie.
+    callback = client.get('/api/v1/kakao/callback?error=access_denied&state=' + state, base_url=public)
+    assert callback.status_code == 200
+    assert 'invalid_oauth_state' not in callback.text
+    # Replaying the consumed state still fails.
+    assert client.get('/api/v1/kakao/callback?state=' + state, base_url=public).status_code == 400

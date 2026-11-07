@@ -2,7 +2,7 @@
 import json
 import secrets
 import time
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 
 from flask import Blueprint, current_app, jsonify, redirect, request, session
@@ -33,10 +33,12 @@ def login():
     state = secrets.token_urlsafe(32)
     session['kakao_state'] = state
     session['kakao_started'] = time.time()
-    return redirect('https://kauth.kakao.com/oauth/authorize?' + urlencode({
+    response = redirect('https://kauth.kakao.com/oauth/authorize?' + urlencode({
         'client_id': current_app.config['KAKAO_REST_API_KEY'],
         'redirect_uri': current_app.config['KAKAO_REDIRECT_URI'],
         'response_type': 'code', 'scope': 'talk_message', 'state': state}))
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 @kakao_bp.get('/callback')
@@ -118,7 +120,13 @@ def automation_connect():
     if not ready():
         return jsonify(message='카카오 연결 서버가 설정되지 않았습니다.'), 503
     ticket = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='my-chat-link').dumps(g.current_user['uid'])
-    return jsonify(url=request.url_root.rstrip('/') + '/api/v1/kakao/login?automation=' + ticket)
+    # Hosting rewrites can expose Cloud Run's internal host as request.url_root.
+    # Set the state cookie on the same public origin used by the OAuth callback.
+    callback = urlsplit(current_app.config['KAKAO_REDIRECT_URI'])
+    origin = f'{callback.scheme}://{callback.netloc}'
+    response = jsonify(url=origin + '/api/v1/kakao/login?automation=' + ticket)
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 @kakao_bp.post('/automation/run')
