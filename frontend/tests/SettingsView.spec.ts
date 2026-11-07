@@ -138,7 +138,23 @@ describe('SettingsView Component', () => {
     expect(wrapper.text()).toContain('Desktop (Chrome / Edge / Safari) 설치 방법')
   })
 
-  it('provides logout when user is authenticated', async () => {
+  it('offers only Kakao then Google as direct sign-in buttons', async () => {
+    const store = useAuthStore()
+    vi.spyOn(store, 'init').mockImplementation(() => {})
+    store.status = 'signed_out'
+    store.loading = false
+    const google = vi.spyOn(store, 'loginWithGoogle').mockResolvedValue({} as any)
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    const buttons = wrapper.findAll('.auth-form-box button')
+    expect(buttons.map(button => button.text())).toEqual(['카카오톡으로 로그인', 'Google로 계속하기'])
+    expect(wrapper.find('.email-auth-form').exists()).toBe(false)
+    expect(wrapper.find('.auth-method-selector').exists()).toBe(false)
+    await buttons[1].trigger('click')
+    expect(google).toHaveBeenCalledOnce()
+  })
+
+  it('provides logout when user is authenticated' , async () => {
     const authStore = useAuthStore()
     vi.spyOn(authStore, 'init').mockImplementation(() => {})
     authStore.user = { uid: 'u_test_1', email: 'test@example.com' } as any

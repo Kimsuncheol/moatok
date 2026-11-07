@@ -560,3 +560,11 @@ a {
 .automation-time-actions button { min-height: 44px; padding: 8px 16px; border: 1px solid var(--border-default); border-radius: 6px; background: var(--bg-surface); color: var(--text-primary); font-size: 13px; font-weight: 600; }
 .automation-time-actions button:last-child { background: var(--accent-action); color: var(--accent-action-text); }
 .my-chat-automation .automation-save-btn { margin-top: 4px; }
+
+.settings-view .google-login-btn {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}

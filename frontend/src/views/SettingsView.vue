@@ -8,7 +8,7 @@ import { useNotificationsStore } from '@/stores/notifications'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import { useEndpointsStore } from '@/stores/endpoints'
-import type { AppearanceMode, AuthSignInMethod } from '@/types'
+import type { AppearanceMode } from '@/types'
 
 const router = useRouter()
 const endpointsStore = useEndpointsStore()
@@ -36,10 +36,6 @@ const detectedPlatform = computed<'android' | 'ios' | 'desktop'>(() => {
 const activePlatformTab = ref<'android' | 'ios' | 'desktop'>('desktop')
 
 // Authentication form state
-const selectedMethod = ref<AuthSignInMethod>(authStore.preferredSignInMethod)
-const authEmail = ref('')
-const authPassword = ref('')
-const authMode = ref<'login' | 'signup'>('login')
 const authSubmitting = ref(false)
 
 // Appearance modes list
@@ -100,33 +96,6 @@ async function handleRequestNotification() {
     }
   } finally {
     isRequestingNotif.value = false
-  }
-}
-
-async function handleEmailAuth() {
-  if (!authEmail.value || !authPassword.value) return
-  authSubmitting.value = true
-  try {
-    if (authMode.value === 'login') {
-      await authStore.loginWithEmail(authEmail.value, authPassword.value)
-    } else {
-      await authStore.signupWithEmail(authEmail.value, authPassword.value)
-    }
-    authEmail.value = ''
-    authPassword.value = ''
-  } catch {
-    // Error is captured in authStore.error
-  } finally {
-    authSubmitting.value = false
-  }
-}
-
-async function handleGuestAuth() {
-  authSubmitting.value = true
-  try {
-    await authStore.loginAsGuest()
-  } finally {
-    authSubmitting.value = false
   }
 }
 
@@ -508,118 +477,10 @@ onMounted(() => {
         <button type="button" class="auth-primary-btn kakao-login-btn" :disabled="authSubmitting || authStore.isLoading" @click="handleKakaoAuth">
           {{ authSubmitting ? '처리 중…' : '카카오톡으로 로그인' }}
         </button>
+        <button type="button" class="auth-primary-btn google-login-btn" :disabled="authSubmitting || authStore.isLoading" @click="handleGoogleAuth">
+          {{ authSubmitting ? '처리 중…' : 'Google로 계속하기' }}
+        </button>
         <p class="setting-caption">카카오 로그인 시 나와의 채팅 연결도 함께 완료됩니다. 자동 전송은 원하는 항목을 선택하고 저장하면 시작됩니다.</p>
-        <!-- Method Selector -->
-        <div class="auth-method-selector">
-          <button
-            type="button"
-            class="method-btn"
-            :class="{ active: selectedMethod === 'email' }"
-            @click="selectedMethod = 'email'"
-          >
-            이메일 로그인
-          </button>
-          <button
-            type="button"
-            class="method-btn"
-            :class="{ active: selectedMethod === 'anonymous' }"
-            @click="selectedMethod = 'anonymous'"
-          >
-            게스트 (익명)
-          </button>
-          <button
-            type="button"
-            class="method-btn"
-            :class="{ active: selectedMethod === 'google' }"
-            @click="selectedMethod = 'google'"
-          >
-            Google
-          </button>
-        </div>
-
-        <!-- 1. Email / Password Authentication -->
-        <form
-          v-if="selectedMethod === 'email'"
-          class="email-auth-form"
-          @submit.prevent="handleEmailAuth"
-        >
-          <div class="form-group">
-            <label for="auth-email-input" class="form-label">이메일</label>
-            <input
-              id="auth-email-input"
-              v-model="authEmail"
-              type="email"
-              required
-              autocomplete="username"
-              placeholder="user@example.com"
-              class="form-input"
-              :disabled="authSubmitting || authStore.isLoading"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="auth-password-input" class="form-label">비밀번호</label>
-            <input
-              id="auth-password-input"
-              v-model="authPassword"
-              type="password"
-              required
-              minlength="6"
-              autocomplete="current-password"
-              placeholder="6자 이상 비밀번호"
-              class="form-input"
-              :disabled="authSubmitting || authStore.isLoading"
-            />
-          </div>
-
-          <div class="form-buttons-row">
-            <button
-              type="submit"
-              class="auth-primary-btn"
-              :disabled="authSubmitting || authStore.isLoading"
-            >
-              {{ authSubmitting ? '처리 중...' : authMode === 'login' ? '로그인' : '회원가입' }}
-            </button>
-            <button
-              type="button"
-              class="auth-sub-btn"
-              :disabled="authSubmitting || authStore.isLoading"
-              @click="authMode = authMode === 'login' ? 'signup' : 'login'"
-            >
-              {{ authMode === 'login' ? '새 계정 회원가입' : '기존 계정 로그인' }}
-            </button>
-          </div>
-        </form>
-
-        <!-- 2. Anonymous / Guest Sign-in -->
-        <div v-else-if="selectedMethod === 'anonymous'" class="anonymous-auth-box">
-          <p class="setting-caption">
-            별도 가입 없이 익명 계정으로 즉시 브리핑을 검토하고 카카오톡 공유를 시작할 수 있습니다.
-          </p>
-          <button
-            type="button"
-            class="auth-primary-btn"
-            :disabled="authSubmitting || authStore.isLoading"
-            @click="handleGuestAuth"
-          >
-            {{ authSubmitting ? '처리 중...' : '게스트로 시작하기 (익명 인증)' }}
-          </button>
-        </div>
-
-        <!-- 3. Google Sign-in -->
-        <div v-else-if="selectedMethod === 'google'" class="google-auth-box">
-          <p class="setting-caption">
-            Google 계정으로 안전하게 Firebase 인증을 수행합니다.
-          </p>
-          <button
-            type="button"
-            class="auth-primary-btn"
-            :disabled="authSubmitting || authStore.isLoading"
-            @click="handleGoogleAuth"
-          >
-            {{ authSubmitting ? '처리 중...' : 'Google 계정으로 로그인' }}
-          </button>
-        </div>
       </div>
     </section>
 
