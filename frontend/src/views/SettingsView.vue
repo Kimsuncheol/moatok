@@ -178,7 +178,7 @@ onMounted(() => {
     <!-- API Endpoints Management -->
     <section class="settings-card" aria-labelledby="api-endpoints-heading">
       <div class="card-title-row">
-        <h3 id="api-endpoints-heading" class="card-title">API 엔드포인트 관리 (API Endpoints)</h3>
+        <h3 id="api-endpoints-heading" class="card-title" title="API Endpoints">API 엔드포인트 관리</h3>
         <span class="info-badge">외부 데이터 연동</span>
       </div>
       <p class="setting-caption">
@@ -677,18 +677,14 @@ onMounted(() => {
 }
 
 .view-title {
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--text-primary);
   letter-spacing: -0.5px;
 }
 
 .view-desc {
-  font-size: 13px;
-  color: var(--text-muted);
 }
 
 .settings-card {
+  min-width: 0;
   padding: 16px;
   border-radius: 12px;
   background-color: var(--bg-surface);
@@ -700,33 +696,28 @@ onMounted(() => {
 
 .card-title-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
 .card-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-primary);
   margin: 0;
 }
 
 .setting-caption {
-  font-size: 12.5px;
-  color: var(--text-muted);
   line-height: 1.45;
   margin: 0;
 }
 
 .info-badge {
-  font-size: 11px;
-  font-weight: 600;
+  flex-shrink: 0;
+  white-space: nowrap;
   padding: 2px 8px;
   border-radius: 999px;
   background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-default);
-  color: var(--text-secondary);
 }
 
 /* 1. Appearance Modes as a List */
@@ -774,27 +765,18 @@ onMounted(() => {
 }
 
 .mode-icon {
-  font-size: 15px;
 }
 
 .mode-name {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: var(--text-primary);
 }
 
 .current-badge {
-  font-size: 10.5px;
-  font-weight: 700;
   padding: 1px 6px;
   border-radius: 4px;
   background-color: var(--badge-bg);
-  color: var(--badge-text);
 }
 
 .mode-desc {
-  font-size: 11.5px;
-  color: var(--text-muted);
   margin: 0;
   line-height: 1.4;
 }
@@ -824,23 +806,18 @@ onMounted(() => {
 
 /* 2. Notifications */
 .status-indicator {
-  font-size: 11px;
-  font-weight: 700;
   padding: 2px 8px;
   border-radius: 999px;
   background-color: var(--bg-surface-elevated);
-  color: var(--text-muted);
 }
 
 .status-indicator.active {
   background-color: var(--badge-bg);
-  color: var(--badge-text);
 }
 
 .status-indicator.denied {
   background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-strong);
-  color: var(--text-primary);
 }
 
 .notif-details {
@@ -850,7 +827,6 @@ onMounted(() => {
   padding: 10px 12px;
   border-radius: 8px;
   background-color: var(--bg-surface-elevated);
-  font-size: 12px;
 }
 
 .detail-row {
@@ -861,12 +837,10 @@ onMounted(() => {
 }
 
 .detail-label {
-  color: var(--text-muted);
   flex-shrink: 0;
 }
 
 .detail-value {
-  color: var(--text-primary);
   text-align: right;
 }
 
@@ -875,7 +849,6 @@ onMounted(() => {
 }
 
 .font-semibold {
-  font-weight: 600;
 }
 
 .ellipsis {
@@ -890,9 +863,6 @@ onMounted(() => {
   border-radius: 8px;
   background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-default);
-  font-size: 12px;
-  color: var(--text-primary);
-  font-weight: 600;
 }
 
 .notif-action-area {
@@ -906,10 +876,7 @@ onMounted(() => {
   padding: 12px 16px;
   border-radius: 8px;
   background-color: var(--accent-action);
-  color: var(--accent-action-text);
   border: none;
-  font-size: 13px;
-  font-weight: 700;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -936,10 +903,7 @@ onMounted(() => {
   padding: 10px 14px;
   border-radius: 8px;
   background-color: var(--bg-surface-elevated);
-  color: var(--text-secondary);
   border: 1px solid var(--border-default);
-  font-size: 12.5px;
-  font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -950,7 +914,6 @@ onMounted(() => {
 
 .setting-sub-btn:hover:not(:disabled) {
   background-color: var(--bg-surface-hover);
-  color: var(--text-primary);
   border-color: var(--border-strong);
 }
 
@@ -972,13 +935,10 @@ onMounted(() => {
   border-radius: 8px;
   background-color: var(--bg-surface-elevated);
   border: 1px dashed var(--border-strong);
-  font-size: 11.5px;
   line-height: 1.45;
-  color: var(--text-secondary);
 }
 
 .warning-icon {
-  font-size: 13px;
 }
 
 .denied-text,
@@ -1002,26 +962,19 @@ onMounted(() => {
   border-radius: 6px;
   background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-default);
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
 }
 
 .platform-tab-btn.active {
   background-color: var(--accent-action);
-  color: var(--accent-action-text);
   border-color: var(--accent-action);
 }
 
 .detected-badge {
-  font-size: 9.5px;
-  font-weight: 700;
   padding: 1px 5px;
   border-radius: 3px;
   background-color: var(--bg-surface);
-  color: var(--text-primary);
 }
 
 .platform-card {
@@ -1031,13 +984,9 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  font-size: 12px;
 }
 
 .platform-card-header {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--text-primary);
 }
 
 .step-list {
@@ -1046,7 +995,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  color: var(--text-secondary);
   line-height: 1.45;
 }
 
@@ -1062,14 +1010,9 @@ onMounted(() => {
 }
 
 .ios-alert-title {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--text-primary);
 }
 
 .ios-alert-desc {
-  font-size: 11px;
-  color: var(--text-muted);
   line-height: 1.45;
   margin: 0;
 }
@@ -1082,12 +1025,9 @@ onMounted(() => {
   padding: 12px;
   border-radius: 8px;
   background-color: var(--bg-surface-elevated);
-  font-size: 12px;
 }
 
 .admin-badge {
-  font-weight: 700;
-  color: var(--text-primary);
 }
 
 .auth-actions-row {
@@ -1101,16 +1041,12 @@ onMounted(() => {
   border-radius: 6px;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-strong);
-  color: var(--text-primary);
-  font-size: 12.5px;
-  font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .logout-btn:hover {
   background-color: var(--accent-action);
-  color: var(--accent-action-text);
 }
 
 .auth-form-box {
@@ -1130,15 +1066,11 @@ onMounted(() => {
   border-radius: 6px;
   background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-default);
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 600;
   cursor: pointer;
 }
 
 .method-btn.active {
   background-color: var(--accent-action);
-  color: var(--accent-action-text);
   border-color: var(--accent-action);
 }
 
@@ -1155,9 +1087,6 @@ onMounted(() => {
 }
 
 .form-label {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--text-secondary);
 }
 
 .form-input {
@@ -1165,8 +1094,6 @@ onMounted(() => {
   border-radius: 6px;
   background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-default);
-  color: var(--text-primary);
-  font-size: 13px;
 }
 
 .form-input:focus {
@@ -1186,10 +1113,7 @@ onMounted(() => {
   padding: 11px 16px;
   border-radius: 6px;
   background-color: var(--accent-action);
-  color: var(--accent-action-text);
   border: none;
-  font-size: 13px;
-  font-weight: 700;
   cursor: pointer;
 }
 
@@ -1202,13 +1126,10 @@ onMounted(() => {
   background: none;
   border: none;
   padding: 6px;
-  font-size: 12px;
-  color: var(--text-muted);
   cursor: pointer;
 }
 
 .auth-sub-btn:hover {
-  color: var(--text-primary);
 }
 
 .auth-alert {
@@ -1217,7 +1138,6 @@ onMounted(() => {
   gap: 8px;
   padding: 10px 12px;
   border-radius: 8px;
-  font-size: 12px;
 }
 
 .expired-alert {
@@ -1233,8 +1153,6 @@ onMounted(() => {
 .alert-dismiss-btn {
   background: none;
   border: none;
-  font-size: 14px;
-  color: var(--text-muted);
   cursor: pointer;
   margin-left: auto;
 }
@@ -1244,14 +1162,11 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  font-size: 12px;
   line-height: 1.5;
-  color: var(--text-secondary);
 }
 
 .policy-lead {
   margin: 0;
-  color: var(--text-primary);
 }
 
 .policy-list {
@@ -1263,12 +1178,9 @@ onMounted(() => {
 }
 
 .notice-tag {
-  font-size: 10.5px;
-  font-weight: 700;
   padding: 1px 6px;
   border-radius: 4px;
   background-color: var(--badge-bg);
-  color: var(--badge-text);
 }
 
 /* API Endpoints Section */
@@ -1289,14 +1201,9 @@ onMounted(() => {
 }
 
 .summary-count {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: var(--text-primary);
 }
 
 .summary-desc {
-  font-size: 12px;
-  color: var(--text-muted);
 }
 
 .setting-api-btn {
@@ -1304,10 +1211,7 @@ onMounted(() => {
   padding: 12px 16px;
   border-radius: 8px;
   background-color: var(--accent-action);
-  color: var(--accent-action-text);
   border: none;
-  font-size: 13px;
-  font-weight: 700;
   cursor: pointer;
   display: inline-flex;
   align-items: center;

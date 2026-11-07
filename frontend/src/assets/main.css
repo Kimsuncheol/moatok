@@ -156,3 +156,276 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+/* Settings typography is maintained globally. */
+.settings-view .view-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.settings-view .view-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.settings-view .card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.settings-view .setting-caption {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.settings-view .info-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.settings-view .mode-icon {
+  font-size: 15px;
+}
+
+.settings-view .mode-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.settings-view .current-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--badge-text);
+}
+
+.settings-view .mode-desc {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.settings-view /* 2. Notifications */
+.status-indicator {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.settings-view .status-indicator.active {
+  color: var(--badge-text);
+}
+
+.settings-view .status-indicator.denied {
+  color: var(--text-primary);
+}
+
+.settings-view .notif-details {
+  font-size: 12px;
+}
+
+.settings-view .detail-label {
+  color: var(--text-muted);
+}
+
+.settings-view .detail-value {
+  color: var(--text-primary);
+}
+
+.settings-view .font-semibold {
+  font-weight: 600;
+}
+
+.settings-view .notif-feedback-box {
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.settings-view .setting-action-btn {
+  color: var(--accent-action-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.settings-view .setting-sub-btn {
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.settings-view .setting-sub-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.settings-view .denied-guidance-box,
+.unsupported-guidance-box {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.settings-view .warning-icon {
+  font-size: 13px;
+}
+
+.settings-view .platform-tab-btn {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.settings-view .platform-tab-btn.active {
+  color: var(--accent-action-text);
+}
+
+.settings-view .detected-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.settings-view .platform-card {
+  font-size: 12px;
+}
+
+.settings-view .platform-card-header {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.settings-view .step-list {
+  color: var(--text-secondary);
+}
+
+.settings-view .ios-alert-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.settings-view .ios-alert-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.settings-view /* 4. Auth & Logout */
+.user-info-box {
+  font-size: 12px;
+}
+
+.settings-view .admin-badge {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.settings-view .logout-btn {
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.settings-view .logout-btn:hover {
+  color: var(--accent-action-text);
+}
+
+.settings-view .method-btn {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.settings-view .method-btn.active {
+  color: var(--accent-action-text);
+}
+
+.settings-view .form-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.settings-view .form-input {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.settings-view .auth-primary-btn {
+  color: var(--accent-action-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.settings-view .auth-sub-btn {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.settings-view .auth-sub-btn:hover {
+  color: var(--text-primary);
+}
+
+.settings-view .auth-alert {
+  font-size: 12px;
+}
+
+.settings-view .alert-dismiss-btn {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.settings-view /* 5. Policy */
+.policy-content {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.settings-view .policy-lead {
+  color: var(--text-primary);
+}
+
+.settings-view .notice-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--badge-text);
+}
+
+.settings-view .summary-count {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.settings-view .summary-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.settings-view .setting-api-btn {
+  color: var(--accent-action-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Keep Settings labels together while fitting narrow phone screens. */
+.settings-view .card-title {
+  word-break: keep-all;
+}
+
+.settings-view .setting-caption,
+.settings-view .summary-desc {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 380px) {
+  .settings-view .card-title {
+    font-size: 14px;
+  }
+
+  .settings-view .info-badge {
+    font-size: 10px;
+  }
+}
