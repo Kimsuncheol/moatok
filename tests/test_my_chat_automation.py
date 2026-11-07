@@ -67,3 +67,19 @@ def test_both_triggers_and_daily_time(app, monkeypatch):
         send.reset_mock()
         assert service.run_automations(now) == {'sent': 0}
         send.assert_not_called()
+
+
+def test_connect_unconfigured_and_configured(app, client, mock_firebase_auth):
+    from test_kakao_oauth import configure
+    headers = {'Authorization': 'Bearer valid-token-user-1'}
+    assert client.post('/api/v1/kakao/automation/connect', headers=headers).status_code == 503
+    configure(app)
+    result = client.post('/api/v1/kakao/automation/connect', headers=headers)
+    assert result.status_code == 200
+    assert 'automation=' in result.json['url']
+
+
+def test_cannot_enable_without_credentials(client, mock_firebase_auth):
+    response = client.put('/api/v1/kakao/automation', headers={'Authorization': 'Bearer valid-token-user-1'},
+                          json={'on_new': True, 'daily': False, 'daily_time': '09:00'})
+    assert response.status_code == 409

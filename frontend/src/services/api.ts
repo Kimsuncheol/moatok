@@ -239,6 +239,7 @@ export interface MyChatAutomation {
   error: string
 }
 export const myChatAutomationApi = {
+  status: () => request<{ configured: boolean }>('/api/v1/kakao/status'),
   get: () => request<MyChatAutomation>('/api/v1/kakao/automation'),
   save: (settings: MyChatAutomation) => request<MyChatAutomation>('/api/v1/kakao/automation', { method: 'PUT', body: JSON.stringify(settings) }),
   disconnect: () => request<MyChatAutomation>('/api/v1/kakao/automation', { method: 'DELETE' }),

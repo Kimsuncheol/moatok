@@ -103,6 +103,8 @@ def automation():
         if not isinstance(data, dict) or type(data.get('on_new')) is not bool or type(data.get('daily')) is not bool or not re.fullmatch(r'(?:[01]\d|2[0-3]):[0-5]\d', str(data.get('daily_time', ''))):
             return jsonify(message='올바른 전송 설정과 시간을 입력하세요.'), 400
         previous = ref.get().to_dict() or {}
+        if not previous.get('credentials'):
+            return jsonify(message='카카오 계정을 먼저 연결해 주세요.'), 409
         update = {key: data[key] for key in ('on_new', 'daily', 'daily_time')}
         if not previous.get('enabled_at') or (not previous.get('on_new') and not previous.get('daily')):
             update['enabled_at'] = datetime.now(timezone.utc)

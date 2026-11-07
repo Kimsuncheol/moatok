@@ -78,3 +78,20 @@ OIDC audience must equal `SCHEDULER_OIDC_AUDIENCE`. Delivery receipts are claime
 atomically before contacting Kakao. Uncertain results are held for review rather
 than retried automatically, to avoid duplicates. The UI reports connection/send
 errors. Disconnect disables triggers and removes the encrypted credentials.
+
+### Diagnosing an automatic-send connection 503
+
+`POST /api/v1/kakao/automation/connect` returns 503 when any required OAuth
+configuration is absent. Check `/api/v1/kakao/status` first: `configured: false`
+is a configuration problem, not a transient collection failure. The frontend
+keeps connection and trigger controls disabled until readiness succeeds.
+
+Cloud Run must have `FLASK_SECRET_KEY`, `KAKAO_REST_API_KEY`,
+`KAKAO_REDIRECT_URI`, and `KAKAO_FRONTEND_ORIGIN`. Set the callback to
+`https://moatalk-e6fe1.web.app/api/v1/kakao/callback` and register that exact URL
+in Kakao Developers. Use the REST API key, not the JavaScript key. Set
+`KAKAO_CLIENT_SECRET` too if the provider app requires it. Supply credentials
+through private deployment configuration; never commit them. Preserve existing
+Cloud Run environment variables when updating OAuth configuration. Only declare
+connection recovery complete after readiness is true and a real user completes
+OAuth and saves the desired triggers.
