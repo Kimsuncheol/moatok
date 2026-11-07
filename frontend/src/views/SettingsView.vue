@@ -800,10 +800,16 @@ onMounted(() => {
 
 /* 3. Platform PWA Guidance */
 .platform-tabs {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   display: flex;
   gap: 6px;
   overflow-x: auto;
   padding-bottom: 2px;
+}
+
+.platform-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .platform-tab-btn {
