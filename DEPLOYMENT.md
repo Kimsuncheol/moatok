@@ -95,3 +95,11 @@ through private deployment configuration; never commit them. Preserve existing
 Cloud Run environment variables when updating OAuth configuration. Only declare
 connection recovery complete after readiness is true and a real user completes
 OAuth and saves the desired triggers.
+
+Production OAuth configuration was completed on 2026-11-07. The Moatok Kakao
+app now permits the Firebase Hosting callback above alongside its existing
+Render callback. Cloud Run holds the REST API key, enabled Kakao Login client
+secret, stable Flask secret, redirect URI, and frontend origin. Credentials are
+not stored in this repository. Readiness and live OAuth redirect/state checks
+passed; users still need to connect their own Kakao account before enabling
+triggers. Preserve these environment settings on subsequent deployments.
