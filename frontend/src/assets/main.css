@@ -578,3 +578,6 @@ a {
   * { scrollbar-width: none; }
   *::-webkit-scrollbar { display: none; }
 }
+
+.openchat-form > .setting-action-btn { min-height: 44px; padding: 12px 16px; border: 1px solid var(--accent-action); border-radius: 8px; background: var(--accent-action); color: var(--accent-action-text); font-size: 14px; font-weight: 600; cursor: pointer; }
+.openchat-form > .setting-action-btn:disabled { opacity: .5; cursor: not-allowed; }

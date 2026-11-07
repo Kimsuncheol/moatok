@@ -3,9 +3,22 @@ import { ref } from 'vue'
 const room = ref('')
 const message = ref('')
 const due = ref('')
+const time = ref('09:00')
+const editingTime = ref(false)
+const draftHour = ref('09')
+const draftMinute = ref('00')
+function openTimeEditor() {
+  [draftHour.value, draftMinute.value] = time.value.split(':')
+  editingTime.value = !editingTime.value
+}
+function applyTime() {
+  time.value = `${draftHour.value}:${draftMinute.value}`
+  editingTime.value = false
+}
 const feedback = ref('')
 function download() {
-  const date = new Date(due.value)
+  if (editingTime.value) return
+  const date = new Date(`${due.value}T${time.value}`)
   if (!room.value.trim() || !message.value.trim() || !Number.isFinite(date.getTime()) || date.getTime() <= Date.now()) {
     feedback.value = '정확한 방 이름, 메시지, 미래 예약 시간을 입력하세요.'
     return
@@ -31,8 +44,20 @@ function download() {
     <form class="openchat-form" @submit.prevent="download">
       <label>카카오톡 창의 정확한 방 제목<input v-model="room" required maxlength="200" autocomplete="off"></label>
       <label>메시지<textarea v-model="message" required maxlength="4000" rows="4" /></label>
-      <label>예약 시간 (이 기기의 시간대)<input v-model="due" type="datetime-local" required></label>
-      <button class="setting-action-btn" type="submit">예약 파일 다운로드</button>
+      <label>예약 날짜 (이 기기의 시간대)<input v-model="due" type="date" required></label>
+      <div class="automation-time-group">
+        <span id="openchat-time-label">예약 시간 (이 기기의 시간대)</span>
+        <button type="button" class="automation-time-trigger" aria-labelledby="openchat-time-label openchat-time-value" :aria-expanded="editingTime" aria-controls="openchat-time-editor" @click="openTimeEditor">
+          <span id="openchat-time-value">{{ time }}</span>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+        </button>
+        <div v-if="editingTime" id="openchat-time-editor" class="automation-time-editor">
+          <label>시 <select v-model="draftHour"><option v-for="h in 24" :key="h" :value="String(h - 1).padStart(2, '0')">{{ String(h - 1).padStart(2, '0') }}</option></select></label>
+          <label>분 <select v-model="draftMinute"><option v-for="m in 60" :key="m" :value="String(m - 1).padStart(2, '0')">{{ String(m - 1).padStart(2, '0') }}</option></select></label>
+          <div class="automation-time-actions"><button type="button" @click="editingTime = false">취소</button><button type="button" @click="applyTime">설정</button></div>
+        </div>
+      </div>
+      <button class="setting-action-btn" type="submit" :disabled="editingTime">예약 파일 다운로드</button>
     </form>
     <p v-if="feedback" role="status" class="setting-caption">{{ feedback }}</p>
     <details>
