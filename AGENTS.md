@@ -4,6 +4,9 @@ The agent must redeploy this project to Firebase hosting whenever the frontend o
 The agent must also automatically commit and push the changes to the repository.
 
 # Frontend
-Every font weight, font size, and font color must be in each global file.
-If each global file is changed, the agent must update the changes in the other global files.
-If each global file doesn't exist, the agent must create it.
+- Every font weight, font size, and font color must be in each global file.
+- If each global file is changed, the agent must update the changes in the other global files.
+- If each global file doesn't exist, the agent must create it.
+- webkit scrollbar is allowed, but the scroll bar must be hidden in the mobile environment. 
+
+
