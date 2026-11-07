@@ -235,9 +235,9 @@ onMounted(() => {
       <!-- Notification Permission Details -->
       <div class="notif-details">
         <div class="detail-row">
-          <span class="detail-label">브라우저 알림 권한 상태:</span>
-          <span class="detail-value font-mono font-semibold">
-            {{ notifStore.permission }}
+          <span class="detail-label">알림 권한 상태:</span>
+          <span class="detail-value permission-value font-semibold">
+            <span class="font-mono">{{ notifStore.permission }}</span>
             <span v-if="notifStore.permission === 'granted'"> (알림 수신 가능)</span>
             <span v-else-if="notifStore.permission === 'denied'"> (브라우저에서 차단됨)</span>
             <span v-else> (권한 요청 필요)</span>
@@ -694,6 +694,11 @@ onMounted(() => {
 
 .detail-value {
   text-align: right;
+  word-break: keep-all;
+}
+
+.permission-value {
+  white-space: nowrap;
 }
 
 .font-mono {
