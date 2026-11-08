@@ -1,23 +1,47 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import TimePicker from '@/components/TimePicker.vue'
+import { ref, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import DatePicker from '@/components/DatePicker.vue'
+import { useEndpointsStore } from '@/stores/endpoints'
+const route = useRoute()
+const endpointsStore = useEndpointsStore()
+const selectedEndpoint = ref('')
+const fetching = ref(false)
+let request = 0
+async function fillFromApi() {
+  const currentRequest = ++request
+  if (!selectedEndpoint.value) { fetching.value = false; feedback.value = ''; return }
+  fetching.value = true
+  feedback.value = ''
+  try {
+    const result = await endpointsStore.triggerFetch(selectedEndpoint.value, true)
+    if (currentRequest !== request) return
+    if (result.success && result.shareMessage) {
+      message.value = result.shareMessage.body
+      feedback.value = 'API 데이터를 메시지에 입력했습니다. 내용을 확인하고 수정할 수 있습니다.'
+    } else { feedback.value = result.message }
+  } catch (error) {
+    if (currentRequest === request) feedback.value = error instanceof Error ? error.message : 'API 데이터를 불러오지 못했습니다.'
+  } finally { if (currentRequest === request) fetching.value = false }
+}
+onMounted(() => {
+  endpointsStore.loadEndpoints()
+  const id = typeof route.query.endpoint === 'string' ? route.query.endpoint : ''
+  selectedEndpoint.value = endpointsStore.endpoints.some(endpoint => endpoint.id === id) ? id : endpointsStore.endpoints[0]?.id || ''
+})
+watch(selectedEndpoint, fillFromApi)
+watch(() => route.query.endpoint, id => {
+  if (typeof id === 'string' && endpointsStore.endpoints.some(endpoint => endpoint.id === id)) selectedEndpoint.value = id
+})
 const room = ref('')
 const message = ref('')
 const due = ref('')
 const time = ref('09:00')
 const editingTime = ref(false)
-const draftHour = ref('09')
-const draftMinute = ref('00')
-function openTimeEditor() {
-  [draftHour.value, draftMinute.value] = time.value.split(':')
-  editingTime.value = !editingTime.value
-}
-function applyTime() {
-  time.value = `${draftHour.value}:${draftMinute.value}`
-  editingTime.value = false
-}
 const feedback = ref('')
 function download() {
-  if (editingTime.value) return
+  if (editingTime.value || fetching.value) return
   const date = new Date(`${due.value}T${time.value}`)
   if (!room.value.trim() || !message.value.trim() || !Number.isFinite(date.getTime()) || date.getTime() <= Date.now()) {
     feedback.value = '정확한 방 이름, 메시지, 미래 예약 시간을 입력하세요.'
@@ -43,21 +67,14 @@ function download() {
     <p class="setting-caption">방 제목이 정확히 일치하는 창 하나와 빈 입력창 하나만 허용합니다. 결과가 불확실하면 재전송하지 않고 확인 대기합니다. 발송 여부는 카카오톡에서 직접 확인하세요.</p>
     <form class="openchat-form" @submit.prevent="download">
       <label>카카오톡 창의 정확한 방 제목<input v-model="room" required maxlength="200" autocomplete="off"></label>
-      <label>메시지<textarea v-model="message" required maxlength="4000" rows="4" /></label>
-      <label>예약 날짜 (이 기기의 시간대)<input v-model="due" type="date" required></label>
-      <div class="automation-time-group">
-        <span id="openchat-time-label">예약 시간 (이 기기의 시간대)</span>
-        <button type="button" class="automation-time-trigger" aria-labelledby="openchat-time-label openchat-time-value" :aria-expanded="editingTime" aria-controls="openchat-time-editor" @click="openTimeEditor">
-          <span id="openchat-time-value">{{ time }}</span>
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-        </button>
-        <div v-if="editingTime" id="openchat-time-editor" class="automation-time-editor">
-          <label>시 <select v-model="draftHour"><option v-for="h in 24" :key="h" :value="String(h - 1).padStart(2, '0')">{{ String(h - 1).padStart(2, '0') }}</option></select></label>
-          <label>분 <select v-model="draftMinute"><option v-for="m in 60" :key="m" :value="String(m - 1).padStart(2, '0')">{{ String(m - 1).padStart(2, '0') }}</option></select></label>
-          <div class="automation-time-actions"><button type="button" @click="editingTime = false">취소</button><button type="button" @click="applyTime">설정</button></div>
-        </div>
-      </div>
-      <button class="setting-action-btn" type="submit" :disabled="editingTime">예약 파일 다운로드</button>
+      <label>메시지 데이터 API
+        <select v-model="selectedEndpoint"><option value="">직접 작성</option><option v-for="endpoint in endpointsStore.endpoints" :key="endpoint.id" :value="endpoint.id">{{ endpoint.name }}</option></select>
+      </label>
+      <div class="openchat-api-actions"><RouterLink to="/register-api">API 등록 및 관리</RouterLink><button v-if="selectedEndpoint" type="button" class="setting-sub-btn" :disabled="fetching" @click="fillFromApi">{{ fetching ? '불러오는 중…' : 'API 데이터 새로고침' }}</button></div>
+      <label>메시지<textarea v-model="message" required rows="4" :disabled="fetching" /></label>
+      <DatePicker id="openchat-date" v-model="due" label="예약 날짜 (이 기기의 시간대)" />
+      <TimePicker id="openchat-time" v-model="time" label="예약 시간 (이 기기의 시간대)" @editing="editingTime = $event" />
+      <button class="setting-action-btn" type="submit" :disabled="editingTime || fetching">예약 파일 다운로드</button>
     </form>
     <p v-if="feedback" role="status" class="setting-caption">{{ feedback }}</p>
     <details>

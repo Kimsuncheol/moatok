@@ -62,28 +62,14 @@ describe('ScheduleWidget Component', () => {
     expect(wrapper.text()).toContain('다크 모드')
   })
 
-  it('updates time when steppers or period buttons are clicked', async () => {
-    const wrapper = mount(ScheduleWidget, {
-      props: {
-        scheduledTime: '09:00',
-        enabled: true
-      }
-    })
-
-    // Stepper hour increment (09 -> 10)
-    const stepperBtns = wrapper.findAll('.stepper-btn')
-    // First stepper-btn is hour increment ▲
-    await stepperBtns[0].trigger('click')
-
-    expect(wrapper.emitted('update:scheduledTime')).toBeTruthy()
-    expect(wrapper.emitted('update:scheduledTime')![0]).toEqual(['10:00'])
-
-    // Click AM/PM period toggle button (09:00 AM -> 21:00 PM)
-    const periodBtn = wrapper.find('.period-badge-btn')
-    await periodBtn.trigger('click')
-
-    const emitted = wrapper.emitted('update:scheduledTime')!
-    expect(emitted[emitted.length - 1]).toEqual(['21:00'])
+  it('updates collection time through the shared time picker', async () => {
+    const wrapper = mount(ScheduleWidget, { props: { scheduledTime: '09:00', enabled: true } })
+    await wrapper.get('.automation-time-trigger').trigger('click')
+    await wrapper.findAll('.automation-time-editor select')[0].setValue('14')
+    await wrapper.findAll('.automation-time-editor select')[1].setValue('35')
+    expect(wrapper.emitted('update:scheduledTime')).toBeUndefined()
+    await wrapper.get('.automation-time-actions button:last-child').trigger('click')
+    expect(wrapper.emitted('update:scheduledTime')![0]).toEqual(['14:35'])
   })
 
   it('allows clicking an hour slot in the 24-hour visual ruler', async () => {

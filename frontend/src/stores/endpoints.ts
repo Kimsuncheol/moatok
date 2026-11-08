@@ -291,7 +291,8 @@ export const useEndpointsStore = defineStore('endpoints', () => {
       // Generic API fetch
       const res = await fetch(endpoint.url, {
         method: endpoint.method,
-        headers: endpoint.headers
+        headers: endpoint.headers,
+        ...(endpoint.method === 'POST' && endpoint.payload ? { body: endpoint.payload } : {})
       })
 
       if (!res.ok) {
@@ -299,8 +300,9 @@ export const useEndpointsStore = defineStore('endpoints', () => {
       }
 
       const data = await res.json()
-      const title = data.title || `${endpoint.name} 최신 브리핑`
-      const body = `[모아톡 브리핑] ${title}\n\n${typeof data === 'string' ? data : JSON.stringify(data).slice(0, 300)}\n\n🔗 ${endpoint.url}`
+      const title = data?.title || `${endpoint.name} 최신 브리핑`
+      const content = typeof data === 'string' ? data : [data?.body, data?.message, data?.content].find(value => typeof value === 'string' && value.trim())
+      const body = content || `[모아톡 브리핑] ${title}\n\n${JSON.stringify(data, null, 2)}\n\n🔗 ${endpoint.url}`
 
       endpoint.schedule.lastStatus = 'success'
       endpoint.schedule.currentAttempts = 0

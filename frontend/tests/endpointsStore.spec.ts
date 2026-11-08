@@ -1,10 +1,11 @@
 import { englishScraperApi } from '@/services/api'
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useEndpointsStore, DEFAULT_ENGLISH_SCRAPPER_URL } from '@/stores/endpoints'
 import { useMessagesStore } from '@/stores/messages'
 
 describe('Endpoints Store', () => {
+  afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
   beforeEach(() => {
     setActivePinia(createPinia())
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -101,4 +102,24 @@ describe('Endpoints Store', () => {
     expect(message?.fetch_status).toBe('success')
     expect(message?.title).toBe('Actual lesson')
   })
+  it('preserves complete API messages and sends the registered POST payload', async () => {
+    const body = '수집된 메시지 '.repeat(100)
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ body }), { status: 200 }))
+    vi.stubGlobal('fetch', fetch)
+    const store = useEndpointsStore()
+    const endpoint = store.addEndpoint({ name: 'Messages', url: 'https://api.example.com/messages', method: 'POST', headers: { 'Content-Type': 'application/json' }, payload: '{"latest":true}' })
+    const result = await store.triggerFetch(endpoint.id, true)
+    expect(fetch).toHaveBeenCalledWith(endpoint.url, expect.objectContaining({ method: 'POST', body: '{"latest":true}' }))
+    expect(result.shareMessage?.body).toBe(body)
+    expect(result.shareMessage?.body.length).toBeGreaterThan(300)
+  })
+  it('preserves complete structured JSON when an API has no message field', async () => {
+    const data = { articles: [{ text: 'Article '.repeat(100) }] }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(data), { status: 200 })))
+    const store = useEndpointsStore()
+    const endpoint = store.addEndpoint({ name: 'Articles', url: 'https://api.example.com/articles' })
+    const result = await store.triggerFetch(endpoint.id, true)
+    expect(result.shareMessage?.body).toContain(JSON.stringify(data, null, 2))
+  })
+
 })

@@ -192,6 +192,8 @@ onMounted(() => {
       </p>
     </header>
 
+    <RouterLink to="/settings/openchat" class="settings-back-link">오픈채팅 예약 전송으로 이동 →</RouterLink>
+
     <!-- Quick fill test button for testing -->
     <div class="test-preset-box">
       <div class="preset-info">
@@ -331,17 +333,6 @@ onMounted(() => {
           </div>
 
           <div v-if="form.enableSchedule" class="schedule-body">
-            <div class="form-group">
-              <label for="schedule-time" class="form-label">수집 예정 시각 (Scheduled Time)</label>
-              <input
-                id="schedule-time"
-                v-model="form.scheduledTime"
-                type="time"
-                required
-                class="form-input schedule-time-input"
-              />
-            </div>
-
             <!-- Retry Rule Explanation Box -->
             <div class="retry-policy-box" role="note">
               <div class="policy-header">
@@ -479,6 +470,7 @@ onMounted(() => {
 
           <!-- Actions -->
           <div class="item-actions-row">
+            <RouterLink class="item-action-btn" :to="{ path: '/settings/openchat', query: { endpoint: ep.id } }">오픈채팅 예약 전송</RouterLink>
             <button
               type="button"
               class="item-action-btn btn-fetch"

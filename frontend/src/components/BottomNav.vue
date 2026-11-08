@@ -44,8 +44,8 @@ const navItems = computed(() => [
       :key="item.name"
       :to="item.path"
       class="nav-tab"
-      :class="{ active: route.name === item.name }"
-      :aria-current="route.name === item.name ? 'page' : undefined"
+      :class="{ active: (route.name === item.name || (item.name === 'settings' && (route.path?.startsWith('/settings/') || route.name === 'register-api'))) }"
+      :aria-current="(route.name === item.name || (item.name === 'settings' && (route.path?.startsWith('/settings/') || route.name === 'register-api'))) ? 'page' : undefined"
     >
       <div class="icon-wrapper">
         <!-- Minimalist Monochrome SVG Icons -->

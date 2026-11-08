@@ -1,28 +1,78 @@
-import { mount } from '@vue/test-utils'
-import { describe, it, expect, vi } from 'vitest'
+import { mount, flushPromises, config } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+import { useEndpointsStore } from '@/stores/endpoints'
 import OpenChatSchedule from '../src/components/OpenChatSchedule.vue'
+
+config.global.stubs.RouterLink = { props: ['to'], template: '<a :to="to"><slot /></a>' }
+vi.mock('vue-router', () => ({ useRoute: () => ({ query: {} }) }))
+beforeEach(() => {
+  setActivePinia(createPinia())
+  vi.spyOn(useEndpointsStore(), 'triggerFetch').mockResolvedValue({ success: false, message: 'API unavailable' })
+})
 
 describe('Open Chat schedule export', () => {
   it('applies time changes and discards cancelled edits', async () => {
     const wrapper = mount(OpenChatSchedule)
+    await flushPromises()
     const trigger = wrapper.find('.automation-time-trigger')
     await trigger.trigger('click')
     expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeDefined()
-    await wrapper.findAll('select')[0].setValue('14')
-    await wrapper.findAll('select')[1].setValue('35')
+    await wrapper.findAll('.automation-time-editor select')[0].setValue('14')
+    await wrapper.findAll('.automation-time-editor select')[1].setValue('35')
     await wrapper.findAll('.automation-time-actions button')[1].trigger('click')
     expect(trigger.text()).toBe('14:35')
     await trigger.trigger('click')
-    await wrapper.findAll('select')[0].setValue('23')
+    await wrapper.findAll('.automation-time-editor select')[0].setValue('23')
     await wrapper.findAll('.automation-time-actions button')[0].trigger('click')
     expect(trigger.text()).toBe('14:35')
     expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeUndefined()
   })
+  it('automatically fills the editable message from the selected registered API', async () => {
+    const store = useEndpointsStore()
+    vi.mocked(store.triggerFetch).mockResolvedValue({ success: true, message: 'OK', shareMessage: { body: 'Full API content' } as any })
+    const wrapper = mount(OpenChatSchedule)
+    await flushPromises()
+    expect(store.triggerFetch).toHaveBeenCalledWith(store.endpoints[0].id, true)
+    expect(wrapper.get('textarea').element.value).toBe('Full API content')
+    await wrapper.get('textarea').setValue('Edited content')
+    expect(wrapper.get('textarea').element.value).toBe('Edited content')
+    expect(wrapper.find('[to="/register-api"]').exists()).toBe(true)
+  })
+  it('shows the calendar directly below the date field and changes the chevron state', async () => {
+    const wrapper = mount(OpenChatSchedule)
+    await flushPromises()
+    const picker = wrapper.get('.date-picker')
+    await picker.get('.date-picker-trigger').trigger('click')
+    expect(picker.get('.date-picker-trigger').attributes('aria-expanded')).toBe('true')
+    expect(picker.get('.date-picker-chevron').classes()).toContain('expanded')
+    expect(picker.get('.date-picker-calendar').element.previousElementSibling?.className).toBe('date-picker-trigger')
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+    const day = picker.get('.date-picker-grid button')
+    const date = day.attributes('aria-label')
+    await day.trigger('click')
+    expect(picker.get('.date-picker-trigger').text()).toBe(date)
+    expect(picker.find('.date-picker-calendar').exists()).toBe(false)
+  })
+  it('keeps manual input when an earlier API request finishes after switching to direct writing', async () => {
+    const store = useEndpointsStore()
+    let complete!: (value: any) => void
+    vi.mocked(store.triggerFetch).mockImplementation(() => new Promise(resolve => { complete = resolve }))
+    const wrapper = mount(OpenChatSchedule)
+    await flushPromises()
+    await wrapper.get('select').setValue('')
+    await wrapper.get('textarea').setValue('Manual message')
+    complete({ success: true, message: 'OK', shareMessage: { body: 'Stale response' } })
+    await flushPromises()
+    expect(wrapper.get('textarea').element.value).toBe('Manual message')
+    expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeUndefined()
+  })
   it('rejects past dates without creating a download', async () => {
     const wrapper = mount(OpenChatSchedule)
+    await flushPromises()
     await wrapper.find('input').setValue('Room')
     await wrapper.find('textarea').setValue('Hello')
-    await wrapper.find('input[type="date"]').setValue('2000-01-01')
+    await wrapper.findComponent({ name: 'DatePicker' }).vm.$emit('update:modelValue', '2000-01-01')
     await wrapper.find('form').trigger('submit')
     expect(wrapper.find('[role="status"]').text()).toContain('미래')
   })
@@ -31,9 +81,10 @@ describe('Open Chat schedule export', () => {
     vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: create, revokeObjectURL: vi.fn() }))
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
     const wrapper = mount(OpenChatSchedule)
+    await flushPromises()
     await wrapper.find('input').setValue('Room')
     await wrapper.find('textarea').setValue('Hello')
-    await wrapper.find('input[type="date"]').setValue('2099-01-01')
+    await wrapper.findComponent({ name: 'DatePicker' }).vm.$emit('update:modelValue', '2099-01-01')
     await wrapper.find('form').trigger('submit')
     expect(create).toHaveBeenCalledOnce()
     expect(wrapper.find('textarea').element.value).toBe('')

@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, config } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
+import SettingsAppearanceView from '@/views/SettingsAppearanceView.vue'
+import SettingsNotificationsView from '@/views/SettingsNotificationsView.vue'
+import SettingsInstallationView from '@/views/SettingsInstallationView.vue'
+import SettingsAccountView from '@/views/SettingsAccountView.vue'
+import SettingsSystemView from '@/views/SettingsSystemView.vue'
 import SettingsView from '@/views/SettingsView.vue'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useThemeStore } from '@/stores/theme'
@@ -12,6 +17,12 @@ vi.mock('vue-router', () => ({
     push: mockRouterPush
   })
 }))
+
+config.global.stubs.RouterLink = {
+  props: ['to'],
+  template: '<a @click="navigate"><slot /></a>',
+  methods: { navigate() { mockRouterPush((this as any).to) } }
+}
 
 describe('SettingsView Component', () => {
   beforeEach(() => {
@@ -30,7 +41,7 @@ describe('SettingsView Component', () => {
     notifStore.permission = 'default'
     notifStore.isSupported = true
 
-    const wrapper = mount(SettingsView)
+    const wrapper = mount(SettingsNotificationsView)
     await flushPromises()
 
     // 1. Shows permission status indicator
@@ -57,7 +68,7 @@ describe('SettingsView Component', () => {
     notifStore.isSupported = true
     const registerSpy = vi.spyOn(notifStore, 'requestPermissionAndRegister').mockResolvedValue(true)
 
-    const wrapper = mount(SettingsView)
+    const wrapper = mount(SettingsNotificationsView)
     await flushPromises()
 
     const enableBtn = wrapper.find('[aria-labelledby="notif-heading"] .setting-action-btn')
@@ -73,7 +84,7 @@ describe('SettingsView Component', () => {
 
   it('provides system, light, and dark appearance modes as a list without a dropdown (<select>)', async () => {
     const themeStore = useThemeStore()
-    const wrapper = mount(SettingsView)
+    const wrapper = mount(SettingsAppearanceView)
     await flushPromises()
 
     // Requirement 1: NO dropdown (<select>)
@@ -112,7 +123,7 @@ describe('SettingsView Component', () => {
   })
 
   it('shows platform-specific PWA installation guidance for Android, iOS, and Desktop', async () => {
-    const wrapper = mount(SettingsView)
+    const wrapper = mount(SettingsInstallationView)
     await flushPromises()
 
     const platformTabs = wrapper.findAll('.platform-tab-btn')
@@ -144,7 +155,7 @@ describe('SettingsView Component', () => {
     store.status = 'signed_out'
     store.loading = false
     const google = vi.spyOn(store, 'loginWithGoogle').mockResolvedValue({} as any)
-    const wrapper = mount(SettingsView)
+    const wrapper = mount(SettingsAccountView)
     await flushPromises()
     const buttons = wrapper.findAll('.auth-form-box button')
     expect(buttons.map(button => button.text())).toEqual(['카카오톡으로 로그인', 'Google로 계속하기'])
@@ -164,7 +175,7 @@ describe('SettingsView Component', () => {
 
     const logoutSpy = vi.spyOn(authStore, 'logout').mockResolvedValue(undefined)
 
-    const wrapper = mount(SettingsView)
+    const wrapper = mount(SettingsAccountView)
     await flushPromises()
 
     const logoutBtn = wrapper.find('.logout-btn')
@@ -194,9 +205,17 @@ describe('SettingsView Component', () => {
     expect(mockRouterPush).toHaveBeenCalledWith('/register-api')
   })
 
+  it('links to every smaller settings screen without embedding its forms', () => {
+    const wrapper = mount(SettingsView)
+    const links = wrapper.findAll('.settings-nav-link')
+    expect(links).toHaveLength(8)
+    expect(wrapper.find('form').exists()).toBe(false)
+    expect(wrapper.find('.appearance-mode-list').exists()).toBe(false)
+  })
+
   it('does not report HTML from Hosting as a healthy backend', async () => {
     global.fetch = vi.fn().mockResolvedValue(new Response('<html>App shell</html>', {status: 200}))
-    const wrapper = mount(SettingsView)
+    const wrapper = mount(SettingsSystemView)
     await flushPromises()
     expect(wrapper.text()).not.toContain('정상 연결됨 (/health OK)')
     expect(wrapper.text()).toContain('연결 실패')

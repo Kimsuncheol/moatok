@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TimePicker from '@/components/TimePicker.vue'
 import { ref, onMounted } from 'vue'
 import { myChatAutomationApi, type MyChatAutomation } from '@/services/api'
 const settings = ref<MyChatAutomation>({ connected: false, on_new: false, daily: false, daily_time: '09:00', error: '' })
@@ -8,16 +9,6 @@ const loading = ref(true)
 const unavailable = '자동 전송 서버 설정이 완료되지 않았습니다. 관리자에게 카카오 연결 설정을 요청해 주세요.'
 const feedback = ref('')
 const editingTime = ref(false)
-const draftHour = ref('09')
-const draftMinute = ref('00')
-function openTimeEditor() {
-  [draftHour.value, draftMinute.value] = settings.value.daily_time.split(':')
-  editingTime.value = !editingTime.value
-}
-function applyTime() {
-  settings.value.daily_time = draftHour.value + ':' + draftMinute.value
-  editingTime.value = false
-}
 async function load() {
   try { settings.value = await myChatAutomationApi.get() }
   catch (error) { feedback.value = error instanceof Error ? error.message : '설정을 불러오지 못했습니다.'; throw error }
@@ -80,18 +71,7 @@ async function disconnect() {
       <legend>자동 전송 선택</legend>
       <label><input v-model="settings.on_new" type="checkbox"> 새 콘텐츠가 수집되면 전송</label>
       <label><input v-model="settings.daily" type="checkbox"> 매일 최신 콘텐츠 모음 전송</label>
-      <div class="automation-time-group">
-        <span id="automation-time-label">매일 전송 시간 (한국 시간)</span>
-        <button type="button" class="automation-time-trigger" aria-labelledby="automation-time-label automation-time-value" :aria-expanded="editingTime" @click="openTimeEditor">
-          <span id="automation-time-value">{{ settings.daily_time }}</span>
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-        </button>
-        <div v-if="editingTime" class="automation-time-editor">
-          <label>시 <select v-model="draftHour"><option v-for="h in 24" :key="h" :value="String(h - 1).padStart(2, '0')">{{ String(h - 1).padStart(2, '0') }}</option></select></label>
-          <label>분 <select v-model="draftMinute"><option v-for="m in 60" :key="m" :value="String(m - 1).padStart(2, '0')">{{ String(m - 1).padStart(2, '0') }}</option></select></label>
-          <div class="automation-time-actions"><button type="button" @click="editingTime = false">취소</button><button type="button" @click="applyTime">설정</button></div>
-        </div>
-      </div>
+      <TimePicker id="automation-time" v-model="settings.daily_time" label="매일 전송 시간 (한국 시간)" @editing="editingTime = $event" />
       <button type="button" class="setting-action-btn automation-save-btn" :disabled="editingTime" @click="save">설정 저장</button>
     </fieldset>
     <p v-if="feedback || settings.error" class="automation-feedback" role="status">{{ feedback || settings.error }}</p>

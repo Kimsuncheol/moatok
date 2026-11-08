@@ -22,6 +22,13 @@ const router = createRouter({
       name: 'settings',
       component: SettingsView
     },
+    { path: '/settings/appearance', name: 'settings-appearance', component: () => import('@/views/SettingsAppearanceView.vue') },
+    { path: '/settings/notifications', name: 'settings-notifications', component: () => import('@/views/SettingsNotificationsView.vue') },
+    { path: '/settings/installation', name: 'settings-installation', component: () => import('@/views/SettingsInstallationView.vue') },
+    { path: '/settings/account', name: 'settings-account', component: () => import('@/views/SettingsAccountView.vue') },
+    { path: '/settings/system', name: 'settings-system', component: () => import('@/views/SettingsSystemView.vue') },
+    { path: '/settings/openchat', name: 'settings-openchat', component: () => import('@/views/SettingsOpenChatView.vue') },
+    { path: '/settings/my-chat', name: 'settings-my-chat', component: () => import('@/views/SettingsMyChatView.vue') },
     {
       path: '/register-api',
       name: 'register-api',

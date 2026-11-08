@@ -581,3 +581,953 @@ a {
 
 .openchat-form > .setting-action-btn { min-height: 44px; padding: 12px 16px; border: 1px solid var(--accent-action); border-radius: 8px; background: var(--accent-action); color: var(--accent-action-text); font-size: 14px; font-weight: 600; cursor: pointer; }
 .openchat-form > .setting-action-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Shared settings screen layout. */
+.settings-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  padding-bottom: 40px;
+}
+
+.settings-view .view-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-view .view-title {
+  letter-spacing: -0.5px;
+}
+
+.settings-view .view-desc {
+}
+
+.settings-view .settings-card {
+  min-width: 0;
+  padding: 16px;
+  border-radius: 12px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-view .card-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.settings-view .card-title {
+  margin: 0;
+}
+
+.settings-view .setting-caption {
+  line-height: 1.45;
+  margin: 0;
+}
+
+.settings-view .info-badge {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+}
+
+.settings-view .appearance-mode-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-view .appearance-mode-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.settings-view .appearance-mode-item:hover {
+  border-color: var(--border-strong);
+}
+
+.settings-view .appearance-mode-item.selected {
+  border-color: var(--accent-action);
+  background-color: var(--bg-surface);
+}
+
+.settings-view .mode-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.settings-view .mode-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-view .mode-icon {
+}
+
+.settings-view .mode-name {
+}
+
+.settings-view .current-badge {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background-color: var(--badge-bg);
+}
+
+.settings-view .mode-desc {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.settings-view .mode-radio-indicator {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+
+.settings-view .appearance-mode-item.selected .mode-radio-indicator {
+  border-color: var(--accent-action);
+}
+
+.settings-view .radio-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--accent-action);
+}
+
+.settings-view .status-indicator {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background-color: var(--bg-surface-elevated);
+}
+
+.settings-view .status-indicator.active {
+  background-color: var(--badge-bg);
+}
+
+.settings-view .status-indicator.denied {
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-strong);
+}
+
+.settings-view .notif-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background-color: var(--bg-surface-elevated);
+}
+
+.settings-view .detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.settings-view .detail-label {
+  flex-shrink: 0;
+}
+
+.settings-view .detail-value {
+  text-align: right;
+  word-break: keep-all;
+}
+
+.settings-view .permission-value {
+  white-space: nowrap;
+}
+
+.settings-view .font-mono {
+  font-family: var(--font-mono);
+}
+
+.settings-view .font-semibold {
+}
+
+.settings-view .ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+
+.settings-view .notif-feedback-box {
+  padding: 9px 12px;
+  border-radius: 8px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+}
+
+.settings-view .notif-action-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-view .setting-action-btn {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background-color: var(--accent-action);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: opacity 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
+}
+
+.settings-view .setting-action-btn:hover:not(:disabled) {
+  background-color: var(--accent-action-hover);
+}
+
+.settings-view .setting-action-btn:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.settings-view .setting-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-view .setting-sub-btn {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.settings-view .setting-sub-btn:hover:not(:disabled) {
+  background-color: var(--bg-surface-hover);
+  border-color: var(--border-strong);
+}
+
+.settings-view .setting-sub-btn:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.settings-view .setting-sub-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-view .denied-guidance-box,
+.settings-view .unsupported-guidance-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px dashed var(--border-strong);
+  line-height: 1.45;
+}
+
+.settings-view .warning-icon {
+}
+
+.settings-view .denied-text,
+.settings-view .unsupported-text {
+  margin: 0;
+}
+
+.settings-view .platform-tabs {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.settings-view .platform-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.settings-view .platform-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.settings-view .platform-tab-btn.active {
+  background-color: var(--accent-action);
+  border-color: var(--accent-action);
+}
+
+.settings-view .detected-badge {
+  padding: 1px 5px;
+  border-radius: 3px;
+  background-color: var(--bg-surface);
+}
+
+.settings-view .platform-card {
+  padding: 12px;
+  border-radius: 8px;
+  background-color: var(--bg-surface-elevated);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-view .platform-card-header {
+}
+
+.settings-view .step-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  line-height: 1.45;
+}
+
+.settings-view .ios-alert-box {
+  margin-top: 6px;
+  padding: 9px 11px;
+  border-radius: 6px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-view .ios-alert-title {
+}
+
+.settings-view .ios-alert-desc {
+  line-height: 1.45;
+  margin: 0;
+}
+
+.settings-view .user-info-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: var(--bg-surface-elevated);
+}
+
+.settings-view .admin-badge {
+}
+
+.settings-view .auth-actions-row {
+  margin-top: 6px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.settings-view .logout-btn {
+  padding: 9px 18px;
+  border-radius: 6px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.settings-view .logout-btn:hover {
+  background-color: var(--accent-action);
+}
+
+.settings-view .auth-form-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-view .auth-method-selector {
+  display: flex;
+  gap: 6px;
+}
+
+.settings-view .method-btn {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+  cursor: pointer;
+}
+
+.settings-view .method-btn.active {
+  background-color: var(--accent-action);
+  border-color: var(--accent-action);
+}
+
+.settings-view .email-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-view .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-view .form-label {
+}
+
+.settings-view .form-input {
+  padding: 10px 12px;
+  border-radius: 6px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+}
+
+.settings-view .form-input:focus {
+  outline: none;
+  border-color: var(--border-strong);
+}
+
+.settings-view .form-buttons-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.settings-view .auth-primary-btn {
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: 6px;
+  background-color: var(--accent-action);
+  border: none;
+  cursor: pointer;
+}
+
+.settings-view .auth-primary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.settings-view .auth-sub-btn {
+  background: none;
+  border: none;
+  padding: 6px;
+  cursor: pointer;
+}
+
+.settings-view .auth-sub-btn:hover {
+}
+
+.settings-view .auth-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.settings-view .expired-alert {
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-strong);
+}
+
+.settings-view .error-alert {
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-strong);
+}
+
+.settings-view .alert-dismiss-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.settings-view .policy-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  line-height: 1.5;
+}
+
+.settings-view .policy-lead {
+  margin: 0;
+}
+
+.settings-view .policy-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-view .notice-tag {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background-color: var(--badge-bg);
+}
+
+.settings-view .api-endpoints-summary-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 8px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+}
+
+.settings-view .summary-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.settings-view .summary-count {
+}
+
+.settings-view .summary-desc {
+}
+
+.settings-view .setting-api-btn {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background-color: var(--accent-action);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: opacity 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
+}
+
+.settings-view .setting-api-btn:hover {
+  background-color: var(--accent-action-hover);
+}
+
+.settings-view .setting-api-btn:active {
+  transform: scale(0.99);
+}
+
+.settings-view .register-api-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-decoration: none;
+}
+
+.settings-view .nav-btn-icon {
+  width: 14px;
+  height: 14px;
+}
+
+
+/* API schedule widget styles. */
+
+/* API schedule widget styles. */
+.schedule-widget {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-radius: 12px;
+  padding: 16px;
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+.schedule-widget.is-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.schedule-widget.theme-light {
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-default, #dee2e6);
+  color: var(--text-primary, #121212);
+}
+.schedule-widget.theme-light .time-picker-card,
+.schedule-widget.theme-light .pipeline-card {
+  background: var(--bg-surface-elevated, #f8f9fa);
+  border: 1px solid var(--border-subtle, #e9ecef);
+}
+.schedule-widget.theme-light .preset-card-btn,
+.schedule-widget.theme-light .ruler-slot-btn {
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-default, #dee2e6);
+  color: var(--text-primary, #212529);
+}
+.schedule-widget.theme-light .preset-card-btn.active {
+  background: var(--accent-action, #000000);
+  color: var(--accent-action-text, #ffffff);
+  border-color: var(--accent-action, #000000);
+}
+.schedule-widget.theme-light .ruler-slot-btn.is-scheduled {
+  background: var(--accent-action, #000000);
+  color: #ffffff;
+  border-color: var(--accent-action, #000000);
+}
+.schedule-widget.theme-light .ruler-slot-btn.is-retry {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+.schedule-widget.theme-light .pipeline-node {
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-subtle, #e9ecef);
+}
+.schedule-widget.theme-light .pipeline-node.node-initial {
+  border-left: 3px solid #000000;
+}
+.schedule-widget.theme-light .pipeline-node.node-final {
+  border-left: 3px solid #e11d48;
+  background: #fff1f2;
+}
+.schedule-widget.theme-dark {
+  background: var(--bg-surface, #0a0a0a);
+  border: 1px solid var(--border-default, #2a2a2a);
+  color: var(--text-primary, #f5f5f5);
+}
+.schedule-widget.theme-dark .time-picker-card,
+.schedule-widget.theme-dark .pipeline-card {
+  background: var(--bg-surface-elevated, #141414);
+  border: 1px solid var(--border-subtle, #1c1c1c);
+}
+.schedule-widget.theme-dark .preset-card-btn,
+.schedule-widget.theme-dark .ruler-slot-btn {
+  background: #000000;
+  border: 1px solid #2a2a2a;
+  color: #e5e5e5;
+}
+.schedule-widget.theme-dark .preset-card-btn.active {
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+  font-weight: 700;
+}
+.schedule-widget.theme-dark .ruler-slot-btn.is-scheduled {
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+  font-weight: 700;
+}
+.schedule-widget.theme-dark .ruler-slot-btn.is-retry {
+  background: #272005;
+  border-color: #d97706;
+  color: #fbbf24;
+}
+.schedule-widget.theme-dark .pipeline-node {
+  background: #0a0a0a;
+  border: 1px solid #222222;
+}
+.schedule-widget.theme-dark .pipeline-node.node-initial {
+  border-left: 3px solid #ffffff;
+}
+.schedule-widget.theme-dark .pipeline-node.node-final {
+  border-left: 3px solid #f43f5e;
+  background: #21090f;
+}
+.schedule-widget .widget-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.schedule-widget .title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.schedule-widget .widget-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.98rem;
+  font-weight: 700;
+  margin: 0;
+}
+.schedule-widget .clock-icon {
+  width: 18px;
+  height: 18px;
+}
+.schedule-widget .theme-indicator-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: rgba(128, 128, 128, 0.12);
+  border: 1px solid rgba(128, 128, 128, 0.25);
+  font-weight: 600;
+}
+.schedule-widget .theme-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.schedule-widget .widget-desc {
+  font-size: 0.8rem;
+  opacity: 0.75;
+  margin: 0;
+  line-height: 1.4;
+}
+.schedule-widget .time-picker-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 10px;
+}
+.schedule-widget .section-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+.schedule-widget .clock-display-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.schedule-widget .presets-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.schedule-widget .presets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+  gap: 6px;
+}
+.schedule-widget .preset-card-btn {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.schedule-widget .ruler-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.schedule-widget .ruler-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.schedule-widget .ruler-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.68rem;
+  opacity: 0.8;
+}
+.schedule-widget .legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.schedule-widget .legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.schedule-widget .dot-scheduled {
+  background: currentColor;
+}
+.schedule-widget .dot-retry {
+  background: #f59e0b;
+}
+.schedule-widget .ruler-bar-container {
+  display: flex;
+  overflow-x: auto;
+  gap: 4px;
+  padding: 6px 2px;
+  scrollbar-width: thin;
+}
+.schedule-widget .ruler-slot-btn {
+  flex: 0 0 46px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 2px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+.schedule-widget .slot-icon {
+  font-size: 0.7rem;
+}
+.schedule-widget .slot-hour {
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.schedule-widget .slot-badge {
+  font-size: 0.58rem;
+  padding: 1px 3px;
+  border-radius: 3px;
+  margin-top: 2px;
+  font-weight: 800;
+  background: rgba(0, 0, 0, 0.2);
+}
+.schedule-widget .pipeline-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 10px;
+}
+.schedule-widget .pipeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.schedule-widget .pipeline-title {
+  font-size: 0.85rem;
+}
+.schedule-widget .pipeline-badge {
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(128, 128, 128, 0.15);
+  font-weight: 600;
+}
+.schedule-widget .pipeline-nodes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.schedule-widget .pipeline-node {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  transition: transform 0.15s ease;
+}
+.schedule-widget .node-time {
+  font-size: 0.88rem;
+  font-weight: 800;
+  white-space: nowrap;
+  min-width: 50px;
+}
+.schedule-widget .node-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 4px;
+}
+.schedule-widget .marker-circle {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.schedule-widget .node-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.schedule-widget .node-label-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.schedule-widget .step-num {
+  font-size: 0.68rem;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(128, 128, 128, 0.15);
+  font-weight: 600;
+}
+.schedule-widget .step-title {
+  font-size: 0.82rem;
+}
+.schedule-widget .step-subtext {
+  font-size: 0.72rem;
+  opacity: 0.75;
+  margin: 0;
+  line-height: 1.3;
+}
+
+
+/* Settings navigation and inline reservation date picker. */
+.settings-navigation { display: grid; gap: 12px; }
+.settings-view .settings-nav-link { flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; text-decoration: none; color: var(--text-primary); text-align: left; }
+.settings-nav-link:hover { border-color: var(--border-strong); }
+.settings-nav-link > div { display: grid; gap: 6px; }
+.settings-nav-chevron { width: 20px; height: 20px; flex: 0 0 20px; }
+.settings-back-link { align-self: flex-start; color: var(--text-secondary); font-size: 14px; font-weight: 500; }
+.date-picker { display: grid; gap: 8px; color: var(--text-secondary); font-size: 14px; font-weight: 500; }
+.date-picker-trigger { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 48px; padding: 12px 16px; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-page); color: var(--text-primary); font-size: 16px; font-weight: 400; text-align: left; cursor: pointer; }
+.date-picker-chevron { width: 18px; height: 18px; flex: 0 0 18px; transition: transform .15s ease; }
+.date-picker-chevron.expanded { transform: rotate(180deg); }
+.date-picker-calendar { padding: 12px; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-surface); }
+.date-picker-month { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.date-picker-month strong { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.date-picker-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; text-align: center; }
+.date-picker-calendar button { min-height: 40px; padding: 4px; border: 0; border-radius: 6px; background: transparent; color: var(--text-primary); font-size: 14px; font-weight: 400; cursor: pointer; }
+.date-picker-month button { width: 40px; font-size: 22px; }
+.date-picker-calendar button:hover { background: var(--bg-surface-hover); }
+.date-picker-calendar button[aria-pressed="true"] { background: var(--accent-action); color: var(--accent-action-text); font-weight: 600; }
+.date-picker-weekday { padding: 8px 0; color: var(--text-muted); font-size: 12px; font-weight: 500; }
+.openchat-form select { width: 100%; min-height: 44px; padding: 10px; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-surface); color: var(--text-primary); font-size: 16px; font-weight: 400; }
+.openchat-api-actions { display: flex; align-items: center; gap: 12px; }
+.openchat-api-actions a { flex: 1; }
+.openchat-api-actions .setting-sub-btn { width: auto; }
+@media (max-width: 767px) {
+  *, *::before, *::after { scrollbar-width: none !important; }
+  *::-webkit-scrollbar { display: none; width: 0; height: 0; }
+}
