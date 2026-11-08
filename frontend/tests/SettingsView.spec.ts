@@ -158,7 +158,7 @@ describe('SettingsView Component', () => {
     const wrapper = mount(SettingsAccountView)
     await flushPromises()
     const buttons = wrapper.findAll('.auth-form-box button')
-    expect(buttons.map(button => button.text())).toEqual(['카카오톡으로 로그인', 'Google로 계속하기'])
+    expect(buttons.map(button => button.text())).toEqual(['카카오 로그인', 'Google로 계속하기'])
     expect(wrapper.find('.email-auth-form').exists()).toBe(false)
     expect(wrapper.find('.auth-method-selector').exists()).toBe(false)
     await buttons[1].trigger('click')
@@ -208,7 +208,7 @@ describe('SettingsView Component', () => {
   it('links to every smaller settings screen without embedding its forms', () => {
     const wrapper = mount(SettingsView)
     const links = wrapper.findAll('.settings-nav-link')
-    expect(links).toHaveLength(8)
+    expect(links).toHaveLength(7)
     expect(wrapper.find('form').exists()).toBe(false)
     expect(wrapper.find('.appearance-mode-list').exists()).toBe(false)
   })
