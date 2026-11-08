@@ -1201,4 +1201,26 @@ onMounted(() => {
   background-color: var(--bg-surface-hover);
   border-color: var(--border-strong);
 }
+/* The registration page is a narrow mobile surface, including on desktop. */
+.test-preset-box {
+  flex-direction: column;
+  align-items: stretch;
+}
+.preset-info { min-width: 0; }
+.preset-title, .preset-sub { overflow-wrap: anywhere; }
+.preset-fill-btn {
+  width: 100%;
+  min-height: 44px;
+  white-space: normal;
+  line-height: 1.5;
+}
+.register-endpoint-view { width: 100%; box-sizing: border-box; }
+.register-endpoint-view > * { min-width: 0; }
+.view-nav-bar { gap: 12px; flex-wrap: wrap; }
+.form-row-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); }
+.form-row-2 > * { min-width: 0; }
+.form-input, .form-select, .form-textarea { min-width: 0; box-sizing: border-box; }
+@media (max-width: 380px) {
+  .form-row-2, .form-actions-row { grid-template-columns: minmax(0, 1fr); }
+}
 </style>
