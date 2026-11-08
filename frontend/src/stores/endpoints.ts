@@ -1,3 +1,4 @@
+import { fetchChosunArticles, isChosunDaily } from '@/services/chosunDaily'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { ApiEndpoint, ApiSchedule, ShareMessage } from '@/types'
@@ -167,6 +168,13 @@ export const useEndpointsStore = defineStore('endpoints', () => {
         throw new Error('HTTP 또는 HTTPS 프로토콜만 지원합니다.')
       }
 
+      if (isChosunDaily(targetUrl)) {
+        const items = await fetchChosunArticles()
+        const result = { success: true, message: `기사 ${items.length}개 연결 확인`, statusCode: 200 }
+        testResult.value = result
+        return result
+      }
+
       // If it's english_scrapper url
       const isEnglish =
         endpointData.sourceType === 'english_scrapper' ||
@@ -249,7 +257,24 @@ export const useEndpointsStore = defineStore('endpoints', () => {
     saveEndpoints()
 
     try {
-      if (endpoint.sourceType === 'english_scrapper' || endpoint.url.includes('english-scrapper')) {
+      if (isChosunDaily(endpoint.url)) {
+        const articles = await fetchChosunArticles()
+        for (const article of articles) {
+          messagesStore.upsertLocalMessage({
+            id: `chosun_${article.id}`, article_id: String(article.id),
+            title: article.title, body: article.body, target_url: article.url,
+            source_name: endpoint.name, source_id: endpoint.id, endpoint_id: endpoint.id,
+            status: 'pending', fetch_status: 'success', kakao_shared: false,
+            created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+          })
+        }
+        endpoint.schedule.lastStatus = 'success'
+        endpoint.schedule.currentAttempts = 0
+        endpoint.schedule.lastError = null
+        saveEndpoints()
+        return { success: true, message: `기사 ${articles.length}개를 가져왔습니다.` }
+      }
+      if (endpoint.sourceType === 'english_scrapper'  || endpoint.url.includes('english-scrapper')) {
         const result = await englishScraperApi.fetchUrl({url: 'https://www.chosun.com/national/nie/english/'})
         const lessonTitle = result.lesson.fields.expression || '오늘의 영어'
         const lessonBody = Object.values(result.lesson.fields).join('\n\n') + '\n\n' + result.lesson.url

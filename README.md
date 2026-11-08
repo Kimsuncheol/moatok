@@ -820,3 +820,17 @@ Jobs over five minutes late become `missed`. There is no automatic retry,
 recurrence, login startup, Firebase storage, or background cloud delivery for this
 local workflow. Closing Terminal stops processing; retain the database to retain
 duplicate protection. No live Kakao message is sent by installing or importing.
+
+
+### Chosun Daily test endpoint
+
+In API endpoint registration, use **조선일보 테스트 엔드포인트 채우기** and register
+`GET https://chosun-daily-api-tv70.onrender.com/api/v1/articles?page=1&per_page=10`
+as a generic JSON API. Fetch imports up to ten articles as individual local Pending
+messages. Publisher URLs deduplicate repeat imports and preserve shared messages.
+The preset leaves scheduling disabled. Registered endpoints and imported messages
+are stored in this browser, rather than Firestore.
+
+The frontend uses `GET /api/v1/integrations/chosun-daily/articles` on Moatok's backend
+to avoid upstream CORS restrictions. This public read-only proxy uses a fixed upstream
+URL, permits no redirects, caps responses at 2 MiB, and returns 502 on upstream failure.

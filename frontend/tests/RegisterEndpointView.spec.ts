@@ -39,10 +39,21 @@ describe('RegisterEndpointView Component', () => {
     expect(wrapper.find('.retry-policy-box').text()).toContain('1시간 후')
   })
 
+  it('fills the Chosun Daily list preset with GET and generic JSON', async () => {
+    const wrapper = mount(RegisterEndpointView)
+    const button = wrapper.findAll('button').find(b => b.text() === '조선일보 테스트 엔드포인트 채우기')!
+    await button.trigger('click')
+    expect((wrapper.find('#endpoint-url').element as HTMLInputElement).value)
+      .toBe('https://chosun-daily-api-tv70.onrender.com/api/v1/articles?page=1&per_page=10')
+    await wrapper.find('form').trigger('submit.prevent')
+    const endpoint = useEndpointsStore().endpoints.find(e => e.name === 'Chosun Daily Articles')
+    expect(endpoint).toMatchObject({ method: 'GET', sourceType: 'generic_api', schedule: { enabled: false } })
+  })
+
   it('provides testing endpoint preset with english_scrapper url', async () => {
     const wrapper = mount(RegisterEndpointView)
 
-    const presetBtn = wrapper.find('.preset-fill-btn')
+    const presetBtn = wrapper.find('[aria-label="english_scrapper url 테스트 엔드포인트 자동 입력"]')
     expect(presetBtn.exists()).toBe(true)
     expect(presetBtn.text()).toContain('테스트 엔드포인트 채우기')
 

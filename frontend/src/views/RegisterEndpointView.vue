@@ -30,6 +30,17 @@ const formError = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
 const actionFeedback = ref<string | null>(null)
 
+function fillChosunDailyTestUrl() {
+  form.value.name = 'Chosun Daily Articles'
+  form.value.url = 'https://chosun-daily-api-tv70.onrender.com/api/v1/articles?page=1&per_page=10'
+  form.value.method = 'GET'
+  form.value.sourceType = 'generic_api'
+  form.value.headersText = ''
+  form.value.enableSchedule = false
+  formError.value = null
+  successMessage.value = '✓ 최신 조선일보 영어 기사 10개 테스트 엔드포인트 정보가 입력되었습니다.'
+}
+
 function fillJapaneseScrapperTestUrl() {
   form.value.name = 'Japanese Lessons API'
   form.value.url = 'https://japanese-scraper.onrender.com/api/articles?status=ready&page=1'
@@ -193,6 +204,16 @@ onMounted(() => {
     </header>
 
     <RouterLink to="/settings/openchat" class="settings-back-link">오픈채팅 예약 전송으로 이동 →</RouterLink>
+
+    <div class="test-preset-box">
+      <div class="preset-info">
+        <strong class="preset-title">🧪 Chosun Daily endpoint for testing</strong>
+        <span class="preset-sub">GET /api/v1/articles?page=1&amp;per_page=10 · 최신 영어 기사 10개</span>
+      </div>
+      <button type="button" class="preset-fill-btn" @click="fillChosunDailyTestUrl">
+        조선일보 테스트 엔드포인트 채우기
+      </button>
+    </div>
 
     <!-- Quick fill test button for testing -->
     <div class="test-preset-box">

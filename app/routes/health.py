@@ -23,3 +23,26 @@ def health_check():
         ),
         200,
     )
+
+
+@health_bp.get("/api/v1/integrations/chosun-daily/articles")
+def chosun_daily_articles():
+    """Read the latest ten public articles through a fixed, bounded upstream request."""
+    import json
+    from app.services.url_validator import fetch_and_validate_source_url
+    from app.models import ValidationError
+
+    try:
+        probe = fetch_and_validate_source_url(
+            "https://chosun-daily-api-tv70.onrender.com/api/v1/articles?page=1&per_page=10",
+            allowed_domains=("chosun-daily-api-tv70.onrender.com",),
+            timeout_seconds=75, max_bytes=2 * 1024 * 1024, max_redirects=0,
+        )
+        if probe.status_code != 200:
+            raise ValueError("Upstream unavailable")
+        data = json.loads(probe.content)
+        if not isinstance(data, dict) or not isinstance(data.get("items"), list):
+            raise ValueError("Invalid article page")
+        return jsonify({"items": data["items"][:10]})
+    except (ValidationError, ValueError, OSError):
+        return jsonify({"error": "Chosun Daily is temporarily unavailable"}), 502
