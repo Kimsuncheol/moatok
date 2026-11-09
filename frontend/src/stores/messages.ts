@@ -75,9 +75,21 @@ function uniqueMessages(messages: ShareMessage[]) {
 }
 
 export const useMessagesStore = defineStore('messages', () => {
+  const deletedKey = 'moatok_deleted_messages_v1'
+  const deletedIds = ref<string[]>([])
+  try { deletedIds.value = JSON.parse(localStorage.getItem(deletedKey) || '[]') } catch { /* Empty on unavailable storage. */ }
+  function deleteMessage(id: string) {
+    const next = [...new Set([...deletedIds.value, id])]
+    localStorage.setItem(deletedKey, JSON.stringify(next))
+    deletedIds.value = next
+    persistLocal(localMessages.value.filter(m => m.id !== id))
+    pendingMessages.value = pendingMessages.value.filter(m => m.id !== id)
+    if (selectedMessage.value?.id === id) selectedMessage.value = null
+  }
   const storageWarning = ref<string | null>(null)
   const localMessages = ref<ShareMessage[]>(readLocalMessages())
   const pendingMessages = ref<ShareMessage[]>(localMessages.value.length ? localMessages.value.filter(m => !isShared(m)) : [...SAMPLE_INITIAL_MESSAGES])
+  pendingMessages.value = pendingMessages.value.filter(m => !deletedIds.value.includes(m.id))
   const historyMessages = ref<ShareMessage[]>(localMessages.value.filter(isShared))
   const selectedMessage = ref<ShareMessage | null>(null)
   const loading = ref<boolean>(false)
@@ -86,7 +98,7 @@ export const useMessagesStore = defineStore('messages', () => {
 
   function mergePending(remote: ShareMessage[]) {
     const localIds = new Set(localMessages.value.map(m => m.id))
-    return uniqueMessages([...localMessages.value.filter(m => !isShared(m)), ...remote.filter(m => !localIds.has(m.id))])
+    return uniqueMessages([...localMessages.value.filter(m => !isShared(m)), ...remote.filter(m => !localIds.has(m.id))]).filter(m => !deletedIds.value.includes(m.id))
   }
   function mergeHistory(remote: ShareMessage[]) {
     return uniqueMessages([...localMessages.value.filter(isShared), ...remote])
@@ -105,6 +117,7 @@ export const useMessagesStore = defineStore('messages', () => {
     if (message.fetch_status === 'success') {
       message.id = `local_${encodeURIComponent(message.target_url || message.id)}`
     }
+    if (deletedIds.value.includes(message.id)) return message
     const existing = localMessages.value.find(m => m.id === message.id)
     if (existing && isShared(existing)) return existing
     const next = localMessages.value.filter(m => m.id !== message.id &&
@@ -233,6 +246,7 @@ export const useMessagesStore = defineStore('messages', () => {
   }
 
   async function fetchById(messageId: string): Promise<ShareMessage | null> {
+    if (deletedIds.value.includes(messageId)) return null
     const cached =
       pendingMessages.value.find((m) => m.id === messageId) ||
       historyMessages.value.find((m) => m.id === messageId)
@@ -339,6 +353,7 @@ export const useMessagesStore = defineStore('messages', () => {
   }
 
   return {
+    deleteMessage,
     storageWarning,
     upsertLocalMessage,
     pendingMessages,

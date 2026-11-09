@@ -41,7 +41,7 @@ describe('MessageDetailView Component', () => {
     vi.spyOn(store, 'fetchById').mockResolvedValue({ ...sampleMessage, [field]: 'failed' })
     const wrapper = mount(MessageDetailView, { props: { id: sampleMessage.id } })
     await new Promise(resolve => setTimeout(resolve, 10))
-    const buttons = wrapper.findAll('.action-buttons-group button')
+    const buttons = wrapper.findAll('.action-buttons-group button:not(.pending-detail-delete)')
     expect(buttons).toHaveLength(2)
     for (const button of buttons) expect(button.attributes('disabled')).toBeDefined()
   })
