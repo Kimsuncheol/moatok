@@ -9,7 +9,7 @@ describe('ScheduleWidget Component', () => {
     setActivePinia(createPinia())
   })
 
-  it('renders time-only selection heading and 5-attempt retry pipeline', () => {
+  it('renders time selection without the retry timeline', () => {
     const wrapper = mount(ScheduleWidget, {
       props: {
         scheduledTime: '09:00',
@@ -21,22 +21,8 @@ describe('ScheduleWidget Component', () => {
     expect(wrapper.text()).toContain('수집 시각 선택 (What time)')
     expect(wrapper.text()).toContain('매일 자동으로 API 데이터를 가져올 시각을 선택하세요')
 
-    // 5 attempts pipeline nodes
-    const nodes = wrapper.findAll('.pipeline-node')
-    expect(nodes.length).toBe(5)
-
-    // Check step 1: 09:00
-    expect(nodes[0].text()).toContain('09:00')
-    expect(nodes[0].text()).toContain('1차 자동 수집')
-
-    // Check step 2: 10:00 (+1h)
-    expect(nodes[1].text()).toContain('10:00')
-    expect(nodes[1].text()).toContain('2차 재시도 (+1h)')
-
-    // Check step 5: 13:00 (+4h)
-    expect(nodes[4].text()).toContain('13:00')
-    expect(nodes[4].text()).toContain('5차 최종 재시도 (+4h)')
-    expect(nodes[4].text()).toContain('실패 시 Pending 뷰에 Fetch 버튼 제공')
+    expect(wrapper.find('.pipeline-card').exists()).toBe(false)
+    expect(wrapper.find('.fetch-time-summary').exists()).toBe(true)
   })
 
   it('dynamically adapts styling to current appearance mode (light / dark)', async () => {

@@ -94,42 +94,6 @@ const hours24 = computed(() => {
   return slots
 })
 
-// 5-Attempt Detailed Timeline
-const scheduleTimeline = computed(() => {
-  const { hour, minute } = parsed.value
-  const steps = []
-
-  for (let attempt = 1; attempt <= 5; attempt++) {
-    const attemptHour = (hour + (attempt - 1)) % 24
-    const timeFormatted = formatTime(attemptHour, minute)
-    const isFirst = attempt === 1
-    const isLast = attempt === 5
-
-    let label = ''
-    let description = ''
-    if (isFirst) {
-      label = '1차 자동 수집'
-      description = '정기 스케줄 실행'
-    } else if (isLast) {
-      label = `5차 최종 재시도 (+${attempt - 1}h)`
-      description = '실패 시 Pending 뷰에 Fetch 버튼 제공'
-    } else {
-      label = `${attempt}차 재시도 (+${attempt - 1}h)`
-      description = '이전 시도 실패 시 1시간 뒤 재시도'
-    }
-
-    steps.push({
-      attempt,
-      time: timeFormatted,
-      label,
-      description,
-      isFirst,
-      isLast
-    })
-  }
-  return steps
-})
-
 function selectHourFromBar(h: number) {
   updateHour(h)
 }
@@ -223,34 +187,5 @@ function selectHourFromBar(h: number) {
       </div>
     </div>
 
-    <!-- 5-Attempt Execution Pipeline Timeline -->
-    <div class="pipeline-card" aria-label="5회 재시도 자동 실행 타임라인">
-      <div class="pipeline-header">
-        <strong class="pipeline-title">⚡ 수집 및 5회 재시도 타임라인</strong>
-        <span class="pipeline-badge">최대 5회 (1시간 간격)</span>
-      </div>
-
-      <div class="pipeline-nodes-list">
-        <div
-          v-for="step in scheduleTimeline"
-          :key="step.attempt"
-          class="pipeline-node"
-          :class="{ 'node-initial': step.isFirst, 'node-final': step.isLast }"
-        >
-          <div class="node-time font-mono">{{ step.time }}</div>
-          <div class="node-marker">
-            <span class="marker-circle"></span>
-            <span v-if="!step.isLast" class="marker-line"></span>
-          </div>
-          <div class="node-content">
-            <div class="node-label-row">
-              <span class="step-num">{{ step.attempt }}회차</span>
-              <strong class="step-title">{{ step.label }}</strong>
-            </div>
-            <p class="step-subtext">{{ step.description }}</p>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
