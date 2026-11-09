@@ -62,14 +62,12 @@ describe('ScheduleWidget Component', () => {
     expect(wrapper.text()).toContain('다크 모드')
   })
 
-  it('updates collection time through the shared time picker', async () => {
+  it('shows the fetch time from the selected preset without a separate picker', async () => {
     const wrapper = mount(ScheduleWidget, { props: { scheduledTime: '09:00', enabled: true } })
-    await wrapper.get('.automation-time-trigger').trigger('click')
-    await wrapper.findAll('.automation-time-editor select')[0].setValue('14')
-    await wrapper.findAll('.automation-time-editor select')[1].setValue('35')
-    expect(wrapper.emitted('update:scheduledTime')).toBeUndefined()
-    await wrapper.get('.automation-time-actions button:last-child').trigger('click')
-    expect(wrapper.emitted('update:scheduledTime')![0]).toEqual(['14:35'])
+    expect(wrapper.find('.automation-time-trigger').exists()).toBe(false)
+    expect(wrapper.get('.fetch-time-summary').text()).toContain('09:00')
+    await wrapper.setProps({ scheduledTime: '12:30' })
+    expect(wrapper.get('.fetch-time-summary').text()).toContain('12:30')
   })
 
   it('allows clicking an hour slot in the 24-hour visual ruler', async () => {

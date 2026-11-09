@@ -1564,3 +1564,20 @@ a {
   font-size: 14px; font-weight: 600; cursor: pointer;
 }
 .pending-detail-delete { width: 100%; }
+
+
+/* Keep collection scheduling readable within narrow registration cards. */
+.schedule-widget, .schedule-widget > *, .schedule-widget .node-content { min-width: 0; }
+.schedule-widget .fetch-time-summary { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: var(--text-primary); line-height: 1.6; overflow-wrap: anywhere; }
+.schedule-widget .pipeline-header { flex-wrap: wrap; gap: 8px; }
+.schedule-widget .pipeline-node { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; padding: 12px 10px; }
+.schedule-widget .node-marker, .schedule-widget .step-num { display: none; }
+.schedule-widget .node-label-row { min-width: 0; }
+.schedule-widget .step-title, .schedule-widget .step-subtext { overflow-wrap: anywhere; }
+@media (max-width: 480px) {
+  .schedule-widget { padding: 0; border: 0; }
+  .schedule-widget .time-picker-card, .schedule-widget .pipeline-card { padding: 12px; }
+  .schedule-widget .widget-header-top { flex-wrap: wrap; gap: 8px; }
+  .schedule-widget .ruler-bar-container { scrollbar-width: none; }
+  .schedule-widget .ruler-bar-container::-webkit-scrollbar { display: none; }
+}

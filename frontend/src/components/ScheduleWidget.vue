@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { computed, useId } from 'vue'
-import TimePicker from '@/components/TimePicker.vue'
-const pickerId = useId()
+import { computed } from 'vue'
 import { useThemeStore } from '@/stores/theme'
 
 interface Props {
@@ -117,7 +115,7 @@ const scheduleTimeline = computed(() => {
       description = '실패 시 Pending 뷰에 Fetch 버튼 제공'
     } else {
       label = `${attempt}차 재시도 (+${attempt - 1}h)`
-      description = '1차 실패 후 1시간 뒤 재시도'
+      description = '이전 시도 실패 시 1시간 뒤 재시도'
     }
 
     steps.push({
@@ -169,19 +167,15 @@ function selectHourFromBar(h: number) {
 
     <!-- Main Time Picker Card -->
     <div class="time-picker-card">
-      <div class="clock-display-section">
-        <span class="section-label">선택된 수집 시각</span>
-
-        <TimePicker :id="pickerId" :model-value="scheduledTime" label="수집 시각" :disabled="!enabled" @update:model-value="emit('update:scheduledTime', $event)" />
-      </div>
-
       <!-- Quick Preset Buttons -->
       <div class="presets-section">
         <span class="section-label">자주 사용하는 시간</span>
+        <p class="fetch-time-summary" role="status" aria-live="polite">{{ enabled ? `매일 ${scheduledTime}에 API 데이터를 가져옵니다.` : '자동 수집이 꺼져 있습니다.' }}</p>
         <div class="presets-grid" role="group" aria-label="추천 시간 프리셋">
           <button
             v-for="preset in quickPresets"
             :key="preset.time"
+            :disabled="!enabled"
             type="button"
             class="preset-card-btn"
             :class="{ active: scheduledTime === preset.time }"
@@ -206,6 +200,7 @@ function selectHourFromBar(h: number) {
           <button
             v-for="slot in hours24"
             :key="slot.hour"
+            :disabled="!enabled"
             type="button"
             class="ruler-slot-btn"
             :class="{

@@ -34,7 +34,7 @@ describe('RegisterEndpointView Component', () => {
 
     // Check schedule inputs & retry policy
     expect(wrapper.find('.schedule-title').text()).toContain('스케줄 및 자동 수집')
-    expect(wrapper.find('.automation-time-trigger').exists()).toBe(true)
+    expect(wrapper.find('.fetch-time-summary').exists()).toBe(true)
     expect(wrapper.find('.retry-policy-box').text()).toContain('최대 5회')
     expect(wrapper.find('.retry-policy-box').text()).toContain('1시간 후')
   })
@@ -85,10 +85,7 @@ describe('RegisterEndpointView Component', () => {
     // Fill fields
     await wrapper.find('#endpoint-url').setValue('https://api.testservice.com/feed')
     await wrapper.find('#endpoint-name').setValue('Test Feed Service')
-    await wrapper.get('.automation-time-trigger').trigger('click')
-    await wrapper.findAll('.automation-time-editor select')[0].setValue('08')
-    await wrapper.findAll('.automation-time-editor select')[1].setValue('30')
-    await wrapper.get('.automation-time-actions button:last-child').trigger('click')
+    await wrapper.findAll('.preset-card-btn')[0].trigger('click')
 
     // Submit form
     await wrapper.find('.endpoint-form').trigger('submit.prevent')
@@ -98,7 +95,7 @@ describe('RegisterEndpointView Component', () => {
     expect(added).toBeDefined()
     expect(added?.name).toBe('Test Feed Service')
     expect(added?.schedule.enabled).toBe(true)
-    expect(added?.schedule.scheduledTime).toBe('08:30')
+    expect(added?.schedule.scheduledTime).toBe('07:00')
     expect(added?.schedule.maxRetries).toBe(5)
     expect(added?.schedule.retryIntervalHours).toBe(1)
   })
