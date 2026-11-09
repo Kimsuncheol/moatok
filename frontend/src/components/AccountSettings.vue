@@ -111,6 +111,11 @@ onMounted(() => authStore.init())
         </div>
       </div>
 
+      <div v-else-if="authStore.isLoading || authStore.currentUser || authStore.isAuthenticated"
+        class="auth-checking-box" role="status" aria-live="polite" aria-busy="true">
+        <p class="setting-caption">로그인 상태를 확인하고 있습니다…</p>
+      </div>
+
       <!-- Signed-Out Form with Configurable Methods -->
       <div v-else class="auth-form-box">
         <p class="setting-caption">
