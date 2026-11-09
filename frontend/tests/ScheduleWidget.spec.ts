@@ -9,7 +9,7 @@ describe('ScheduleWidget Component', () => {
     setActivePinia(createPinia())
   })
 
-  it('renders time selection without the retry timeline', () => {
+  it('renders retry timeline without the horizontal timeline', () => {
     const wrapper = mount(ScheduleWidget, {
       props: {
         scheduledTime: '09:00',
@@ -21,7 +21,8 @@ describe('ScheduleWidget Component', () => {
     expect(wrapper.text()).toContain('수집 시각 선택 (What time)')
     expect(wrapper.text()).toContain('매일 자동으로 API 데이터를 가져올 시각을 선택하세요')
 
-    expect(wrapper.find('.pipeline-card').exists()).toBe(false)
+    expect(wrapper.findAll('.pipeline-node')).toHaveLength(5)
+    expect(wrapper.find('.ruler-section').exists()).toBe(false)
     expect(wrapper.find('.fetch-time-summary').exists()).toBe(true)
   })
 
@@ -54,24 +55,6 @@ describe('ScheduleWidget Component', () => {
     expect(wrapper.get('.fetch-time-summary').text()).toContain('09:00')
     await wrapper.setProps({ scheduledTime: '12:30' })
     expect(wrapper.get('.fetch-time-summary').text()).toContain('12:30')
-  })
-
-  it('allows clicking an hour slot in the 24-hour visual ruler', async () => {
-    const wrapper = mount(ScheduleWidget, {
-      props: {
-        scheduledTime: '09:00',
-        enabled: true
-      }
-    })
-
-    const slots = wrapper.findAll('.ruler-slot-btn')
-    expect(slots.length).toBe(24)
-
-    // Click 14:00 slot (index 14)
-    await slots[14].trigger('click')
-
-    expect(wrapper.emitted('update:scheduledTime')).toBeTruthy()
-    expect(wrapper.emitted('update:scheduledTime')![0]).toEqual(['14:00'])
   })
 
   it('emits update:scheduledTime when quick preset button is clicked', async () => {
