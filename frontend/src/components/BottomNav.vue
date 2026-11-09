@@ -9,6 +9,15 @@ const messagesStore = useMessagesStore()
 const pendingCount = computed(() => messagesStore.pendingCount)
 const historyCount = computed(() => messagesStore.historyCount)
 
+function onTabClick(name: string, event: MouseEvent) {
+  if (name !== 'pending' || route.name !== 'pending' || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
+
+  event.preventDefault()
+  const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
+  window.scrollTo({ top: 0, left: 0, behavior })
+  document.querySelector<HTMLElement>('.main-content')?.scrollTo({ top: 0, left: 0, behavior })
+}
+
 const navItems = computed(() => [
   {
     name: 'pending',
@@ -43,6 +52,7 @@ const navItems = computed(() => [
       v-for="item in navItems"
       :key="item.name"
       :to="item.path"
+      @click="onTabClick(item.name, $event)"
       class="nav-tab"
       :class="{ active: (route.name === item.name || (item.name === 'settings' && (route.path?.startsWith('/settings/') || route.name === 'register-api'))) }"
       :aria-current="(route.name === item.name || (item.name === 'settings' && (route.path?.startsWith('/settings/') || route.name === 'register-api'))) ? 'page' : undefined"

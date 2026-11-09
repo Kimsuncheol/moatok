@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
@@ -9,6 +9,11 @@ const dummyComponent = { template: '<div></div>' }
 
 describe('BottomNav Component', () => {
   let router: any
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
 
   beforeEach(async () => {
     setActivePinia(createPinia())
@@ -38,6 +43,26 @@ describe('BottomNav Component', () => {
     expect(labels).toContain('Pending')
     expect(labels).toContain('History')
     expect(labels).toContain('Settings')
+  })
+
+  it('scrolls to the top when Pending is tapped again, respecting reduced motion', async () => {
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+    const matchMedia = vi.fn().mockReturnValue({ matches: false })
+    vi.stubGlobal('matchMedia', matchMedia)
+    const wrapper = mount(BottomNav, { global: { plugins: [router] } })
+
+    await wrapper.findAll('.nav-tab')[0].trigger('click')
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 0, left: 0, behavior: 'smooth' })
+
+    matchMedia.mockReturnValue({ matches: true })
+    await wrapper.findAll('.nav-tab')[0].trigger('click')
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 0, left: 0, behavior: 'instant' })
+
+    scrollTo.mockClear()
+    await router.push('/history')
+    await wrapper.findAll('.nav-tab')[1].trigger('click')
+    expect(scrollTo).not.toHaveBeenCalled()
+    wrapper.unmount()
   })
 
   it('displays the pending badge count when pending messages exist', async () => {
