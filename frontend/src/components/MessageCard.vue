@@ -3,18 +3,15 @@ import { computed, ref } from 'vue'
 import type { ShareMessage } from '@/types'
 
 const props = defineProps<{
-  allowDelete?: boolean
   message: ShareMessage
 }>()
 
 const emit = defineEmits<{
-  (e: 'delete', message: ShareMessage): void
   (e: 'select', message: ShareMessage): void
   (e: 'review', message: ShareMessage): void
   (e: 'fetch', message: ShareMessage): void
 }>()
 
-const menuOpen = ref(false)
 const isFetching = ref(false)
 
 function extractDomain(url?: string): string {
@@ -123,10 +120,6 @@ function handleFetchClick(e: Event) {
     @click="handleCardClick"
     @keydown="handleKeyDown"
   >
-    <div v-if="allowDelete" class="pending-card-menu" @click.stop @keydown.stop @focusout="($event.currentTarget as HTMLElement).contains($event.relatedTarget as Node) || (menuOpen = false)">
-      <button type="button" class="pending-menu-trigger" aria-label="카드 메뉴" :aria-expanded="menuOpen" @click="menuOpen = !menuOpen" @keydown.esc="menuOpen = false">⋮</button>
-      <button v-if="menuOpen" type="button" class="pending-delete-button" @click="menuOpen = false; emit('delete', message)">삭제</button>
-    </div>
     <!-- Header with Status, Source, and Creation Time -->
     <header class="card-header">
       <div class="status-container">

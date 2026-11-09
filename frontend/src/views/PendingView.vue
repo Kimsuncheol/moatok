@@ -66,11 +66,6 @@ async function refresh() {
   await messagesStore.fetchPending(true)
 }
 
-function handleDelete(msg: ShareMessage) {
-  if (!window.confirm('이 기기에서 이 카드를 삭제할까요?')) return
-  try { messagesStore.deleteMessage(msg.id) } catch { fetchFeedback.value = '삭제하지 못했습니다. 저장소를 확인해 주세요.' }
-}
-
 function handleCardSelect(msg: ShareMessage) {
   router.push({ name: 'message-detail', params: { id: msg.id } })
 }
@@ -309,8 +304,6 @@ onMounted(() => {
         @select="handleCardSelect"
         @review="openReviewModal"
         @fetch="handleFetchCard"
-        allow-delete
-        @delete="handleDelete"
       />
     </div>
 

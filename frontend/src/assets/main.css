@@ -1558,11 +1558,9 @@ a {
 }
 
 /* Pending deletion controls share mobile tap sizing and typography. */
-.pending-card-menu { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 8px; }
-.pending-menu-trigger, .pending-delete-button, .pending-detail-delete {
+.pending-detail-delete {
   min-width: 44px; min-height: 44px; padding: 8px 16px; border: 1px solid var(--border-default);
   border-radius: 8px; background: var(--bg-surface); color: var(--text-primary);
   font-size: 14px; font-weight: 600; cursor: pointer;
 }
-.pending-menu-trigger { font-size: 24px; }
 .pending-detail-delete { width: 100%; }
