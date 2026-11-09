@@ -1,10 +1,33 @@
 <script setup lang="ts">
 
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
+import type { UserProfile } from '@/types'
 import { useAuthStore } from '@/stores/auth'
 import { loginWithKakao } from '@/services/kakaoLogin'
 const authStore = useAuthStore()
 const authSubmitting = ref(false)
+// UI snapshot only: Firebase remains the source of tokens and API permissions.
+const accountSnapshotKey = 'moatok_account_display_v1'
+const accountSnapshot = ref<UserProfile | null>(null)
+try {
+  const saved = JSON.parse(sessionStorage.getItem(accountSnapshotKey) || 'null')
+  if (saved && typeof saved.uid === 'string') accountSnapshot.value = saved
+} catch { /* Storage is optional for display continuity. */ }
+watch(() => [authStore.status, authStore.profile] as const, () => {
+  if (authStore.isAuthenticated && authStore.profile) {
+    accountSnapshot.value = { uid: authStore.profile.uid, email: authStore.profile.email, role: 'user', is_admin: false }
+  } else if (authStore.status === 'signed_out' || authStore.sessionExpired) {
+    accountSnapshot.value = null
+  }
+  try {
+    if (accountSnapshot.value) sessionStorage.setItem(accountSnapshotKey, JSON.stringify(accountSnapshot.value))
+    else sessionStorage.removeItem(accountSnapshotKey)
+  } catch { /* Do not block sign-in or sign-out when storage is unavailable. */ }
+}, { immediate: true })
+const displayProfile = computed(() =>
+  authStore.isAuthenticated && authStore.profile ? authStore.profile :
+    authStore.isLoading && !authStore.sessionExpired ? accountSnapshot.value : null)
+
 async function handleKakaoAuth() {
   if (authSubmitting.value) return
   authSubmitting.value = true
@@ -47,6 +70,8 @@ onMounted(() => authStore.init())
           {{
             authStore.sessionExpired
               ? '세션 만료'
+              : displayProfile
+              ? '인증됨'
               : authStore.isLoading
               ? '확인 중'
               : authStore.isAuthenticated
@@ -82,14 +107,14 @@ onMounted(() => authStore.init())
       </div>
 
       <!-- Authenticated User Profile with Logout -->
-      <div v-if="authStore.isAuthenticated && authStore.profile" class="user-info-box">
+      <div v-if="displayProfile" class="user-info-box">
         <div class="detail-row">
           <span class="detail-label">사용자 UID:</span>
-          <span class="detail-value font-mono ellipsis">{{ authStore.profile.uid }}</span>
+          <span class="detail-value font-mono ellipsis">{{ displayProfile.uid }}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">계정 이메일:</span>
-          <span class="detail-value">{{ authStore.userEmail || (authStore.userUid?.startsWith('kakao:') ? '카카오 계정' : '익명 게스트 계정') }}</span>
+          <span class="detail-value">{{ authStore.userEmail || displayProfile.email || (displayProfile.uid.startsWith('kakao:') ? '카카오 계정' : '익명 게스트 계정') }}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">계정 권한:</span>
@@ -106,7 +131,7 @@ onMounted(() => authStore.init())
             aria-label="계정 로그아웃"
             @click="handleLogout"
           >
-            {{ authStore.isLoading ? '처리 중...' : '로그아웃' }}
+            로그아웃
           </button>
         </div>
       </div>

@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import type { User } from 'firebase/auth'
 
 describe('account session restoration', () => {
-  beforeEach(() => { setActivePinia(createPinia()); vi.spyOn(useAuthStore(), 'init').mockImplementation(() => {}) })
+  beforeEach(() => { sessionStorage.clear(); setActivePinia(createPinia()); vi.spyOn(useAuthStore(), 'init').mockImplementation(() => {}) })
   it('never renders login buttons while restoring a saved session and profile', async () => {
     const auth = useAuthStore()
     const wrapper = mount(AccountSettings)
@@ -26,6 +26,20 @@ describe('account session restoration', () => {
     await wrapper.vm.$nextTick()
     expect(wrapper.find('.user-info-box').exists()).toBe(true)
   })
+  it('keeps the account visible during reload restoration and clears it on sign-out', async () => {
+    sessionStorage.setItem('moatok_account_display_v1', JSON.stringify({ uid: 'saved-user', email: null }))
+    const auth = useAuthStore()
+    const wrapper = mount(AccountSettings)
+    expect(wrapper.find('.user-info-box').exists()).toBe(true)
+    expect(wrapper.find('.auth-checking-box').exists()).toBe(false)
+    expect(wrapper.find('.auth-form-box').exists()).toBe(false)
+    auth.status = 'signed_out'
+    auth.loading = false
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('.user-info-box').exists()).toBe(false)
+    expect(sessionStorage.getItem('moatok_account_display_v1')).toBeNull()
+  })
+
   it('shows login buttons after session checking confirms signed out', async () => {
     const auth = useAuthStore()
     const wrapper = mount(AccountSettings)
