@@ -113,11 +113,16 @@ export const useMessagesStore = defineStore('messages', () => {
     }
     localMessages.value = messages
   }
-  function upsertLocalMessage(message: ShareMessage) {
+  function upsertLocalMessage(message: ShareMessage, options: { restoreDeleted?: boolean } = {}) {
     if (message.fetch_status === 'success') {
       message.id = `local_${encodeURIComponent(message.target_url || message.id)}`
     }
-    if (deletedIds.value.includes(message.id)) return message
+    if (deletedIds.value.includes(message.id)) {
+      if (!options.restoreDeleted) return message
+      const remaining = deletedIds.value.filter(id => id !== message.id)
+      localStorage.setItem(deletedKey, JSON.stringify(remaining))
+      deletedIds.value = remaining
+    }
     const existing = localMessages.value.find(m => m.id === message.id)
     if (existing && isShared(existing)) return existing
     const next = localMessages.value.filter(m => m.id !== message.id &&

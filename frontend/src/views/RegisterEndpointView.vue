@@ -152,7 +152,7 @@ async function handleFetchNow(endpointId: string) {
   actionFeedback.value = '수집 요청 중...'
   const res = await endpointsStore.triggerFetch(endpointId, true)
   if (res.success) {
-    actionFeedback.value = `✓ 수집 성공: ${res.message} (홈 Pending 뷰에서 확인 가능)`
+    actionFeedback.value = `✓ 수집 성공: ${res.message}`
   } else {
     actionFeedback.value = `⚠️ 수집 실패: ${res.message} (홈 Pending 뷰에 Fetch 버튼 카드가 등록되었습니다)`
   }

@@ -266,13 +266,16 @@ export const useEndpointsStore = defineStore('endpoints', () => {
             source_name: endpoint.name, source_id: endpoint.id, endpoint_id: endpoint.id,
             status: 'pending', fetch_status: 'success', kakao_shared: false,
             created_at: new Date().toISOString(), updated_at: new Date().toISOString()
-          })
+          }, { restoreDeleted: isManual })
         }
         endpoint.schedule.lastStatus = 'success'
         endpoint.schedule.currentAttempts = 0
         endpoint.schedule.lastError = null
         saveEndpoints()
-        return { success: true, message: `기사 ${articles.length}개를 가져왔습니다.` }
+        const ids = new Set(articles.map(article => `local_${encodeURIComponent(article.url)}`))
+        const pending = messagesStore.pendingMessages.filter(message => ids.has(message.id)).length
+        const shared = messagesStore.historyMessages.filter(message => ids.has(message.id)).length
+        return { success: true, message: `기사 ${articles.length}개 확인 · 공유 대기 ${pending}개 · 이미 공유됨 ${shared}개` }
       }
       if (endpoint.sourceType === 'english_scrapper'  || endpoint.url.includes('english-scrapper')) {
         const result = await englishScraperApi.fetchUrl({url: 'https://www.chosun.com/national/nie/english/'})
@@ -308,7 +311,7 @@ export const useEndpointsStore = defineStore('endpoints', () => {
           ]
         }
 
-        messagesStore.upsertLocalMessage(newMsg)
+        messagesStore.upsertLocalMessage(newMsg, { restoreDeleted: isManual })
         saveEndpoints()
         return { success: true, message: '데이터를 성공적으로 가져왔습니다.', shareMessage: newMsg }
       }
@@ -348,7 +351,7 @@ export const useEndpointsStore = defineStore('endpoints', () => {
         updated_at: new Date().toISOString()
       }
 
-      messagesStore.upsertLocalMessage(newMsg)
+      messagesStore.upsertLocalMessage(newMsg, { restoreDeleted: isManual })
       saveEndpoints()
       return { success: true, message: '데이터를 성공적으로 가져왔습니다.', shareMessage: newMsg }
     } catch (err: any) {
