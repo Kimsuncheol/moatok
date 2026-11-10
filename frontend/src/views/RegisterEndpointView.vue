@@ -25,12 +25,36 @@ async function openPresets() {
   presetControl.value?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
 }
 function startHold(event: PointerEvent) {
+  if (event.pointerType === 'touch') return
   cancelHold()
   if (!event.isPrimary || event.button !== 0) return
   holdStart = { x: event.clientX, y: event.clientY }
   holdTimer = setTimeout(openPresets, 5000)
 }
+// Editable mobile inputs otherwise open native text-selection controls before
+// the five-second timer can finish. Short taps still focus the URL for typing.
+function startTouchHold(event: TouchEvent) {
+  cancelHold()
+  if (event.touches.length !== 1) return
+  const touch = event.touches[0]
+  holdStart = { x: touch.clientX, y: touch.clientY }
+  holdTimer = setTimeout(openPresets, 5000)
+}
+function moveTouchHold(event: TouchEvent) {
+  if (event.touches.length !== 1) { cancelHold(); return }
+  const touch = event.touches[0]
+  if (holdStart && Math.hypot(touch.clientX - holdStart.x, touch.clientY - holdStart.y) > 10) cancelHold()
+}
+function finishTouchHold() {
+  const shortTap = !!holdTimer && !!holdStart
+  cancelHold()
+  if (shortTap) presetControl.value?.querySelector<HTMLInputElement>('input')?.focus()
+}
+function cancelPointerHold(event: PointerEvent) {
+  if (event.pointerType !== 'touch') cancelHold()
+}
 function moveHold(event: PointerEvent) {
+  if (event.pointerType === 'touch') return
   if (holdStart && Math.hypot(event.clientX - holdStart.x, event.clientY - holdStart.y) > 10) cancelHold()
 }
 function closePresets(restoreFocus = false) {
@@ -52,15 +76,15 @@ function menuKeys(event: KeyboardEvent) {
   buttons[next]?.focus()
 }
 onMounted(() => {
-  document.addEventListener('pointerup', cancelHold)
-  document.addEventListener('pointercancel', cancelHold)
+  document.addEventListener('pointerup', cancelPointerHold)
+  document.addEventListener('pointercancel', cancelPointerHold)
   document.addEventListener('pointerdown', outsidePress)
   window.addEventListener('blur', cancelHold)
 })
 onUnmounted(() => {
   cancelHold()
-  document.removeEventListener('pointerup', cancelHold)
-  document.removeEventListener('pointercancel', cancelHold)
+  document.removeEventListener('pointerup', cancelPointerHold)
+  document.removeEventListener('pointercancel', cancelPointerHold)
   document.removeEventListener('pointerdown', outsidePress)
   window.removeEventListener('blur', cancelHold)
 })
@@ -287,9 +311,13 @@ onMounted(() => {
             aria-describedby="endpoint-url-hint"
             @pointerdown="startHold"
             @pointermove="moveHold"
-            @pointerup="cancelHold"
-            @pointercancel="cancelHold"
-            @pointerleave="cancelHold"
+            @pointerup="cancelPointerHold"
+            @pointercancel="cancelPointerHold"
+            @pointerleave="cancelPointerHold"
+            @touchstart.prevent="startTouchHold"
+            @touchmove="moveTouchHold"
+            @touchend.prevent="finishTouchHold"
+            @touchcancel="cancelHold"
             @contextmenu="event => { if (holdTimer || presetMenuOpen) event.preventDefault() }"
             @keydown.alt.down.prevent="openPresets"
             @keydown.shift.f10.prevent="openPresets"

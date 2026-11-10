@@ -82,6 +82,32 @@ describe('RegisterEndpointView Component', () => {
     wrapper.unmount()
   })
 
+  it('reopens the menu with a five-second mobile hold on an already-filled URL', async () => {
+    vi.useFakeTimers()
+    const wrapper = mount(RegisterEndpointView, { attachTo: document.body })
+    const input = wrapper.get('#endpoint-url')
+    await input.trigger('keydown', { key: 'ArrowDown', altKey: true })
+    await wrapper.findAll('[role="menuitem"]')[0].trigger('click')
+    const originalUrl = (input.element as HTMLInputElement).value
+    expect(originalUrl).toContain('chosun-daily-api')
+    await input.trigger('touchstart', { touches: [{ clientX: 20, clientY: 20 }] })
+    // Native pointer cancellation must not cancel the separate touch timer.
+    await input.trigger('pointercancel', { pointerType: 'touch' })
+    await vi.advanceTimersByTimeAsync(4999)
+    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(wrapper.findAll('[role="menuitem"]')).toHaveLength(3)
+    await input.trigger('touchend', { touches: [] })
+    expect(wrapper.find('[role="menu"]').exists()).toBe(true)
+    expect((input.element as HTMLInputElement).value).toBe(originalUrl)
+    await wrapper.findAll('[role="menuitem"]')[1].trigger('click')
+    expect((input.element as HTMLInputElement).value).toContain('english-scrapper')
+    await input.trigger('touchstart', { touches: [{ clientX: 20, clientY: 20 }] })
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(wrapper.find('[role="menu"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
   it('cancels a short tap or scrolling gesture and dismisses the menu with Escape', async () => {
     vi.useFakeTimers()
     const wrapper = mount(RegisterEndpointView)
