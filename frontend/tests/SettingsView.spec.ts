@@ -208,7 +208,8 @@ describe('SettingsView Component', () => {
   it('links to every smaller settings screen without embedding its forms', () => {
     const wrapper = mount(SettingsView)
     const links = wrapper.findAll('.settings-nav-link')
-    expect(links).toHaveLength(7)
+    expect(links).toHaveLength(6)
+    expect(wrapper.text()).not.toContain('오픈채팅 예약 전송')
     expect(wrapper.find('form').exists()).toBe(false)
     expect(wrapper.find('.appearance-mode-list').exists()).toBe(false)
   })

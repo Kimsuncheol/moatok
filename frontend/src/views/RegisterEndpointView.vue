@@ -203,7 +203,6 @@ onMounted(() => {
       </p>
     </header>
 
-    <RouterLink to="/settings/openchat" class="settings-back-link">오픈채팅 예약 전송으로 이동 →</RouterLink>
 
     <div class="test-preset-box">
       <div class="preset-info">
@@ -491,7 +490,6 @@ onMounted(() => {
 
           <!-- Actions -->
           <div class="item-actions-row">
-            <RouterLink class="item-action-btn" :to="{ path: '/settings/openchat', query: { endpoint: ep.id } }">오픈채팅 예약 전송</RouterLink>
             <button
               type="button"
               class="item-action-btn btn-fetch"

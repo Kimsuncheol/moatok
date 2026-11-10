@@ -27,7 +27,7 @@ const router = createRouter({
     { path: '/settings/installation', name: 'settings-installation', component: () => import('@/views/SettingsInstallationView.vue') },
     { path: '/settings/account', name: 'settings-account', component: () => import('@/views/SettingsAccountView.vue') },
     { path: '/settings/system', name: 'settings-system', component: () => import('@/views/SettingsSystemView.vue') },
-    { path: '/settings/openchat', name: 'settings-openchat', component: () => import('@/views/SettingsOpenChatView.vue') },
+    { path: '/settings/openchat', redirect: '/settings' },
     { path: '/settings/my-chat', name: 'settings-my-chat', component: () => import('@/views/SettingsMyChatView.vue') },
     {
       path: '/register-api',

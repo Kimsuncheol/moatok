@@ -569,18 +569,11 @@ a {
   font-weight: 600;
 }
 
-.openchat-form { display: grid; gap: 1rem; margin-block: 1rem; }
-.openchat-form label { display: grid; gap: .5rem; color: var(--text-secondary); font-size: .875rem; font-weight: 500; }
-.openchat-form input, .openchat-form textarea { width: 100%; box-sizing: border-box; padding: .75rem; border: 1px solid var(--border-default); border-radius: .5rem; background: var(--bg-page); color: var(--text-primary); font-size: 1rem; font-weight: 400; font-family: inherit; }
-.openchat-schedule pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .75rem; font-weight: 400; color: var(--text-secondary); }
-.openchat-schedule summary, .openchat-schedule a { font-size: .875rem; font-weight: 500; color: var(--text-primary); }
 @media (max-width: 768px) {
   * { scrollbar-width: none; }
   *::-webkit-scrollbar { display: none; }
 }
 
-.openchat-form > .setting-action-btn { min-height: 44px; padding: 12px 16px; border: 1px solid var(--accent-action); border-radius: 8px; background: var(--accent-action); color: var(--accent-action-text); font-size: 14px; font-weight: 600; cursor: pointer; }
-.openchat-form > .setting-action-btn:disabled { opacity: .5; cursor: not-allowed; }
 
 /* Shared settings screen layout. */
 .settings-view {
@@ -1510,23 +1503,6 @@ a {
 .settings-nav-link > div { display: grid; gap: 6px; }
 .settings-nav-chevron { width: 20px; height: 20px; flex: 0 0 20px; }
 .settings-back-link { align-self: flex-start; color: var(--text-secondary); font-size: 14px; font-weight: 500; }
-.date-picker { display: grid; gap: 8px; color: var(--text-secondary); font-size: 14px; font-weight: 500; }
-.date-picker-trigger { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 48px; padding: 12px 16px; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-page); color: var(--text-primary); font-size: 16px; font-weight: 400; text-align: left; cursor: pointer; }
-.date-picker-chevron { width: 18px; height: 18px; flex: 0 0 18px; transition: transform .15s ease; }
-.date-picker-chevron.expanded { transform: rotate(180deg); }
-.date-picker-calendar { padding: 12px; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-surface); }
-.date-picker-month { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.date-picker-month strong { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-.date-picker-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; text-align: center; }
-.date-picker-calendar button { min-height: 40px; padding: 4px; border: 0; border-radius: 6px; background: transparent; color: var(--text-primary); font-size: 14px; font-weight: 400; cursor: pointer; }
-.date-picker-month button { width: 40px; font-size: 22px; }
-.date-picker-calendar button:hover { background: var(--bg-surface-hover); }
-.date-picker-calendar button[aria-pressed="true"] { background: var(--accent-action); color: var(--accent-action-text); font-weight: 600; }
-.date-picker-weekday { padding: 8px 0; color: var(--text-muted); font-size: 12px; font-weight: 500; }
-.openchat-form select { width: 100%; min-height: 44px; padding: 10px; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-surface); color: var(--text-primary); font-size: 16px; font-weight: 400; }
-.openchat-api-actions { display: flex; align-items: center; gap: 12px; }
-.openchat-api-actions a { flex: 1; }
-.openchat-api-actions .setting-sub-btn { width: auto; }
 @media (max-width: 767px) {
   *, *::before, *::after { scrollbar-width: none !important; }
   *::-webkit-scrollbar { display: none; width: 0; height: 0; }
@@ -1538,24 +1514,6 @@ a {
 .settings-view .auth-primary-btn.kakao-login-btn { background: #fee500; color: #000000; border: 1px solid #fee500; }
 .settings-view .auth-primary-btn.google-login-btn { background: #ffffff; color: #1f1f1f; border: 1px solid #747775; font-family: Arial, sans-serif; }
 .settings-view .auth-primary-btn svg { width: 20px; height: 20px; flex: 0 0 20px; }
-
-/* Keep the API selector arrow aligned with the date and time controls. */
-.openchat-form > label > select {
-  appearance: none;
-  -webkit-appearance: none;
-  padding-right: 48px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23777777' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 16px center;
-  background-size: 18px 18px;
-}
-.openchat-form > label > textarea {
-  height: 224px;
-  min-height: 224px;
-  max-height: 224px;
-  resize: none;
-  overflow-y: auto;
-}
 
 /* Pending deletion controls share mobile tap sizing and typography. */
 .pending-detail-delete {
