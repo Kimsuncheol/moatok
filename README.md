@@ -784,7 +784,9 @@ after upgrading from the old in-memory-only implementation.
 
 ### Chosun Daily test endpoint
 
-In API endpoint registration, use **조선일보 테스트 엔드포인트 채우기** and register
+In API endpoint registration, hold the URL field for five seconds (or press
+Alt+Down while it is focused), choose **Chosun Daily Articles** from the test
+endpoint dropdown, and register
 `GET https://chosun-daily-api-tv70.onrender.com/api/v1/articles?page=1&per_page=10`
 as a generic JSON API. Fetch imports up to ten articles as individual local Pending
 messages. Publisher URLs deduplicate repeat imports and preserve shared messages.

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import RegisterEndpointView from '@/views/RegisterEndpointView.vue'
@@ -13,6 +13,7 @@ vi.mock('vue-router', () => ({
 }))
 
 describe('RegisterEndpointView Component', () => {
+  afterEach(() => vi.useRealTimers())
   beforeEach(() => {
     setActivePinia(createPinia())
     mockRouterPush.mockReset()
@@ -41,7 +42,8 @@ describe('RegisterEndpointView Component', () => {
 
   it('fills the Chosun Daily list preset with GET and generic JSON', async () => {
     const wrapper = mount(RegisterEndpointView)
-    const button = wrapper.findAll('button').find(b => b.text() === '조선일보 테스트 엔드포인트 채우기')!
+    await wrapper.get('#endpoint-url').trigger('keydown', { key: 'ArrowDown', altKey: true })
+    const button = wrapper.get('[role="menuitem"]')
     await button.trigger('click')
     expect((wrapper.find('#endpoint-url').element as HTMLInputElement).value)
       .toBe('https://chosun-daily-api-tv70.onrender.com/api/v1/articles?page=1&per_page=10')
@@ -52,16 +54,51 @@ describe('RegisterEndpointView Component', () => {
 
   it('provides testing endpoint preset with english_scrapper url', async () => {
     const wrapper = mount(RegisterEndpointView)
-
-    const presetBtn = wrapper.find('[aria-label="english_scrapper url 테스트 엔드포인트 자동 입력"]')
+    await wrapper.get('#endpoint-url').trigger('keydown', { key: 'ArrowDown', altKey: true })
+    const presetBtn = wrapper.findAll('[role="menuitem"]')[1]
     expect(presetBtn.exists()).toBe(true)
-    expect(presetBtn.text()).toContain('테스트 엔드포인트 채우기')
+    expect(presetBtn.text()).toContain('English Scraper API')
 
     await presetBtn.trigger('click')
 
     const urlInput = wrapper.find('#endpoint-url').element as HTMLInputElement
     expect(urlInput.value).toBe(DEFAULT_ENGLISH_SCRAPPER_URL + '/api/v1/lessons/fetch')
     expect(urlInput.value).toContain('english-scrapper')
+  })
+
+  it('opens all three presets only after a continuous five-second hold', async () => {
+    vi.useFakeTimers()
+    const wrapper = mount(RegisterEndpointView)
+    const input = wrapper.get('#endpoint-url')
+    expect(wrapper.find('.test-preset-box').exists()).toBe(false)
+    await input.trigger('pointerdown', { button: 0, isPrimary: true, clientX: 20, clientY: 20 })
+    await vi.advanceTimersByTimeAsync(4999)
+    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(wrapper.findAll('[role="menuitem"]')).toHaveLength(3)
+    await wrapper.findAll('[role="menuitem"]')[2].trigger('click')
+    expect((input.element as HTMLInputElement).value).toContain('japanese-scraper')
+    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('cancels a short tap or scrolling gesture and dismisses the menu with Escape', async () => {
+    vi.useFakeTimers()
+    const wrapper = mount(RegisterEndpointView)
+    const input = wrapper.get('#endpoint-url')
+    await input.trigger('pointerdown', { button: 0, isPrimary: true, clientX: 0, clientY: 0 })
+    await vi.advanceTimersByTimeAsync(2000)
+    await input.trigger('pointerup')
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+    await input.trigger('pointerdown', { button: 0, isPrimary: true, clientX: 0, clientY: 0 })
+    await input.trigger('pointermove', { clientX: 0, clientY: 30 })
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+    await input.trigger('keydown', { key: 'ArrowDown', altKey: true })
+    await wrapper.get('[role="menu"]').trigger('keydown', { key: 'Escape' })
+    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+    wrapper.unmount()
   })
 
   it('navigates back to home view when clicking home navigation links', async () => {

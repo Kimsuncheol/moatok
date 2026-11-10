@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   useEndpointsStore,
@@ -9,6 +9,61 @@ import ScheduleWidget from '@/components/ScheduleWidget.vue'
 
 const router = useRouter()
 const endpointsStore = useEndpointsStore()
+const presetControl = ref<HTMLElement | null>(null)
+const presetMenuOpen = ref(false)
+let holdTimer: ReturnType<typeof setTimeout> | undefined
+let holdStart: { x: number; y: number } | null = null
+function cancelHold() {
+  clearTimeout(holdTimer)
+  holdTimer = undefined
+  holdStart = null
+}
+async function openPresets() {
+  cancelHold()
+  presetMenuOpen.value = true
+  await nextTick()
+  presetControl.value?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
+}
+function startHold(event: PointerEvent) {
+  cancelHold()
+  if (!event.isPrimary || event.button !== 0) return
+  holdStart = { x: event.clientX, y: event.clientY }
+  holdTimer = setTimeout(openPresets, 5000)
+}
+function moveHold(event: PointerEvent) {
+  if (holdStart && Math.hypot(event.clientX - holdStart.x, event.clientY - holdStart.y) > 10) cancelHold()
+}
+function closePresets(restoreFocus = false) {
+  cancelHold()
+  presetMenuOpen.value = false
+  if (restoreFocus) presetControl.value?.querySelector<HTMLInputElement>('input')?.focus()
+}
+function choosePreset(fill: () => void) { fill(); closePresets(true) }
+function outsidePress(event: PointerEvent) {
+  if (!presetControl.value?.contains(event.target as Node)) closePresets()
+}
+function menuKeys(event: KeyboardEvent) {
+  if (event.key === 'Escape') { event.preventDefault(); closePresets(true); return }
+  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
+  event.preventDefault()
+  const buttons = Array.from(presetControl.value?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') || [])
+  const index = buttons.indexOf(document.activeElement as HTMLButtonElement)
+  const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length
+  buttons[next]?.focus()
+}
+onMounted(() => {
+  document.addEventListener('pointerup', cancelHold)
+  document.addEventListener('pointercancel', cancelHold)
+  document.addEventListener('pointerdown', outsidePress)
+  window.addEventListener('blur', cancelHold)
+})
+onUnmounted(() => {
+  cancelHold()
+  document.removeEventListener('pointerup', cancelHold)
+  document.removeEventListener('pointercancel', cancelHold)
+  document.removeEventListener('pointerdown', outsidePress)
+  window.removeEventListener('blur', cancelHold)
+})
 
 function goHome() {
   router.push('/')
@@ -204,47 +259,6 @@ onMounted(() => {
     </header>
 
 
-    <div class="test-preset-box">
-      <div class="preset-info">
-        <strong class="preset-title">🧪 Chosun Daily endpoint for testing</strong>
-        <span class="preset-sub">GET /api/v1/articles?page=1&amp;per_page=10 · 최신 영어 기사 10개</span>
-      </div>
-      <button type="button" class="preset-fill-btn" @click="fillChosunDailyTestUrl">
-        조선일보 테스트 엔드포인트 채우기
-      </button>
-    </div>
-
-    <!-- Quick fill test button for testing -->
-    <div class="test-preset-box">
-      <div class="preset-info">
-        <strong class="preset-title">🧪 API endpoint for testing</strong>
-        <span class="preset-sub">POST /api/v1/lessons/fetch · 최신 영어 수업 가져오기</span>
-      </div>
-      <button
-        type="button"
-        class="preset-fill-btn"
-        aria-label="english_scrapper url 테스트 엔드포인트 자동 입력"
-        @click="fillEnglishScrapperTestUrl"
-      >
-        테스트 엔드포인트 채우기
-      </button>
-    </div>
-
-    <div class="test-preset-box">
-      <div class="preset-info">
-        <strong class="preset-title">🧪 Japanese lesson endpoint for testing</strong>
-        <span class="preset-sub">GET /api/articles?status=ready&amp;page=1 · 최신 일본어 수업 목록</span>
-      </div>
-      <button
-        type="button"
-        class="preset-fill-btn"
-        aria-label="japanese_scrapper 최신 수업 목록 테스트 엔드포인트 자동 입력"
-        @click="fillJapaneseScrapperTestUrl"
-      >
-        일본어 테스트 엔드포인트 채우기
-      </button>
-    </div>
-
     <!-- Registration Form Card -->
     <section class="card form-card" aria-labelledby="endpoint-form-heading">
       <div class="card-header">
@@ -258,6 +272,7 @@ onMounted(() => {
           <label for="endpoint-url" class="form-label">
             API 엔드포인트 URL <span class="required-star">*</span>
           </label>
+          <div ref="presetControl" class="endpoint-url-control" @focusout="event => { if (!presetControl?.contains(event.relatedTarget as Node)) closePresets() }">
           <input
             id="endpoint-url"
             v-model="form.url"
@@ -266,8 +281,27 @@ onMounted(() => {
             placeholder="https://english-scrapper.onrender.com"
             class="form-input font-mono"
             maxlength="2048"
+            aria-haspopup="menu"
+            :aria-expanded="presetMenuOpen"
+            aria-controls="test-endpoint-menu"
+            aria-describedby="endpoint-url-hint"
+            @pointerdown="startHold"
+            @pointermove="moveHold"
+            @pointerup="cancelHold"
+            @pointercancel="cancelHold"
+            @pointerleave="cancelHold"
+            @contextmenu="event => { if (holdTimer || presetMenuOpen) event.preventDefault() }"
+            @keydown.alt.down.prevent="openPresets"
+            @keydown.shift.f10.prevent="openPresets"
+            @keydown.esc.prevent="closePresets(true)"
           />
-          <span class="field-hint">데이터를 가져올 공개 HTTPS REST API 엔드포인트 주소를 입력합니다.</span>
+          <div v-if="presetMenuOpen" id="test-endpoint-menu" class="endpoint-preset-menu" role="menu" aria-label="테스트 엔드포인트" @keydown="menuKeys">
+            <button type="button" role="menuitem" @click="choosePreset(fillChosunDailyTestUrl)">Chosun Daily Articles · GET</button>
+            <button type="button" role="menuitem" @click="choosePreset(fillEnglishScrapperTestUrl)">English Scraper API · POST</button>
+            <button type="button" role="menuitem" @click="choosePreset(fillJapaneseScrapperTestUrl)">Japanese Lessons API · GET</button>
+          </div>
+          </div>
+          <span id="endpoint-url-hint" class="field-hint">공개 HTTPS API 주소를 입력하세요. 5초간 길게 누르면 테스트 엔드포인트를 선택할 수 있습니다. 키보드: Alt + ↓.</span>
         </div>
 
         <!-- Input: Endpoint Name -->
@@ -600,50 +634,17 @@ onMounted(() => {
 }
 
 /* Test Preset Box */
-.test-preset-box {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background-color: var(--bg-surface-elevated);
-  border: 1px dashed var(--border-strong);
-  gap: 12px;
-}
 
-.preset-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
 
-.preset-title {
-  font-size: 13px;
-  color: var(--text-primary);
-}
 
-.preset-sub {
-  font-size: 11.5px;
-  color: var(--text-muted);
-}
 
-.preset-fill-btn {
-  padding: 6px 12px;
-  border-radius: 6px;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  color: var(--text-primary);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s ease;
-}
 
-.preset-fill-btn:hover {
-  border-color: var(--border-strong);
-  background-color: var(--bg-surface-hover);
-}
+
+
+
+
+
+
 
 /* Cards */
 .card {
@@ -1200,18 +1201,9 @@ onMounted(() => {
   border-color: var(--border-strong);
 }
 /* The registration page is a narrow mobile surface, including on desktop. */
-.test-preset-box {
-  flex-direction: column;
-  align-items: stretch;
-}
-.preset-info { min-width: 0; }
-.preset-title, .preset-sub { overflow-wrap: anywhere; }
-.preset-fill-btn {
-  width: 100%;
-  min-height: 44px;
-  white-space: normal;
-  line-height: 1.5;
-}
+
+
+
 .register-endpoint-view { width: 100%; box-sizing: border-box; }
 .register-endpoint-view > * { min-width: 0; }
 .view-nav-bar { gap: 12px; flex-wrap: wrap; }

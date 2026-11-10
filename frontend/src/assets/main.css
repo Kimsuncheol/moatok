@@ -1549,3 +1549,9 @@ a {
 .pending-signin-notice { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; padding: 16px; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-surface); }
 .pending-signin-notice p { width: 100%; margin: 0; color: var(--text-secondary); font-size: 14px; font-weight: 400; line-height: 1.5; }
 .pending-signin-notice a { display: inline-flex; align-items: center; min-height: 44px; color: var(--text-primary); font-size: 14px; font-weight: 600; }
+
+.endpoint-url-control { position: relative; width: 100%; }
+.endpoint-url-control > input { width: 100%; -webkit-touch-callout: none; }
+.endpoint-preset-menu { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 60; display: grid; padding: 6px; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-surface); box-shadow: 0 8px 24px #0004; }
+.endpoint-preset-menu button { min-height: 48px; padding: 12px; border: 0; border-radius: 6px; background: transparent; text-align: left; color: var(--text-primary); font-size: 14px; font-weight: 500; cursor: pointer; overflow-wrap: anywhere; }
+.endpoint-preset-menu button:hover, .endpoint-preset-menu button:focus-visible { background: var(--bg-surface-hover); outline: 2px solid var(--border-default); }
