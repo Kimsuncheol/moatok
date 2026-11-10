@@ -1,9 +1,11 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 import { mount } from '@vue/test-utils'
 import MessageCard from '@/components/MessageCard.vue'
 import type { ShareMessage } from '@/types'
 
 describe('MessageCard Component', () => {
+  beforeEach(() => setActivePinia(createPinia()))
   const sampleMessage: ShareMessage = {
     id: 'smsg_test_1',
     article_id: 'art_1',

@@ -5,6 +5,7 @@ import { useMessagesStore } from '@/stores/messages'
 import { useEndpointsStore } from '@/stores/endpoints'
 import { useAuthStore } from '@/stores/auth'
 import { initiateKakaoShare } from '@/services/kakao'
+import SharingSchedule from '@/components/SharingSchedule.vue'
 import type { ShareMessage } from '@/types'
 import { englishScraperApi, type EnglishLesson } from '@/services/api'
 const englishLesson = ref<EnglishLesson | null>(null)
@@ -340,6 +341,8 @@ async function handleConfirmShared() {
           {{ formattedCreatedDate }}
         </time>
       </header>
+
+      <SharingSchedule :message="message" />
 
       <!-- 1. Article Title -->
       <h1 class="article-title">{{ message.title }}</h1>

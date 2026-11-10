@@ -1,9 +1,11 @@
 import { mount, flushPromises } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import MyChatAutomation from '@/components/MyChatAutomation.vue'
 import { myChatAutomationApi as api } from '@/services/api'
 vi.mock('@/services/api', () => ({ myChatAutomationApi: { status: vi.fn(), get: vi.fn(), connect: vi.fn(), save: vi.fn(), disconnect: vi.fn() } }))
-beforeEach(() => { vi.resetAllMocks() })
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ userUid: null, isAuthenticated: false }) }))
+beforeEach(() => { vi.resetAllMocks(); setActivePinia(createPinia()) })
 describe('automatic sending availability', () => {
   it('disables connection and options when server configuration is missing', async () => {
     vi.mocked(api.status).mockResolvedValue({ configured: false })

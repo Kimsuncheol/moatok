@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { ShareMessage } from '@/types'
+import SharingSchedule from './SharingSchedule.vue'
 
 const props = defineProps<{
   message: ShareMessage
@@ -156,6 +157,8 @@ function handleFetchClick(e: Event) {
         {{ formattedCreationTime }}
       </time>
     </header>
+
+    <SharingSchedule :message="message" />
 
     <!-- Title -->
     <h2 class="card-title">{{ message.title }}</h2>

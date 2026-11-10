@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import TimePicker from '@/components/TimePicker.vue'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { useSharingScheduleStore } from '@/stores/sharingSchedule'
 import { myChatAutomationApi, type MyChatAutomation } from '@/services/api'
 const settings = ref<MyChatAutomation>({ connected: false, on_new: false, daily: false, daily_time: '09:00', error: '' })
+const sharingSchedule = useSharingScheduleStore()
+watch(settings, value => { sharingSchedule.settings = { ...value } })
 const busy = ref(false)
 const configured = ref(false)
 const loading = ref(true)
