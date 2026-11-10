@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessagesStore } from '@/stores/messages'
 import { useEndpointsStore } from '@/stores/endpoints'
@@ -45,6 +45,12 @@ async function handleDelete() {
   } catch { shareFeedback.value = '삭제하지 못했습니다. 저장소를 확인해 주세요.' }
 }
 const message = ref<ShareMessage | null>(null)
+watch(() => messagesStore.selectedMessage, updated => {
+  if (updated?.id === props.id && updated.last_share_channel === 'kakao_verified_webhook') {
+    message.value = updated
+    shareFeedback.value = '✓ 카카오톡 전송이 확인되었습니다. History에 기록되었습니다.'
+  }
+})
 const loading = ref(true)
 
 // Admin editing state

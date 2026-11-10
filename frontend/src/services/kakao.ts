@@ -1,5 +1,6 @@
 import type { ShareMessage } from '@/types'
 import { api } from '@/services/api'
+import { beginKakaoDelivery, forgetKakaoDelivery } from './kakaoDelivery'
 
 export interface ShareResult {
   success: boolean
@@ -144,11 +145,13 @@ export async function initiateKakaoShare(message: ShareMessage): Promise<ShareRe
 
   const isKakaoReady = initKakaoSdk()
   if (isKakaoReady && window.Kakao?.Share?.sendDefault) {
+    const receiptId = beginKakaoDelivery(message.id)
     try {
       const payload = message.kakao_share_payload
       if (payload && payload.template_type === 'feed' && payload.image_url) {
         window.Kakao.Share.sendDefault({
           objectType: 'feed',
+          serverCallbackArgs: { receipt_id: receiptId },
           content: {
             title: message.title,
             description: payload.description || message.body.slice(0, 100),
@@ -171,6 +174,7 @@ export async function initiateKakaoShare(message: ShareMessage): Promise<ShareRe
       } else {
         window.Kakao.Share.sendDefault({
           objectType: 'text',
+          serverCallbackArgs: { receipt_id: receiptId },
           text: shareText,
           link: {
             mobileWebUrl: registeredUrl,
@@ -190,6 +194,7 @@ export async function initiateKakaoShare(message: ShareMessage): Promise<ShareRe
         openChatNotice
       }
     } catch (err) {
+      forgetKakaoDelivery(receiptId)
       console.warn('Kakao SDK share failed, attempting Web Share fallback:', err)
     }
   }

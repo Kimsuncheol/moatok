@@ -40,10 +40,10 @@ describe('ShareModal Component', () => {
     expect(noticeText).toContain('직접 선택')
   })
 
-  it('invokes initiateKakaoShare and emits shared event on button click', async () => {
+  it.each(['clipboard', 'kakao_sdk', 'web_share'] as const)('does not confirm sharing when %s is only launched', async channel => {
     vi.spyOn(kakaoService, 'initiateKakaoShare').mockResolvedValue({
       success: true,
-      channel: 'clipboard',
+      channel,
       notice: '클립보드에 복사되었습니다.'
     })
     vi.spyOn(api, 'markMessageShared').mockResolvedValue({
@@ -68,6 +68,7 @@ describe('ShareModal Component', () => {
     await flushPromises()
 
     expect(kakaoService.initiateKakaoShare).toHaveBeenCalledWith(dummyMessage)
-    expect(wrapper.emitted('shared')).toBeTruthy()
+    expect(wrapper.emitted('shared')).toBeFalsy()
+    expect(api.markMessageShared).not.toHaveBeenCalled()
   })
 })

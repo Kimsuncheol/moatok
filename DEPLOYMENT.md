@@ -118,3 +118,40 @@ The Cloud Run service account has the custom `kakaoFirebaseSigner` role on itsel
 containing only `iam.serviceAccounts.signBlob`. The IAM Credentials API must stay
 enabled. No service-account private key file is used. Firebase custom tokens
 are returned only to the configured frontend opener, never in a redirect URL.
+
+## Verified Kakao Share delivery
+
+Recipient-selection taps inside KakaoTalk are not exposed to this web app. SDK
+launch, returning to the PWA, clipboard copying, and Web Share completion must
+never be treated as successful delivery. The share modal now follows that rule.
+
+The SDK sends an opaque random `receipt_id` in `serverCallbackArgs`. The backend
+accepts a delivery callback only when `Authorization: KakaoAK ...` matches its
+server-only `KAKAO_ADMIN_KEY` (the **primary admin key for the same Kakao app**).
+It stores a one-day receipt without message text or recipient identifiers. The
+browser checks its pending receipts on return and every ten seconds while visible.
+Verified delivery updates the matching card to shared and places it in History,
+including browser-local fetched cards. Multiple recipients and webhook retries
+retain one confirmation. Browser receipts survive reload for up to 24 hours.
+Clipboard and Web Share fallbacks still require explicit user confirmation on the
+detail page; they have no verified Kakao SDK callback.
+
+Activation requires all of the following:
+
+1. Authenticate the local gcloud CLI (`gcloud auth login`), then deploy the backend
+   source using the Cloud Run command above. Preserve existing environment settings
+   on subsequent deployments (omit `--set-env-vars`).
+2. Configure `KAKAO_ADMIN_KEY` securely on Cloud Run, preferably using Secret Manager.
+   Never put the admin key in any `VITE_` variable or commit it.
+3. In Kakao Developers → App → Webhooks → KakaoTalk Share webhook, register **POST**:
+   `https://moatalk-e6fe1.web.app/api/v1/kakao/share/callback`.
+4. Deny all direct client Firestore access to `kakao_share_receipts`. Configure its
+   `expires_at` field as a Firestore TTL policy to delete expired receipts.
+5. Test a real successful SDK share and a canceled picker on a physical device.
+   Only the successful share should move the card to History and show confirmation.
+
+The backend returns 503 and the browser leaves the card pending when its webhook
+key is not configured. Missing/invalid authentication cannot create confirmation.
+No browser focus or visibility event by itself confirms sharing.
+
+Official reference: https://developers.kakao.com/docs/ko/kakaotalk-share/callback

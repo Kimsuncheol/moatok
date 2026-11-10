@@ -92,6 +92,8 @@ def create_app(
 
     # Register modular Blueprints
     from app.routes.kakao import kakao_bp
+    from app.routes.kakao_share import kakao_share_bp
+    app.register_blueprint(kakao_share_bp)
     app.register_blueprint(kakao_bp)
     app.register_blueprint(health_bp)
     app.register_blueprint(auth_bp)

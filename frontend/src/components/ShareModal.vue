@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import type { ShareMessage } from '@/types'
 import { initiateKakaoShare } from '@/services/kakao'
 import { useMessagesStore } from '@/stores/messages'
@@ -14,10 +14,15 @@ const emit = defineEmits<{
   (e: 'shared', message: ShareMessage): void
 }>()
 
-const messagesStore = useMessagesStore()
 const isSharing = ref(false)
 const copied = ref(false)
 const noticeText = ref<string | null>(null)
+const messagesStore = useMessagesStore()
+watch(() => messagesStore.historyMessages.find(m => m.id === props.message?.id), message => {
+  if (message?.last_share_channel !== 'kakao_verified_webhook') return
+  noticeText.value = '✓ 카카오톡 전송이 확인되었습니다. History에 기록되었습니다.'
+  emit('shared', message)
+})
 
 function close() {
   noticeText.value = null
@@ -48,11 +53,7 @@ async function handleKakaoShare() {
     const res = await initiateKakaoShare(props.message)
     noticeText.value = res.notice
 
-    // Mark as shared in backend and Pinia store
-    const updated = await messagesStore.markAsShared(props.message.id, res.channel)
-    if (updated) {
-      emit('shared', updated)
-    }
+    // Picker launch, clipboard copying, and cancellation are not delivery proof.
   } catch (err: any) {
     noticeText.value = '공유 중 오류가 발생했습니다. 수동으로 복사해주세요.'
   } finally {

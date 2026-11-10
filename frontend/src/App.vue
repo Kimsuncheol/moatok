@@ -1,18 +1,43 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { RouterView } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import BottomNav from '@/components/BottomNav.vue'
 import ReloadPrompt from '@/components/ReloadPrompt.vue'
 import { useThemeStore } from '@/stores/theme'
 import { useAuthStore } from '@/stores/auth'
+import { useMessagesStore } from '@/stores/messages'
+import { checkKakaoDeliveries } from '@/services/kakaoDelivery'
 
 const themeStore = useThemeStore()
 const authStore = useAuthStore()
+const messagesStore = useMessagesStore()
+let deliveryTimer: ReturnType<typeof setInterval>
+let checkingDelivery = false
+async function checkDelivery() {
+  if (document.visibilityState === 'hidden' || checkingDelivery) return
+  checkingDelivery = true
+  try {
+    await checkKakaoDeliveries(async id => {
+      if (!await messagesStore.fetchById(id)) return false
+      return !!await messagesStore.markAsShared(id, 'kakao_verified_webhook')
+    })
+  } finally { checkingDelivery = false }
+}
 
 onMounted(() => {
   themeStore.setMode(themeStore.mode)
   authStore.init()
+  void checkDelivery()
+  window.addEventListener('focus', checkDelivery)
+  document.addEventListener('visibilitychange', checkDelivery)
+  deliveryTimer = setInterval(checkDelivery, 10_000)
+})
+
+onUnmounted(() => {
+  clearInterval(deliveryTimer)
+  window.removeEventListener('focus', checkDelivery)
+  document.removeEventListener('visibilitychange', checkDelivery)
 })
 </script>
 

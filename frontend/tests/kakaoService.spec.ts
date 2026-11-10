@@ -84,6 +84,7 @@ describe('Kakao Share Service', () => {
     expect(result.channel).toBe('kakao_sdk')
     expect(sendDefaultMock).toHaveBeenCalledWith({
       objectType: 'text',
+      serverCallbackArgs: { receipt_id: expect.stringMatching(/^[a-f0-9]{64}$/) },
       text: sampleMessage.body,
       link: {
         mobileWebUrl: expect.stringContaining('/messages/kakao-test-msg'),

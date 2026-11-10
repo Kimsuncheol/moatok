@@ -24,6 +24,7 @@ class Config:
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     KAKAO_REST_API_KEY = os.getenv('KAKAO_REST_API_KEY')
+    KAKAO_ADMIN_KEY = os.getenv('KAKAO_ADMIN_KEY')
     KAKAO_CLIENT_SECRET = os.getenv('KAKAO_CLIENT_SECRET')
     KAKAO_REDIRECT_URI = os.getenv('KAKAO_REDIRECT_URI')
     KAKAO_FRONTEND_ORIGIN = os.getenv('KAKAO_FRONTEND_ORIGIN', 'https://moatalk-e6fe1.web.app')
