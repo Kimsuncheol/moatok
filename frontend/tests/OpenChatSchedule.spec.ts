@@ -43,7 +43,11 @@ describe('Open Chat schedule export', () => {
     const wrapper = mount(OpenChatSchedule)
     await flushPromises()
     const picker = wrapper.get('.date-picker')
+    const now = new Date()
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    expect(picker.get('.date-picker-trigger').text()).toBe(today)
     await picker.get('.date-picker-trigger').trigger('click')
+    expect(picker.get(`button[aria-label="${today}"]`).attributes('aria-pressed')).toBe('true')
     expect(picker.get('.date-picker-trigger').attributes('aria-expanded')).toBe('true')
     expect(picker.get('.date-picker-chevron').classes()).toContain('expanded')
     expect(picker.get('.date-picker-calendar').element.previousElementSibling?.className).toBe('date-picker-trigger')

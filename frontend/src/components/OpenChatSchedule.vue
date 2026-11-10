@@ -36,7 +36,11 @@ watch(() => route.query.endpoint, id => {
 })
 const room = ref('')
 const message = ref('')
-const due = ref('')
+function today() {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+}
+const due = ref(today())
 const time = ref('09:00')
 const editingTime = ref(false)
 const feedback = ref('')
@@ -57,7 +61,7 @@ function download() {
   feedback.value = '예약 파일을 만들었습니다. Mac 도우미로 가져와야 예약이 활성화됩니다. 같은 파일을 다시 가져와도 중복 등록되지 않습니다.'
   // Each export creates a new ID. Clear inputs to avoid accidental duplicate schedules.
   message.value = ''
-  due.value = ''
+  due.value = today()
 }
 </script>
 <template>
