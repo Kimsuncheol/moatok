@@ -252,3 +252,41 @@ def record_share_attempt_endpoint(message_id: str):
         ),
         200,
     )
+
+
+@content_bp.post('/imports')
+@require_auth
+def import_fetched_message():
+    """Persist fetched content for the current user; retries preserve existing share state."""
+    import hashlib
+    from datetime import datetime, timezone
+    from urllib.parse import urlsplit
+    from google.api_core.exceptions import AlreadyExists
+    from flask import current_app
+    from app.extensions import get_firestore_client
+
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({'error': 'validation_error'}), 400
+    fields = {}
+    for key, maximum in (('title', 1000), ('body', 400000), ('target_url', 4000), ('source_name', 200), ('endpoint_id', 200)):
+        value = payload.get(key, '')
+        if not isinstance(value, str) or len(value) > maximum:
+            return jsonify({'error': 'validation_error', 'message': f'Invalid {key}'}), 400
+        fields[key] = value.strip()
+    url = urlsplit(fields['target_url'])
+    if not fields['title'] or not fields['body'] or url.scheme not in ('http', 'https') or not url.hostname or url.username or url.password:
+        return jsonify({'error': 'validation_error', 'message': 'Title, body and valid URL required'}), 400
+    uid = g.current_user['uid']
+    message_id = 'import_' + hashlib.sha256((uid + '\n' + fields['target_url']).encode()).hexdigest()
+    now = datetime.now(timezone.utc).isoformat()
+    record = {**fields, 'id': message_id, 'user_id': uid, 'source_id': fields['endpoint_id'],
+              'status': 'pending', 'fetch_status': 'success', 'kakao_shared': False,
+              'created_at': now, 'updated_at': now, 'formatted_text': fields['body'],
+              'items': [{'title': fields['title'], 'url': fields['target_url'], 'source_name': fields['source_name']}]}
+    ref = get_firestore_client().collection(current_app.config['FIRESTORE_COLLECTION_MESSAGES']).document(message_id)
+    try:
+        ref.create(record)
+    except AlreadyExists:
+        record = ref.get().to_dict()
+    return jsonify({'message': record}), 200

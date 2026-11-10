@@ -151,6 +151,10 @@ export const api = {
   setTokenProvider,
   setOnSessionExpired,
 
+  async saveFetchedMessage(message: ShareMessage): Promise<{ message: ShareMessage }> {
+    return request('/api/v1/messages/imports', { method: 'POST', body: JSON.stringify(message) })
+  },
+
   async getProfile(): Promise<{ user: UserProfile }> {
     return request<{ user: UserProfile }>('/api/v1/auth/me')
   },

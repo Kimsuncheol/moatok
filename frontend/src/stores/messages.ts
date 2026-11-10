@@ -114,6 +114,15 @@ export const useMessagesStore = defineStore('messages', () => {
     }
     localMessages.value = messages
   }
+  async function saveFetchedMessage(message: ShareMessage) {
+    const result = await api.saveFetchedMessage(message)
+    const saved = result.message
+    // Replace the browser-only copy when the same article is fetched again.
+    persistLocal(localMessages.value.filter(m => m.target_url !== saved.target_url))
+    pendingMessages.value = pendingMessages.value.filter(m => !m.id.startsWith('smsg_sample_') && m.target_url !== saved.target_url && m.id !== saved.id && !(m.endpoint_id === message.endpoint_id && m.fetch_status === 'failed'))
+    if (!saved.kakao_shared && !['shared', 'shared_by_user'].includes(saved.status || '')) pendingMessages.value.unshift(saved)
+    return saved
+  }
   function upsertLocalMessage(message: ShareMessage, options: { restoreDeleted?: boolean } = {}) {
     if (message.fetch_status === 'success') {
       message.id = `local_${encodeURIComponent(message.target_url || message.id)}`
@@ -360,6 +369,7 @@ export const useMessagesStore = defineStore('messages', () => {
 
   return {
     deleteMessage,
+    saveFetchedMessage,
     storageWarning,
     upsertLocalMessage,
     pendingMessages,

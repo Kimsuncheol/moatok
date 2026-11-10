@@ -796,3 +796,10 @@ are stored in this browser, rather than Firestore.
 The frontend uses `GET /api/v1/integrations/chosun-daily/articles` on Moatok's backend
 to avoid upstream CORS restrictions. This public read-only proxy uses a fixed upstream
 URL, permits no redirects, caps responses at 2 MiB, and returns 502 on upstream failure.
+
+Fetched API content is now saved through authenticated `POST /api/v1/messages/imports`
+to the user's Firestore message collection before fetch success is reported. Manual
+and browser-scheduled fetches share this path. IDs deduplicate by user and source URL;
+repeated imports preserve existing shared state. Sign in to save fetched content.
+Older browser-only cards are replaced by server cards when fetched again. Scheduling
+still runs in the browser while the app is open; this does not add a server scheduler.

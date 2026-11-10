@@ -182,3 +182,20 @@ def test_record_share_attempt_does_not_mark_as_delivered(client, mock_firebase_a
     assert msg_detail.get("kakao_shared") is not True
     assert msg_detail.get("share_attempt_count") == 2
     assert msg_detail.get("last_share_attempt_channel") == "web_share"
+
+
+def test_fetched_import_is_persistent_deduplicated_and_owned(client, mock_firebase_auth):
+    headers = {'Authorization': 'Bearer valid-token-user-1'}
+    payload = {'title': 'Article', 'body': 'Full article text', 'target_url': 'https://example.com/article', 'source_name': 'Source', 'endpoint_id': 'ep'}
+    assert client.post('/api/v1/messages/imports', json=payload).status_code == 401
+    first = client.post('/api/v1/messages/imports', headers=headers, json=payload)
+    assert first.status_code == 200
+    message = first.json['message']
+    again = client.post('/api/v1/messages/imports', headers=headers, json=payload)
+    assert again.json['message']['id'] == message['id']
+    listed = client.get('/api/v1/messages?status=pending', headers=headers).json['messages']
+    assert [m['id'] for m in listed] == [message['id']]
+    client.post('/api/v1/messages/' + message['id'] + '/mark-shared', headers=headers, json={'share_channel': 'test'})
+    assert client.post('/api/v1/messages/imports', headers=headers, json=payload).json['message']['status'] == 'shared_by_user'
+    other = client.post('/api/v1/messages/imports', headers={'Authorization': 'Bearer valid-token-user-2'}, json=payload)
+    assert other.json['message']['id'] != message['id']

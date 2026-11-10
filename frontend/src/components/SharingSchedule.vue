@@ -7,7 +7,7 @@ const props = defineProps<{ message: ShareMessage }>()
 const auth = useAuthStore()
 const schedule = useSharingScheduleStore()
 const pending = computed(() => !props.message.kakao_shared && !['shared', 'shared_by_user', 'archived', 'failed'].includes(props.message.status) && props.message.fetch_status !== 'failed')
-const local = computed(() => !!props.message.endpoint_id || props.message.id.startsWith('local_') || props.message.id.startsWith('smsg_sample_'))
+const local = computed(() => props.message.id.startsWith('local_') || props.message.id.startsWith('smsg_sample_'))
 const summary = computed(() => {
   if (local.value) return '자동 전송 예약 없음 · 직접 공유'
   if (!auth.isAuthenticated) return '전송 예정 시간: 로그인 후 확인'
