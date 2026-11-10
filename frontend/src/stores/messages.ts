@@ -84,6 +84,7 @@ export const useMessagesStore = defineStore('messages', () => {
     deletedIds.value = next
     persistLocal(localMessages.value.filter(m => m.id !== id))
     pendingMessages.value = pendingMessages.value.filter(m => m.id !== id)
+    historyMessages.value = historyMessages.value.filter(m => m.id !== id)
     if (selectedMessage.value?.id === id) selectedMessage.value = null
   }
   const storageWarning = ref<string | null>(null)
@@ -101,7 +102,7 @@ export const useMessagesStore = defineStore('messages', () => {
     return uniqueMessages([...localMessages.value.filter(m => !isShared(m)), ...remote.filter(m => !localIds.has(m.id))]).filter(m => !deletedIds.value.includes(m.id))
   }
   function mergeHistory(remote: ShareMessage[]) {
-    return uniqueMessages([...localMessages.value.filter(isShared), ...remote])
+    return uniqueMessages([...localMessages.value.filter(isShared), ...remote]).filter(m => !deletedIds.value.includes(m.id))
   }
   function persistLocal(messages: ShareMessage[]) {
     // A failed storage write must not be reported as a durable successful fetch.

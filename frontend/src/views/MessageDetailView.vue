@@ -41,8 +41,9 @@ async function handleFetch() {
 async function handleDelete() {
   if (!message.value || !window.confirm('이 기기에서 이 카드를 삭제할까요?')) return
   try {
+    const destination = isPending.value ? '/' : '/history'
     messagesStore.deleteMessage(message.value.id)
-    await router.push('/')
+    await router.push(destination)
   } catch { shareFeedback.value = '삭제하지 못했습니다. 저장소를 확인해 주세요.' }
 }
 const message = ref<ShareMessage | null>(null)
@@ -481,7 +482,7 @@ async function handleConfirmShared() {
 
       <!-- 5. Prominent "Share to KakaoTalk" Action Button -->
       <div class="action-buttons-group">
-        <button v-if="isPending" type="button" class="pending-detail-delete" @click="handleDelete">삭제</button>
+        <button type="button" class="pending-detail-delete" @click="handleDelete">삭제</button>
         <button
           v-if="isFailed && message.endpoint_id"
           type="button"
