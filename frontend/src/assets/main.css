@@ -1545,3 +1545,7 @@ a {
 .sharing-schedule-label { color: var(--text-secondary); font-size: 12px; font-weight: 500; }
 .sharing-schedule-time { color: var(--text-primary); font-size: 14px; font-weight: 600; line-height: 1.5; }
 .sharing-schedule-note { color: var(--text-muted); font-size: 12px; font-weight: 400; line-height: 1.5; }
+
+.pending-signin-notice { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; padding: 16px; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-surface); }
+.pending-signin-notice p { width: 100%; margin: 0; color: var(--text-secondary); font-size: 14px; font-weight: 400; line-height: 1.5; }
+.pending-signin-notice a { display: inline-flex; align-items: center; min-height: 44px; color: var(--text-primary); font-size: 14px; font-weight: 600; }

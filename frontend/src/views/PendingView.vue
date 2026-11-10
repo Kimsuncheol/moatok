@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessagesStore } from '@/stores/messages'
 import { useEndpointsStore } from '@/stores/endpoints'
@@ -7,10 +7,12 @@ import type { ShareMessage } from '@/types'
 import MessageCard from '@/components/MessageCard.vue'
 import ShareModal from '@/components/ShareModal.vue'
 import NotificationBanner from '@/components/NotificationBanner.vue'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const messagesStore = useMessagesStore()
 const endpointsStore = useEndpointsStore()
+const authStore = useAuthStore()
 
 const selectedMessage = ref<ShareMessage | null>(null)
 const isModalOpen = ref(false)
@@ -63,6 +65,10 @@ async function handleTouchEnd() {
 }
 
 async function refresh() {
+  if (authStore.isLoading || !authStore.isAuthenticated) {
+    messagesStore.clearError()
+    return
+  }
   await messagesStore.fetchPending(true)
 }
 
@@ -102,8 +108,14 @@ async function handleFetchCard(msg: ShareMessage) {
 
 onMounted(() => {
   endpointsStore.loadEndpoints()
-  messagesStore.fetchPending()
+  syncPendingSession()
 })
+function syncPendingSession() {
+  if (authStore.isLoading) return
+  if (authStore.isAuthenticated) void messagesStore.fetchPending()
+  else messagesStore.clearError()
+}
+watch(() => [authStore.isLoading, authStore.isAuthenticated, authStore.userUid], syncPendingSession)
 </script>
 
 <template>
@@ -206,11 +218,16 @@ onMounted(() => {
       </p>
     </header>
 
-    <p v-if="messagesStore.error && hasFetchedCards" role="status" class="fetch-feedback-banner">서버 목록을 불러오지 못했습니다. 이 기기에 저장된 브리핑을 표시합니다.</p>
+    <div v-if="!authStore.isLoading && !authStore.isAuthenticated" class="pending-signin-notice" role="status">
+      <p>서버에 저장된 브리핑을 보려면 로그인하세요. 이 기기에 저장된 카드는 로그인 없이 볼 수 있습니다.</p>
+      <RouterLink to="/settings/account">로그인</RouterLink>
+      <RouterLink to="/register-api">API에서 새 브리핑 가져오기</RouterLink>
+    </div>
+    <p v-if="authStore.isAuthenticated && messagesStore.error && hasFetchedCards" role="status" class="fetch-feedback-banner">서버 목록을 불러오지 못했습니다. 이 기기에 저장된 브리핑을 표시합니다.</p>
     <p v-if="messagesStore.storageWarning" role="status">{{ messagesStore.storageWarning }}</p>
     <!-- 1. Loading State (Accessible Skeleton Cards) -->
     <div
-      v-if="messagesStore.loading && !messagesStore.refreshing && !hasFetchedCards"
+      v-if="(authStore.isLoading || messagesStore.loading) && !messagesStore.refreshing && !hasFetchedCards"
       class="loading-skeleton-list"
       role="status"
       aria-label="공유 대기 브리핑을 불러오는 중입니다"
@@ -233,7 +250,7 @@ onMounted(() => {
 
     <!-- 2. Error State -->
     <div
-      v-else-if="messagesStore.error && !messagesStore.loading && !hasFetchedCards"
+      v-else-if="authStore.isAuthenticated && messagesStore.error && !messagesStore.loading && !hasFetchedCards"
       class="error-state-card"
       role="alert"
     >

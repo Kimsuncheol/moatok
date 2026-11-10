@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import PendingView from '@/views/PendingView.vue'
 import { useMessagesStore } from '@/stores/messages'
+import { useAuthStore } from '@/stores/auth'
 import { api } from '@/services/api'
 import type { ShareMessage } from '@/types'
 
@@ -16,12 +17,47 @@ vi.mock('vue-router', () => ({
 describe('PendingView Component', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    const auth = useAuthStore()
+    auth.user = { uid: 'test-user' } as any
+    auth.status = 'authenticated'
+    auth.loading = false
     mockRouterPush.mockReset()
     vi.restoreAllMocks()
     vi.spyOn(api, 'getPendingMessages').mockResolvedValue({
       messages: [],
       count: 0
     })
+  })
+
+  it('waits for restored authentication before fetching protected messages', async () => {
+    const auth = useAuthStore()
+    auth.user = null
+    auth.status = 'loading'
+    auth.loading = true
+    const fetch = vi.spyOn(useMessagesStore(), 'fetchPending').mockResolvedValue()
+    const wrapper = mount(PendingView)
+    expect(fetch).not.toHaveBeenCalled()
+    auth.user = { uid: 'restored-user' } as any
+    auth.status = 'authenticated'
+    auth.loading = false
+    await wrapper.vm.$nextTick()
+    expect(fetch).toHaveBeenCalledOnce()
+  })
+
+  it('shows sign-in guidance without sending unauthenticated fetch requests', async () => {
+    const auth = useAuthStore()
+    auth.user = null
+    auth.status = 'signed_out'
+    const store = useMessagesStore()
+    store.pendingMessages = []
+    store.error = 'API Error [401]: Missing Authorization Bearer token.'
+    const fetch = vi.spyOn(store, 'fetchPending').mockResolvedValue()
+    const wrapper = mount(PendingView, { global: { stubs: { RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } } })
+    expect(wrapper.find('a[href="/settings/account"]').exists()).toBe(true)
+    expect(wrapper.find('.error-state-card').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Missing Authorization')
+    await wrapper.get('.refresh-action-btn').trigger('click')
+    expect(fetch).not.toHaveBeenCalled()
   })
 
   it('renders header, title, and count pill', () => {

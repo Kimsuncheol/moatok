@@ -1,9 +1,19 @@
 <script setup lang="ts">
 import { useMessagesStore } from '@/stores/messages'
+import { useAuthStore } from '@/stores/auth'
+import { useRouter } from 'vue-router'
 
 const messagesStore = useMessagesStore()
+const authStore = useAuthStore()
+const router = useRouter()
 
 function handleRefresh() {
+  if (authStore.isLoading) return
+  if (!authStore.isAuthenticated) {
+    messagesStore.clearError()
+    router.push('/settings/account')
+    return
+  }
   messagesStore.fetchAll(true)
 }
 </script>
