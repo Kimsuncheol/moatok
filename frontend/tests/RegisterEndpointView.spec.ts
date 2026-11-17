@@ -1,10 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import RegisterEndpointView from '@/views/RegisterEndpointView.vue'
 import { useEndpointsStore, DEFAULT_ENGLISH_SCRAPPER_URL } from '@/stores/endpoints'
 import { useMessagesStore } from '@/stores/messages'
 
+const mockSchedule = vi.hoisted(() => ({ save: vi.fn(), read: vi.fn() }))
+vi.mock('@/services/api', async (original) => {
+  const actual = await original<typeof import('@/services/api')>()
+  return { ...actual, englishScraperApi: { ...actual.englishScraperApi,
+    saveSchedule: mockSchedule.save, schedule: mockSchedule.read } }
+})
 const mockRouterPush = vi.fn()
 vi.mock('vue-router', () => ({
   useRouter: () => ({
@@ -17,6 +23,8 @@ describe('RegisterEndpointView Component', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     mockRouterPush.mockReset()
+    mockSchedule.save.mockReset().mockImplementation(async value => ({...value, next_scheduled_at: '2026-11-18T00:00:00Z'}))
+    mockSchedule.read.mockReset().mockResolvedValue({enabled:true, hour:6, minute:0, timezone:'Asia/Seoul', weekdays:[0,1,2,3,4], next_scheduled_at:'2026-11-17T21:00:00Z'})
     if (typeof window !== 'undefined' && window.localStorage) {
       window.localStorage.clear()
     }
@@ -35,9 +43,9 @@ describe('RegisterEndpointView Component', () => {
 
     // Check schedule inputs & retry policy
     expect(wrapper.find('.schedule-title').text()).toContain('스케줄 및 자동 수집')
-    expect(wrapper.find('.fetch-time-summary').exists()).toBe(true)
-    expect(wrapper.find('.retry-policy-box').text()).toContain('최대 5회')
-    expect(wrapper.find('.retry-policy-box').text()).toContain('1시간 후')
+    expect(wrapper.find('#english-scrape-time-value').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Moatok에서 저장한 시각')
+    expect(wrapper.find('.retry-policy-box').exists()).toBe(false)
   })
 
   it('fills the Chosun Daily list preset with GET and generic JSON', async () => {
@@ -146,12 +154,14 @@ describe('RegisterEndpointView Component', () => {
     const endpointsStore = useEndpointsStore()
 
     // Fill fields
+    await wrapper.find('#source-type').setValue('generic_api')
     await wrapper.find('#endpoint-url').setValue('https://api.testservice.com/feed')
     await wrapper.find('#endpoint-name').setValue('Test Feed Service')
     await wrapper.findAll('.preset-card-btn')[0].trigger('click')
 
     // Submit form
     await wrapper.find('.endpoint-form').trigger('submit.prevent')
+    await flushPromises()
 
     expect(wrapper.find('.success-alert').exists()).toBe(true)
     const added = endpointsStore.endpoints.find((e) => e.url === 'https://api.testservice.com/feed')
@@ -196,5 +206,51 @@ describe('RegisterEndpointView Component', () => {
     expect(failedMsg?.status).toBe('failed')
     expect(failedMsg?.fetch_attempts).toBe(5)
     expect(failedMsg?.body).toContain('Fetch')
+  })
+})
+
+
+describe('Moatok server schedule bridge', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    mockSchedule.save.mockReset().mockImplementation(async value => ({...value, next_scheduled_at:'2026-11-18T00:00:00Z'}))
+    mockSchedule.read.mockReset().mockResolvedValue({enabled:true,hour:6,minute:0,timezone:'Asia/Seoul',weekdays:[0,1,2,3,4],next_scheduled_at:'2026-11-17T21:00:00Z'})
+  })
+  it('sends the time selected in Moatok before reporting successful registration', async () => {
+    const wrapper = mount(RegisterEndpointView)
+    await wrapper.get('#endpoint-url').setValue(DEFAULT_ENGLISH_SCRAPPER_URL+'/api/v1/lessons/fetch')
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+    expect(mockSchedule.save).toHaveBeenCalledWith({enabled:true,hour:9,minute:0,timezone:'Asia/Seoul',weekdays:[0,1,2,3,4]})
+    expect(wrapper.find('.success-alert').exists()).toBe(true)
+    wrapper.unmount()
+  })
+  it('does not register an endpoint or claim success when server scheduling fails', async () => {
+    mockSchedule.save.mockRejectedValue(new Error('Schedule server unavailable'))
+    const wrapper = mount(RegisterEndpointView)
+    const originalCount = useEndpointsStore().endpoints.length
+    await wrapper.get('#endpoint-url').setValue(DEFAULT_ENGLISH_SCRAPPER_URL+'/api/v1/lessons/fetch')
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+    expect(wrapper.get('.error-alert').text()).toContain('Schedule server unavailable')
+    expect(wrapper.find('.success-alert').exists()).toBe(false)
+    expect(useEndpointsStore().endpoints).toHaveLength(originalCount)
+    wrapper.unmount()
+  })
+  it('loads the persisted schedule, then sends disabled state from Moatok', async () => {
+    const wrapper = mount(RegisterEndpointView)
+    const edit = wrapper.findAll('button').find(button=>button.text()==='서버 수집 예약 변경')!
+    await edit.trigger('click')
+    await flushPromises()
+    expect(mockSchedule.read).toHaveBeenCalledOnce()
+    expect(wrapper.get('#english-scrape-time-value').text()).toBe('06:00')
+    await wrapper.get('.switch-input').setValue(false)
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+    expect(mockSchedule.save).toHaveBeenCalledWith(expect.objectContaining({enabled:false,hour:6,minute:0}))
+    expect(useEndpointsStore().endpoints[0].schedule.enabled).toBe(false)
+    expect(wrapper.get('.success-alert').text()).toContain('서버에 저장')
+    wrapper.unmount()
   })
 })

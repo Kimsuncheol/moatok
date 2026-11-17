@@ -80,7 +80,8 @@ class Config:
         os.getenv("SOURCE_FETCH_MAX_REDIRECTS", "3")
     )
 
-    ENGLISH_SCRAPER_URL = os.getenv("ENGLISH_SCRAPER_URL", "https://english-scrapper.onrender.com")
+    ENGLISH_SCRAPER_URL = os.getenv("ENGLISH_SCRAPER_URL", "https://english-scrapper-rdtl35sl7q-uc.a.run.app")
+    ENGLISH_SCRAPER_SCHEDULE_TOKEN = os.getenv("ENGLISH_SCRAPER_SCHEDULE_TOKEN", "")
     ENGLISH_SCRAPER_ENABLED = os.getenv("ENGLISH_SCRAPER_ENABLED", "false").lower() == "true"
 
     # Rule-based share message generator settings

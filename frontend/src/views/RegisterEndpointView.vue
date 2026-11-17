@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   useEndpointsStore,
   DEFAULT_ENGLISH_SCRAPPER_URL
 } from '@/stores/endpoints'
 import ScheduleWidget from '@/components/ScheduleWidget.vue'
+import TimePicker from '@/components/TimePicker.vue'
+import { englishScraperApi, type ScraperSchedule } from '@/services/api'
+import type { ApiEndpoint } from '@/types'
 
 const router = useRouter()
 const endpointsStore = useEndpointsStore()
@@ -102,8 +105,32 @@ const form = ref({
   enableSchedule: true,
   scheduledTime: '09:00',
   maxRetries: 5,
-  retryIntervalHours: 1
+  retryIntervalHours: 1,
+  timezone: 'Asia/Seoul',
+  weekdays: [0, 1, 2, 3, 4]
 })
+
+const savingSchedule = ref(false)
+const editingEndpointId = ref<string | null>(null)
+const cloudSchedule = ref<ScraperSchedule | null>(null)
+const isEnglishSchedule = computed(() => form.value.sourceType === 'english_scrapper' || /english[-_]scrapper/.test(form.value.url))
+const dayLabels = ['월', '화', '수', '목', '금', '토', '일']
+
+async function editEnglishSchedule(endpoint: ApiEndpoint) {
+  actionFeedback.value = '서버 예약 확인 중…'
+  try {
+    const schedule = await englishScraperApi.schedule()
+    cloudSchedule.value = schedule
+    editingEndpointId.value = endpoint.id
+    Object.assign(form.value, { name: endpoint.name, url: endpoint.url, method: endpoint.method,
+      sourceType: 'english_scrapper', enableSchedule: schedule.enabled,
+      scheduledTime: `${String(schedule.hour).padStart(2, '0')}:${String(schedule.minute).padStart(2, '0')}`,
+      timezone: schedule.timezone, weekdays: [...schedule.weekdays] })
+    actionFeedback.value = '현재 서버 예약을 불러왔습니다. 변경 후 저장하세요.'
+  } catch (error: any) {
+    actionFeedback.value = error.message || '서버 예약을 불러오지 못했습니다.'
+  }
+}
 
 const formError = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
@@ -175,7 +202,17 @@ async function handleTestConnection() {
   })
 }
 
-function handleRegister() {
+async function handleRegister() {
+  if (savingSchedule.value) return
+  savingSchedule.value = true
+  try {
+    await registerEndpoint()
+  } finally {
+    savingSchedule.value = false
+  }
+}
+
+async function registerEndpoint() {
   formError.value = null
   successMessage.value = null
 
@@ -195,10 +232,35 @@ function handleRegister() {
   }
 
   try {
+    const parsedUrl = new URL(form.value.url.trim())
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) throw new Error('HTTP 또는 HTTPS URL을 입력하세요.')
     const isEnglish =
       form.value.sourceType === 'english_scrapper' ||
       form.value.url.includes('english-scrapper') ||
       form.value.url.includes('english_scrapper')
+
+    if (isEnglish) {
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(form.value.scheduledTime)) throw new Error('올바른 수집 시각을 선택하세요.')
+      const [hour, minute] = form.value.scheduledTime.split(':').map(Number)
+      cloudSchedule.value = await englishScraperApi.saveSchedule({
+        enabled: form.value.enableSchedule, hour, minute,
+        timezone: form.value.timezone, weekdays: [...form.value.weekdays]
+      })
+      // All English registrations refer to the same shared upstream schedule.
+      for (const endpoint of endpointsStore.endpoints) {
+        if (endpoint.sourceType === 'english_scrapper' || /english[-_]scrapper/.test(endpoint.url)) {
+          endpointsStore.updateEndpoint(endpoint.id, { schedule: { ...endpoint.schedule,
+            enabled: cloudSchedule.value.enabled, scheduledTime: form.value.scheduledTime,
+            nextRunAt: cloudSchedule.value.next_scheduled_at || null,
+            timezone: cloudSchedule.value.timezone, weekdays: [...cloudSchedule.value.weekdays] } })
+        }
+      }
+      if (editingEndpointId.value) {
+        successMessage.value = '✓ Moatok에서 보낸 수집 예약이 서버에 저장되었습니다.'
+        editingEndpointId.value = null
+        return
+      }
+    }
 
     const newEndpoint = endpointsStore.addEndpoint({
       name: form.value.name.trim() || (isEnglish ? 'English Scraper API' : 'API Endpoint'),
@@ -210,7 +272,9 @@ function handleRegister() {
         enabled: form.value.enableSchedule,
         scheduledTime: form.value.scheduledTime || '09:00',
         retryIntervalHours: 1, // 1 hour after scheduled time
-        maxRetries: 5 // up to 5 times
+        maxRetries: 5, // generic endpoint's local retry display
+        ...(isEnglish ? { timezone: form.value.timezone, weekdays: [...form.value.weekdays],
+          nextRunAt: cloudSchedule.value?.next_scheduled_at || null } : {})
       }
     })
 
@@ -302,7 +366,7 @@ onMounted(() => {
             v-model="form.url"
             type="url"
             required
-            placeholder="https://english-scrapper.onrender.com"
+            placeholder="https://english-scrapper-rdtl35sl7q-uc.a.run.app"
             class="form-input font-mono"
             maxlength="2048"
             aria-haspopup="menu"
@@ -416,7 +480,7 @@ onMounted(() => {
 
           <div v-if="form.enableSchedule" class="schedule-body">
             <!-- Retry Rule Explanation Box -->
-            <div class="retry-policy-box" role="note">
+            <div v-if="!isEnglishSchedule" class="retry-policy-box" role="note">
               <div class="policy-header">
                 <span class="policy-badge">재시도 정책</span>
                 <strong class="policy-title">최대 5회 시도 (1시간 간격 재시도)</strong>
@@ -435,7 +499,19 @@ onMounted(() => {
             </div>
 
             <!-- Schedule-X Calendar Widget -->
-            <ScheduleWidget
+            <div v-if="isEnglishSchedule">
+              <p role="note">이 예약은 모든 English Scraper 등록에 공통 적용됩니다. Moatok에서 저장한 시각에 서버가 실행되며 앱을 닫아도 유지됩니다. 관리자 계정이 필요합니다.</p>
+              <TimePicker v-model="form.scheduledTime" id="english-scrape-time" label="수집 시각" :disabled="savingSchedule" />
+              <label for="scrape-timezone">시간대</label>
+              <input id="scrape-timezone" v-model="form.timezone" class="form-input" placeholder="Asia/Seoul" :disabled="savingSchedule" />
+              <fieldset :disabled="savingSchedule"><legend>실행 요일</legend>
+                <label v-for="(label, day) in dayLabels" :key="day">
+                  <input v-model="form.weekdays" type="checkbox" :value="day" />{{ label }}
+                </label>
+              </fieldset>
+              <p v-if="cloudSchedule?.next_scheduled_at" role="status">다음 실행: {{ new Date(cloudSchedule.next_scheduled_at).toLocaleString('ko-KR', { timeZone: cloudSchedule.timezone }) }} ({{ cloudSchedule.timezone }})</p>
+            </div>
+            <ScheduleWidget v-else
               v-model:scheduled-time="form.scheduledTime"
               :endpoint-name="form.name || 'API Endpoint'"
               :enabled="form.enableSchedule"
@@ -471,7 +547,7 @@ onMounted(() => {
           <button
             type="button"
             class="btn-test"
-            :disabled="endpointsStore.testing || !form.url.trim()"
+            :disabled="endpointsStore.testing || savingSchedule || !form.url.trim()"
             @click="handleTestConnection"
           >
             {{ endpointsStore.testing ? '연결 테스트 중...' : '연결 테스트' }}
@@ -479,9 +555,9 @@ onMounted(() => {
           <button
             type="submit"
             class="btn-submit"
-            :disabled="endpointsStore.testing || !form.url.trim()"
+            :disabled="endpointsStore.testing || savingSchedule || !form.url.trim()"
           >
-            엔드포인트 등록
+            {{ savingSchedule ? '서버에 저장 중…' : editingEndpointId ? '수집 예약 저장' : '엔드포인트 등록' }}
           </button>
         </div>
       </form>
@@ -538,11 +614,12 @@ onMounted(() => {
 
           <div class="item-url font-mono">{{ ep.url }}</div>
 
+          <button v-if="ep.sourceType === 'english_scrapper' || /english[-_]scrapper/.test(ep.url)" type="button" class="btn btn-secondary" :disabled="savingSchedule" @click="editEnglishSchedule(ep)">서버 수집 예약 변경</button>
           <div class="item-schedule-meta">
             <span class="meta-tag">
-              ⏰ 스케줄: {{ ep.schedule.enabled ? `매일 ${ep.schedule.scheduledTime}` : '비활성' }}
+              ⏰ 스케줄: {{ ep.sourceType === 'english_scrapper' ? (cloudSchedule ? (cloudSchedule.enabled ? `${String(cloudSchedule.hour).padStart(2, '0')}:${String(cloudSchedule.minute).padStart(2, '0')} (${cloudSchedule.timezone})` : '서버 예약 비활성') : '서버 예약 변경에서 현재 시각 확인') : (ep.schedule.enabled ? `매일 ${ep.schedule.scheduledTime}` : '비활성') }}
             </span>
-            <span class="meta-tag">
+            <span v-if="ep.sourceType !== 'english_scrapper'" class="meta-tag">
               🔄 재시도: 최대 {{ ep.schedule.maxRetries }}회 (1시간 간격)
             </span>
             <span v-if="ep.schedule.lastRunAt" class="meta-tag">

@@ -26,9 +26,17 @@ class EnglishScraperClient:
         self.host = parsed.hostname
 
     def get(self, path):
+        from app.services.english_schedule import scraper_identity_headers
+        from app.services.url_validator import _default_urlopen
+        headers = scraper_identity_headers(self.base)
+        def authenticated_get(request, timeout):
+            for key, value in headers.items():
+                request.add_header(key, value)
+            return _default_urlopen(request, timeout)
         probe = fetch_and_validate_source_url(
             self.base + path, allowed_domains=(self.host,),
-            timeout_seconds=20, max_bytes=2 * 1024 * 1024, max_redirects=0)
+            timeout_seconds=20, max_bytes=2 * 1024 * 1024, max_redirects=0,
+            http_open=authenticated_get)
         if probe.status_code != 200:
             raise ValidationError('English scraper request failed.')
         try:
@@ -49,11 +57,13 @@ class EnglishScraperClient:
         from app.services.url_validator import _default_urlopen
         from urllib.request import Request
         validate_english_article_url(article_url)
+        from app.services.english_schedule import scraper_identity_headers
+        headers = {**scraper_identity_headers(self.base), 'Content-Type': 'application/json'}
         location = []
         def post(request, timeout):
             response = _default_urlopen(Request(request.full_url,
                 data=json.dumps({'article_url': article_url}).encode(),
-                headers={'Content-Type': 'application/json'}, method='POST'), timeout)
+                headers=headers, method='POST'), timeout)
             location.append(response.headers.get('Location', ''))
             return response
         probe = fetch_and_validate_source_url(

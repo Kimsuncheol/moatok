@@ -155,3 +155,37 @@ key is not configured. Missing/invalid authentication cannot create confirmation
 No browser focus or visibility event by itself confirms sharing.
 
 Official reference: https://developers.kakao.com/docs/ko/kakaotalk-share/callback
+
+
+## Moatok-controlled English scraper schedule
+
+Moatok is the client that supplies scraper times. In **Register an API endpoint**,
+English Scraper registrations send enabled state, selected time, IANA timezone,
+and selected weekdays to Moatok's backend before reporting success. Existing
+registrations have **서버 수집 예약 변경** to read and change the shared server
+schedule. The same schedule applies to all English registrations; it is not a
+per-device schedule. The shared TimePicker is reused. The old generic API
+five-attempt timeline is not presented as the cloud scraper's retry policy.
+
+The browser calls `GET`/`PUT /api/v1/admin/integrations/english-scrapper/schedule`
+using its normal Firebase session. These endpoints require an administrator
+custom claim. The backend validates settings, generates its own Google ID token,
+and forwards them to the private scraper's `/api/v1/jobs/schedule` endpoint.
+Browser-provided Google tokens, URLs, or administrator secrets are never used
+as server credentials or upstream targets.
+
+Production integration:
+
+- `ENGLISH_SCRAPER_URL=https://english-scrapper-rdtl35sl7q-uc.a.run.app`.
+- `ENGLISH_SCRAPER_SCHEDULE_TOKEN` is bound to
+  `projects/55325270709/secrets/english-scrapper-schedule-admin:1`.
+- `moatok-backend@moatalk-e6fe1.iam.gserviceaccount.com` has secret accessor
+  permission on that secret and Cloud Run invoker permission on the scraper.
+- Schedule changes fail visibly if the scraper rejects them; no local-only
+  registration is reported as a successfully saved cloud schedule.
+- Cloud Scheduler keeps the saved schedule running when Moatok is closed.
+
+Preserve existing Cloud Run environment and secret bindings when deploying.
+The prior 06:00 Asia/Seoul weekday schedule remains in effect until an
+administrator saves a different schedule from Moatok. Do not place the schedule
+token in frontend environment variables or browser local storage.

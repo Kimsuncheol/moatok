@@ -377,3 +377,15 @@ def english_scrapper_fetch():
         from flask import current_app
         current_app.logger.exception('English URL fetch failed')
         return jsonify(error='fetch_failed', message='Could not extract this lesson. Check the article URL and retry.'), 502
+
+
+@admin_bp.route('/integrations/english-scrapper/schedule', methods=['GET', 'PUT'])
+@require_admin
+def english_scrapper_schedule():
+    """Accept schedule settings from Moatok; credentials stay on this backend."""
+    from app.services.english_schedule import cloud_schedule, ScheduleError
+    try:
+        result = cloud_schedule(request.method, request.get_json(silent=True) if request.method == 'PUT' else None)
+        return jsonify(result)
+    except ScheduleError as exc:
+        return jsonify(error='scraper_schedule_unavailable' if exc.status >= 500 else 'validation_error', message=str(exc)), exc.status

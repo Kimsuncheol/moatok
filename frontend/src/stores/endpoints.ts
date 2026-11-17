@@ -7,7 +7,7 @@ import { englishScraperApi } from '@/services/api'
 
 export const DEFAULT_ENGLISH_SCRAPPER_URL =
   (import.meta.env.VITE_ENGLISH_SCRAPER_URL as string | undefined)?.trim() ||
-  'https://english-scrapper.onrender.com'
+  'https://english-scrapper-rdtl35sl7q-uc.a.run.app'
 
 const STORAGE_KEY = 'moatok_registered_api_endpoints_v1'
 

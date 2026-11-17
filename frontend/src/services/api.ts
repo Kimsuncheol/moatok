@@ -227,7 +227,23 @@ export interface EnglishLesson {
   upstream_updated_at?: string
   url: string
 }
+export interface ScraperSchedule {
+  enabled: boolean
+  hour: number
+  minute: number
+  timezone: string
+  weekdays: number[]
+  next_scheduled_at?: string | null
+}
+
 export const englishScraperApi = {
+  schedule: () => request<ScraperSchedule>('/api/v1/admin/integrations/english-scrapper/schedule'),
+  saveSchedule: (schedule: ScraperSchedule) => {
+    const { enabled, hour, minute, timezone, weekdays } = schedule
+    return request<ScraperSchedule>('/api/v1/admin/integrations/english-scrapper/schedule', {
+      method: 'PUT', body: JSON.stringify({ enabled, hour, minute, timezone, weekdays })
+    })
+  },
   fetchUrl: fetchEnglishLesson,
   review: () => request<{ lessons: EnglishLesson[] }>('/api/v1/admin/integrations/english-scrapper/lessons'),
   status: () => request<{ enabled: boolean; url: string; last_sync: Record<string, unknown> | null }>('/api/v1/admin/integrations/english-scrapper'),

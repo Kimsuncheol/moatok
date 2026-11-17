@@ -60,6 +60,8 @@ export interface ShareMessage {
 }
 
 export interface ApiSchedule {
+  timezone?: string
+  weekdays?: number[]
   enabled: boolean
   scheduledTime: string
   retryIntervalHours: number
