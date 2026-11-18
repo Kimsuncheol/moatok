@@ -504,10 +504,14 @@ onMounted(() => {
               <TimePicker v-model="form.scheduledTime" id="english-scrape-time" label="수집 시각" :disabled="savingSchedule" />
               <label for="scrape-timezone">시간대</label>
               <input id="scrape-timezone" v-model="form.timezone" class="form-input" placeholder="Asia/Seoul" :disabled="savingSchedule" />
-              <fieldset :disabled="savingSchedule"><legend>실행 요일</legend>
-                <label v-for="(label, day) in dayLabels" :key="day">
-                  <input v-model="form.weekdays" type="checkbox" :value="day" />{{ label }}
-                </label>
+              <fieldset class="weekday-selector" :disabled="savingSchedule">
+                <legend class="weekday-selector-title">실행 요일</legend>
+                <div class="weekday-options">
+                  <label v-for="(label, day) in dayLabels" :key="day" class="weekday-option">
+                    <input v-model="form.weekdays" class="weekday-checkbox" type="checkbox" :value="day" :aria-label="`${label}요일`" />
+                    <span class="weekday-button" aria-hidden="true">{{ label }}</span>
+                  </label>
+                </div>
               </fieldset>
               <p v-if="cloudSchedule?.next_scheduled_at" role="status">다음 실행: {{ new Date(cloudSchedule.next_scheduled_at).toLocaleString('ko-KR', { timeZone: cloudSchedule.timezone }) }} ({{ cloudSchedule.timezone }})</p>
             </div>
