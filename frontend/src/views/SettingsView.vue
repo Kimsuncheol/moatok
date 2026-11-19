@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import AccountSettings from '@/components/AccountSettings.vue'
 const sections = [
-  { path: '/register-api', title: 'API 엔드포인트 등록 및 관리', description: '외부 API와 자동 수집 스케줄을 관리합니다.' },
+  { path: '/register-api', title: 'API 엔드포인트 등록', description: '콘텐츠를 수집할 API를 추가합니다.' },
+  { path: '/registed_api', title: '등록된 API 목록', description: '등록한 API에서 콘텐츠를 가져오고 수집 상태를 확인합니다.' },
   { path: '/settings/my-chat', title: '나와의 채팅 자동 전송', description: '새 콘텐츠와 매일 모음의 자동 전송을 설정합니다.' },
   { path: '/settings/appearance', title: '화면 테마', description: '시스템, 라이트, 다크 모드를 선택합니다.' },
   { path: '/settings/notifications', title: '푸시 알림', description: '알림 권한과 기기 등록을 관리합니다.' },

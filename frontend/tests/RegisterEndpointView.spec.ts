@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, config } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
+import RegisteredEndpointsView from '@/views/RegisteredEndpointsView.vue'
 import RegisterEndpointView from '@/views/RegisterEndpointView.vue'
 import { useEndpointsStore, DEFAULT_ENGLISH_SCRAPPER_URL } from '@/stores/endpoints'
 import { useMessagesStore } from '@/stores/messages'
@@ -17,6 +18,8 @@ vi.mock('vue-router', () => ({
     push: mockRouterPush
   })
 }))
+
+config.global.stubs.RouterLink = { props: ['to'], template: '<a :href="to"><slot /></a>' }
 
 describe('RegisterEndpointView Component', () => {
   afterEach(() => vi.useRealTimers())
@@ -135,7 +138,7 @@ describe('RegisterEndpointView Component', () => {
     wrapper.unmount()
   })
 
-  it('navigates back to home view when clicking home navigation links', async () => {
+  it('links to the registered list and navigates back to Pending', async () => {
     const wrapper = mount(RegisterEndpointView)
 
     const backBtn = wrapper.find('.back-link')
@@ -144,9 +147,10 @@ describe('RegisterEndpointView Component', () => {
     await backBtn.trigger('click')
     expect(mockRouterPush).toHaveBeenCalledWith('/')
 
-    const bottomHomeBtn = wrapper.find('.bottom-home-btn')
-    await bottomHomeBtn.trigger('click')
-    expect(mockRouterPush).toHaveBeenCalledWith('/')
+    await wrapper.get('.bottom-home-btn').trigger('click')
+    expect(mockRouterPush).toHaveBeenCalledTimes(2)
+    expect(wrapper.get('a[href="/registed_api"]').text()).toBe('등록된 API 목록')
+    expect(wrapper.find('.endpoint-items-list').exists()).toBe(false)
   })
 
   it('allows registering a new API endpoint with schedule and 5-attempt retry policy', async () => {
@@ -193,7 +197,7 @@ describe('RegisterEndpointView Component', () => {
       schedule: { maxRetries: 5, retryIntervalHours: 1 }
     })
 
-    const wrapper = mount(RegisterEndpointView)
+    const wrapper = mount(RegisteredEndpointsView)
 
     // Click simulate fail button
     const simulateBtn = wrapper.find('.btn-simulate-fail')
@@ -239,7 +243,7 @@ describe('Moatok server schedule bridge', () => {
     wrapper.unmount()
   })
   it('loads the persisted schedule, then sends disabled state from Moatok', async () => {
-    const wrapper = mount(RegisterEndpointView)
+    const wrapper = mount(RegisteredEndpointsView)
     const edit = wrapper.findAll('button').find(button=>button.text()==='서버 수집 예약 변경')!
     await edit.trigger('click')
     await flushPromises()
@@ -250,7 +254,7 @@ describe('Moatok server schedule bridge', () => {
     await flushPromises()
     expect(mockSchedule.save).toHaveBeenCalledWith(expect.objectContaining({enabled:false,hour:6,minute:0}))
     expect(useEndpointsStore().endpoints[0].schedule.enabled).toBe(false)
-    expect(wrapper.get('.success-alert').text()).toContain('서버에 저장')
+    expect(wrapper.get('.notif-feedback-box').text()).toContain('서버에 저장')
     wrapper.unmount()
   })
 })

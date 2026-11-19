@@ -8,6 +8,10 @@ const messagesStore = useMessagesStore()
 
 const pendingCount = computed(() => messagesStore.pendingCount)
 const historyCount = computed(() => messagesStore.historyCount)
+const activeTab = computed(() =>
+  route.path?.startsWith('/settings/') || route.name === 'register-api' || route.name === 'registed_api'
+    ? 'settings' : route.name
+)
 
 function onTabClick(name: string, event: MouseEvent) {
   if (name !== 'pending' || route.name !== 'pending' || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
@@ -54,8 +58,8 @@ const navItems = computed(() => [
       :to="item.path"
       @click="onTabClick(item.name, $event)"
       class="nav-tab"
-      :class="{ active: (route.name === item.name || (item.name === 'settings' && (route.path?.startsWith('/settings/') || route.name === 'register-api'))) }"
-      :aria-current="(route.name === item.name || (item.name === 'settings' && (route.path?.startsWith('/settings/') || route.name === 'register-api'))) ? 'page' : undefined"
+      :class="{ active: activeTab === item.name }"
+      :aria-current="activeTab === item.name ? 'page' : undefined"
     >
       <div class="icon-wrapper">
         <!-- Minimalist Monochrome SVG Icons -->

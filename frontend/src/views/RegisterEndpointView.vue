@@ -3,12 +3,12 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   useEndpointsStore,
+  isEnglishEndpoint,
   DEFAULT_ENGLISH_SCRAPPER_URL
 } from '@/stores/endpoints'
 import ScheduleWidget from '@/components/ScheduleWidget.vue'
-import TimePicker from '@/components/TimePicker.vue'
-import { englishScraperApi, type ScraperSchedule } from '@/services/api'
-import type { ApiEndpoint } from '@/types'
+import EnglishScheduleFields from '@/components/EnglishScheduleFields.vue'
+import type { ScraperSchedule } from '@/services/api'
 
 const router = useRouter()
 const endpointsStore = useEndpointsStore()
@@ -111,30 +111,10 @@ const form = ref({
 })
 
 const savingSchedule = ref(false)
-const editingEndpointId = ref<string | null>(null)
 const cloudSchedule = ref<ScraperSchedule | null>(null)
-const isEnglishSchedule = computed(() => form.value.sourceType === 'english_scrapper' || /english[-_]scrapper/.test(form.value.url))
-const dayLabels = ['월', '화', '수', '목', '금', '토', '일']
-
-async function editEnglishSchedule(endpoint: ApiEndpoint) {
-  actionFeedback.value = '서버 예약 확인 중…'
-  try {
-    const schedule = await englishScraperApi.schedule()
-    cloudSchedule.value = schedule
-    editingEndpointId.value = endpoint.id
-    Object.assign(form.value, { name: endpoint.name, url: endpoint.url, method: endpoint.method,
-      sourceType: 'english_scrapper', enableSchedule: schedule.enabled,
-      scheduledTime: `${String(schedule.hour).padStart(2, '0')}:${String(schedule.minute).padStart(2, '0')}`,
-      timezone: schedule.timezone, weekdays: [...schedule.weekdays] })
-    actionFeedback.value = '현재 서버 예약을 불러왔습니다. 변경 후 저장하세요.'
-  } catch (error: any) {
-    actionFeedback.value = error.message || '서버 예약을 불러오지 못했습니다.'
-  }
-}
-
+const isEnglishSchedule = computed(() => isEnglishEndpoint(form.value))
 const formError = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
-const actionFeedback = ref<string | null>(null)
 
 function fillChosunDailyTestUrl() {
   form.value.name = 'Chosun Daily Articles'
@@ -234,32 +214,9 @@ async function registerEndpoint() {
   try {
     const parsedUrl = new URL(form.value.url.trim())
     if (!['http:', 'https:'].includes(parsedUrl.protocol)) throw new Error('HTTP 또는 HTTPS URL을 입력하세요.')
-    const isEnglish =
-      form.value.sourceType === 'english_scrapper' ||
-      form.value.url.includes('english-scrapper') ||
-      form.value.url.includes('english_scrapper')
-
+    const isEnglish = isEnglishSchedule.value
     if (isEnglish) {
-      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(form.value.scheduledTime)) throw new Error('올바른 수집 시각을 선택하세요.')
-      const [hour, minute] = form.value.scheduledTime.split(':').map(Number)
-      cloudSchedule.value = await englishScraperApi.saveSchedule({
-        enabled: form.value.enableSchedule, hour, minute,
-        timezone: form.value.timezone, weekdays: [...form.value.weekdays]
-      })
-      // All English registrations refer to the same shared upstream schedule.
-      for (const endpoint of endpointsStore.endpoints) {
-        if (endpoint.sourceType === 'english_scrapper' || /english[-_]scrapper/.test(endpoint.url)) {
-          endpointsStore.updateEndpoint(endpoint.id, { schedule: { ...endpoint.schedule,
-            enabled: cloudSchedule.value.enabled, scheduledTime: form.value.scheduledTime,
-            nextRunAt: cloudSchedule.value.next_scheduled_at || null,
-            timezone: cloudSchedule.value.timezone, weekdays: [...cloudSchedule.value.weekdays] } })
-        }
-      }
-      if (editingEndpointId.value) {
-        successMessage.value = '✓ Moatok에서 보낸 수집 예약이 서버에 저장되었습니다.'
-        editingEndpointId.value = null
-        return
-      }
+      cloudSchedule.value = await endpointsStore.saveEnglishSchedule(form.value)
     }
 
     const newEndpoint = endpointsStore.addEndpoint({
@@ -291,32 +248,6 @@ async function registerEndpoint() {
   }
 }
 
-async function handleFetchNow(endpointId: string) {
-  actionFeedback.value = '수집 요청 중...'
-  const res = await endpointsStore.triggerFetch(endpointId, true)
-  if (res.success) {
-    actionFeedback.value = `✓ 수집 성공: ${res.message}`
-  } else {
-    actionFeedback.value = `⚠️ 수집 실패: ${res.message} (홈 Pending 뷰에 Fetch 버튼 카드가 등록되었습니다)`
-  }
-  setTimeout(() => {
-    actionFeedback.value = null
-  }, 4500)
-}
-
-function handleSimulateFiveFailures(endpointId: string) {
-  const failedMsg = endpointsStore.simulateFiveFailedAttempts(endpointId)
-  if (failedMsg) {
-    actionFeedback.value = `✓ 5회 재시도 실패 시뮬레이션 완료! 홈(Pending) 뷰에 'Fetch' 버튼이 포함된 카드가 생성되었습니다.`
-  }
-}
-
-function handleDelete(endpointId: string) {
-  if (confirm('이 API 엔드포인트를 삭제하시겠습니까?')) {
-    endpointsStore.deleteEndpoint(endpointId)
-  }
-}
-
 onMounted(() => {
   endpointsStore.loadEndpoints()
   if (!endpointsStore.endpoints.length) {
@@ -327,15 +258,14 @@ onMounted(() => {
 
 <template>
   <div class="register-endpoint-view">
-    <!-- Navigation Back to Home -->
-    <nav class="view-nav-bar" aria-label="이전 화면으로 이동">
+    <nav class="view-nav-bar" aria-label="API 페이지 탐색">
       <button type="button" class="back-link" aria-label="홈 화면으로 돌아가기" @click="goHome">
         <svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <polyline points="15 18 9 12 15 6" />
         </svg>
         <span>홈 (Pending)</span>
       </button>
-      <span class="nav-current-title">API 엔드포인트 등록</span>
+      <RouterLink to="/registed_api" class="back-link">등록된 API 목록</RouterLink>
     </nav>
 
     <!-- Header Section -->
@@ -499,22 +429,11 @@ onMounted(() => {
             </div>
 
             <!-- Schedule-X Calendar Widget -->
-            <div v-if="isEnglishSchedule">
-              <p role="note">이 예약은 모든 English Scraper 등록에 공통 적용됩니다. Moatok에서 저장한 시각에 서버가 실행되며 앱을 닫아도 유지됩니다. 관리자 계정이 필요합니다.</p>
-              <TimePicker v-model="form.scheduledTime" id="english-scrape-time" label="수집 시각" :disabled="savingSchedule" />
-              <label for="scrape-timezone">시간대</label>
-              <input id="scrape-timezone" v-model="form.timezone" class="form-input" placeholder="Asia/Seoul" :disabled="savingSchedule" />
-              <fieldset class="weekday-selector" :disabled="savingSchedule">
-                <legend class="weekday-selector-title">실행 요일</legend>
-                <div class="weekday-options">
-                  <label v-for="(label, day) in dayLabels" :key="day" class="weekday-option">
-                    <input v-model="form.weekdays" class="weekday-checkbox" type="checkbox" :value="day" :aria-label="`${label}요일`" />
-                    <span class="weekday-button" aria-hidden="true">{{ label }}</span>
-                  </label>
-                </div>
-              </fieldset>
-              <p v-if="cloudSchedule?.next_scheduled_at" role="status">다음 실행: {{ new Date(cloudSchedule.next_scheduled_at).toLocaleString('ko-KR', { timeZone: cloudSchedule.timezone }) }} ({{ cloudSchedule.timezone }})</p>
-            </div>
+            <EnglishScheduleFields v-if="isEnglishSchedule"
+              v-model:time="form.scheduledTime" v-model:timezone="form.timezone"
+              v-model:weekdays="form.weekdays" :disabled="savingSchedule"
+              :schedule="cloudSchedule"
+            />
             <ScheduleWidget v-else
               v-model:scheduled-time="form.scheduledTime"
               :endpoint-name="form.name || 'API Endpoint'"
@@ -561,106 +480,10 @@ onMounted(() => {
             class="btn-submit"
             :disabled="endpointsStore.testing || savingSchedule || !form.url.trim()"
           >
-            {{ savingSchedule ? '서버에 저장 중…' : editingEndpointId ? '수집 예약 저장' : '엔드포인트 등록' }}
+            {{ savingSchedule ? '서버에 저장 중…' : '엔드포인트 등록' }}
           </button>
         </div>
       </form>
-    </section>
-
-    <!-- Action feedback notification -->
-    <div v-if="actionFeedback" class="action-feedback-toast" role="status">
-      {{ actionFeedback }}
-    </div>
-
-    <!-- Registered Endpoints List -->
-    <section class="card list-card" aria-labelledby="registered-endpoints-heading">
-      <div class="card-header">
-        <h2 id="registered-endpoints-heading" class="card-title">등록된 API 엔드포인트 목록</h2>
-        <span class="count-badge">{{ endpointsStore.endpoints.length }}개</span>
-      </div>
-
-      <div v-if="endpointsStore.endpoints.length === 0" class="empty-endpoints-box">
-        <p>등록된 API 엔드포인트가 없습니다. 위 폼에서 새로 등록해주세요.</p>
-      </div>
-
-      <div v-else class="endpoint-items-list" role="list">
-        <article
-          v-for="ep in endpointsStore.endpoints"
-          :key="ep.id"
-          class="endpoint-item"
-          role="listitem"
-        >
-          <div class="item-header">
-            <div class="item-title-group">
-              <span class="method-badge">{{ ep.method }}</span>
-              <strong class="item-name">{{ ep.name }}</strong>
-            </div>
-            <span
-              class="status-pill"
-              :class="{
-                'status-success': ep.schedule.lastStatus === 'success',
-                'status-failed': ep.schedule.lastStatus === 'failed',
-                'status-idle': ep.schedule.lastStatus === 'idle',
-                'status-fetching': ep.schedule.lastStatus === 'fetching'
-              }"
-            >
-              {{
-                ep.schedule.lastStatus === 'success'
-                  ? '수집 정상'
-                  : ep.schedule.lastStatus === 'failed'
-                  ? `5회 실패 (${ep.schedule.currentAttempts}/5)`
-                  : ep.schedule.lastStatus === 'fetching'
-                  ? '수집 중'
-                  : '스케줄 대기'
-              }}
-            </span>
-          </div>
-
-          <div class="item-url font-mono">{{ ep.url }}</div>
-
-          <button v-if="ep.sourceType === 'english_scrapper' || /english[-_]scrapper/.test(ep.url)" type="button" class="btn btn-secondary" :disabled="savingSchedule" @click="editEnglishSchedule(ep)">서버 수집 예약 변경</button>
-          <div class="item-schedule-meta">
-            <span class="meta-tag">
-              ⏰ 스케줄: {{ ep.sourceType === 'english_scrapper' ? (cloudSchedule ? (cloudSchedule.enabled ? `${String(cloudSchedule.hour).padStart(2, '0')}:${String(cloudSchedule.minute).padStart(2, '0')} (${cloudSchedule.timezone})` : '서버 예약 비활성') : '서버 예약 변경에서 현재 시각 확인') : (ep.schedule.enabled ? `매일 ${ep.schedule.scheduledTime}` : '비활성') }}
-            </span>
-            <span v-if="ep.sourceType !== 'english_scrapper'" class="meta-tag">
-              🔄 재시도: 최대 {{ ep.schedule.maxRetries }}회 (1시간 간격)
-            </span>
-            <span v-if="ep.schedule.lastRunAt" class="meta-tag">
-              🕒 최근 시도: {{ new Date(ep.schedule.lastRunAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) }}
-            </span>
-          </div>
-
-          <!-- Actions -->
-          <div class="item-actions-row">
-            <button
-              type="button"
-              class="item-action-btn btn-fetch"
-              aria-label="지금 즉시 데이터 가져오기"
-              @click="handleFetchNow(ep.id)"
-            >
-              Fetch 지금 실행
-            </button>
-            <button
-              type="button"
-              class="item-action-btn btn-simulate-fail"
-              title="5회 시도 후 최종 실패 상황을 시뮬레이션하여 홈 화면에 'Fetch' 버튼 카드를 생성합니다."
-              aria-label="5회 실패 및 홈 Fetch 카드 생성 테스트"
-              @click="handleSimulateFiveFailures(ep.id)"
-            >
-              5회 실패 테스트
-            </button>
-            <button
-              type="button"
-              class="item-action-btn btn-delete"
-              aria-label="엔드포인트 삭제"
-              @click="handleDelete(ep.id)"
-            >
-              삭제
-            </button>
-          </div>
-        </article>
-      </div>
     </section>
 
     <!-- Bottom link to return home -->
@@ -714,12 +537,6 @@ onMounted(() => {
 .back-icon {
   width: 14px;
   height: 14px;
-}
-
-.nav-current-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
 }
 
 /* View Header */
@@ -778,8 +595,7 @@ onMounted(() => {
   color: var(--text-primary);
 }
 
-.card-badge,
-.count-badge {
+.card-badge {
   font-size: 11px;
   font-weight: 700;
   padding: 2px 7px;
@@ -1114,173 +930,6 @@ onMounted(() => {
 .btn-submit:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-/* Toast */
-.action-feedback-toast {
-  padding: 12px 14px;
-  border-radius: 8px;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-strong);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Endpoints List */
-.empty-endpoints-box {
-  text-align: center;
-  padding: 24px;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.endpoint-items-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.endpoint-item {
-  padding: 14px;
-  border-radius: 10px;
-  background-color: var(--bg-surface-elevated);
-  border: 1px solid var(--border-default);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.item-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.item-title-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.method-badge {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 800;
-  padding: 2px 5px;
-  border-radius: 4px;
-  background-color: var(--accent-action);
-  color: var(--accent-action-text);
-}
-
-.item-name {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.status-pill {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 4px;
-  border: 1px solid var(--border-default);
-}
-
-.status-success {
-  background-color: var(--badge-bg);
-  color: var(--text-primary);
-}
-
-.status-failed {
-  background-color: var(--badge-bg);
-  color: var(--text-primary);
-  border-color: var(--border-strong);
-}
-
-.status-idle,
-.status-fetching {
-  background-color: var(--bg-surface);
-  color: var(--text-secondary);
-}
-
-.item-url {
-  font-size: 12px;
-  color: var(--text-muted);
-  word-break: break-all;
-}
-
-.item-schedule-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 2px;
-}
-
-.meta-tag {
-  font-size: 11.5px;
-  color: var(--text-secondary);
-  background-color: var(--bg-surface);
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 1px solid var(--border-subtle, var(--border-default));
-}
-
-.item-actions-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 6px;
-  flex-wrap: wrap;
-}
-
-.item-action-btn {
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  min-height: 34px;
-  transition: all 0.15s ease;
-}
-
-.btn-fetch {
-  background-color: var(--accent-action);
-  color: var(--accent-action-text);
-  border: none;
-}
-
-.btn-fetch:hover {
-  opacity: 0.9;
-}
-
-.btn-simulate-fail {
-  background-color: var(--bg-surface);
-  color: var(--text-primary);
-  border: 1px solid var(--border-default);
-}
-
-.btn-simulate-fail:hover {
-  border-color: var(--border-strong);
-}
-
-.btn-delete {
-  background-color: transparent;
-  color: var(--text-muted);
-  border: 1px solid var(--border-default);
-  margin-left: auto;
-}
-
-.btn-delete:hover {
-  color: var(--text-primary);
-  border-color: var(--border-strong);
 }
 
 /* Bottom home link */

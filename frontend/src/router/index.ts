@@ -30,6 +30,11 @@ const router = createRouter({
     { path: '/settings/openchat', redirect: '/settings' },
     { path: '/settings/my-chat', name: 'settings-my-chat', component: () => import('@/views/SettingsMyChatView.vue') },
     {
+      path: '/registed_api',
+      name: 'registed_api',
+      component: () => import('@/views/RegisteredEndpointsView.vue')
+    },
+    {
       path: '/register-api',
       name: 'register-api',
       component: () => import('@/views/RegisterEndpointView.vue')

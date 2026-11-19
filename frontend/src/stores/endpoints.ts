@@ -3,13 +3,28 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { ApiEndpoint, ApiSchedule, ShareMessage } from '@/types'
 import { useMessagesStore } from '@/stores/messages'
-import { englishScraperApi } from '@/services/api'
+import { englishScraperApi, type ScraperSchedule } from '@/services/api'
 
 export const DEFAULT_ENGLISH_SCRAPPER_URL =
   (import.meta.env.VITE_ENGLISH_SCRAPER_URL as string | undefined)?.trim() ||
   'https://english-scrapper-rdtl35sl7q-uc.a.run.app'
 
 const STORAGE_KEY = 'moatok_registered_api_endpoints_v1'
+
+export interface EnglishScheduleDraft {
+  enableSchedule: boolean
+  scheduledTime: string
+  timezone: string
+  weekdays: number[]
+}
+
+export function englishScheduleTime(schedule: ScraperSchedule) {
+  return [schedule.hour, schedule.minute].map(value => String(value).padStart(2, '0')).join(':')
+}
+
+export function isEnglishEndpoint(endpoint: { url: string; sourceType?: string }) {
+  return endpoint.sourceType === 'english_scrapper' || /english[-_]scrapper/.test(endpoint.url)
+}
 
 export function createDefaultSchedule(override: Partial<ApiSchedule> = {}): ApiSchedule {
   return {
@@ -60,8 +75,9 @@ export const useEndpointsStore = defineStore('endpoints', () => {
         const raw = window.localStorage.getItem(STORAGE_KEY)
         if (raw) {
           const parsed = JSON.parse(raw)
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            endpoints.value = parsed
+          if (Array.isArray(parsed)) {
+            // Navigation can reload the list while a fetch is updating its endpoint.
+            if (JSON.stringify(endpoints.value) !== raw) endpoints.value = parsed
             return
           }
         }
@@ -108,10 +124,7 @@ export const useEndpointsStore = defineStore('endpoints', () => {
       throw new Error('유효한 URL 형식이 아닙니다.')
     }
 
-    const isEnglishScrapper =
-      payload.sourceType === 'english_scrapper' ||
-      cleanUrl.includes('english-scrapper') ||
-      cleanUrl.includes('english_scrapper')
+    const isEnglishScrapper = isEnglishEndpoint(payload)
 
     const newEndpoint: ApiEndpoint = {
       id: `ep_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -150,6 +163,29 @@ export const useEndpointsStore = defineStore('endpoints', () => {
       endpoints.value.splice(idx, 1)
       saveEndpoints()
     }
+  }
+
+  async function saveEnglishSchedule(draft: EnglishScheduleDraft) {
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(draft.scheduledTime)) {
+      throw new Error('올바른 수집 시각을 선택하세요.')
+    }
+    const [hour, minute] = draft.scheduledTime.split(':').map(Number)
+    const schedule = await englishScraperApi.saveSchedule({
+      enabled: draft.enableSchedule, hour, minute, timezone: draft.timezone, weekdays: [...draft.weekdays]
+    })
+    // All English endpoints share one server schedule.
+    for (const endpoint of endpoints.value.filter(isEnglishEndpoint)) {
+      Object.assign(endpoint.schedule, {
+        enabled: schedule.enabled,
+        scheduledTime: englishScheduleTime(schedule),
+        nextRunAt: schedule.next_scheduled_at || null,
+        timezone: schedule.timezone,
+        weekdays: [...schedule.weekdays]
+      })
+      endpoint.updatedAt = new Date().toISOString()
+    }
+    saveEndpoints()
+    return schedule
   }
 
   async function testEndpoint(endpointData: {
@@ -443,6 +479,7 @@ export const useEndpointsStore = defineStore('endpoints', () => {
     testResult,
     loadEndpoints,
     saveEndpoints,
+    saveEnglishSchedule,
     addEndpoint,
     updateEndpoint,
     deleteEndpoint,

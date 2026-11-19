@@ -199,7 +199,7 @@ describe('SettingsView Component', () => {
 
     const navBtn = wrapper.find('.register-api-nav-btn')
     expect(navBtn.exists()).toBe(true)
-    expect(navBtn.text()).toContain('API 엔드포인트 등록 및 관리')
+    expect(navBtn.text()).toContain('API 엔드포인트 등록')
 
     await navBtn.trigger('click')
     expect(mockRouterPush).toHaveBeenCalledWith('/register-api')
@@ -208,7 +208,7 @@ describe('SettingsView Component', () => {
   it('links to every smaller settings screen without embedding its forms', () => {
     const wrapper = mount(SettingsView)
     const links = wrapper.findAll('.settings-nav-link')
-    expect(links).toHaveLength(6)
+    expect(links).toHaveLength(7)
     expect(wrapper.text()).not.toContain('오픈채팅 예약 전송')
     expect(wrapper.find('form').exists()).toBe(false)
     expect(wrapper.find('.appearance-mode-list').exists()).toBe(false)
