@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useMessagesStore } from '@/stores/messages'
 import { useEndpointsStore } from '@/stores/endpoints'
 import { useAuthStore } from '@/stores/auth'
-import { initiateKakaoShare } from '@/services/kakao'
+import { useShareAttemptsStore } from '@/stores/shareAttempts'
 import SharingSchedule from '@/components/SharingSchedule.vue'
 import type { ShareMessage } from '@/types'
 import { englishScraperApi, type EnglishLesson } from '@/services/api'
@@ -17,6 +17,7 @@ const props = defineProps<{
 
 const router = useRouter()
 const messagesStore = useMessagesStore()
+const shareAttempts = useShareAttemptsStore()
 const authStore = useAuthStore()
 const endpointsStore = useEndpointsStore()
 const isFetching = ref(false)
@@ -93,6 +94,11 @@ const isPending = computed(() => {
   if (!message.value) return false
   return message.value.status === 'pending' || !message.value.kakao_shared
 })
+
+const canConfirmShare = computed(() =>
+  message.value?.id === props.id && isPending.value && !isFailed.value &&
+  !isSharing.value && !isMarkingShared.value && shareAttempts.hasStarted(props.id)
+)
 
 const statusLabel = computed(() => {
   if (!message.value) return ''
@@ -213,13 +219,13 @@ async function saveAdminEdit() {
 
 // 2. KakaoTalk Share Action (User-Initiated)
 async function handleKakaoShare() {
-  if (!message.value || isFailed.value) return
+  if (!message.value || isFailed.value || isSharing.value || isMarkingShared.value) return
   isSharing.value = true
   shareFeedback.value = null
 
   try {
     // Delegates to dedicated Kakao service module
-    const result = await initiateKakaoShare(message.value)
+    const result = await shareAttempts.startShare(message.value)
 
     // IMPORTANT:
     // We DO NOT mark the message as delivered merely because the share button was clicked.
@@ -234,7 +240,7 @@ async function handleKakaoShare() {
 
 // 3. Explicit Mark as Shared by User
 async function handleConfirmShared() {
-  if (!message.value || isFailed.value) return
+  if (!message.value || !canConfirmShare.value) return
   isMarkingShared.value = true
   try {
     const updated = await messagesStore.markAsShared(message.value.id, 'kakaotalk_web_pwa')
@@ -464,9 +470,8 @@ async function handleConfirmShared() {
         <div class="sharing-policy-notice">
           <p class="policy-notice-text">
             ℹ️ <strong>사용자 주도 전송 원칙:</strong>
-            카카오톡 공유 버튼을 클릭하면 공식 카카오톡 공유 창 또는 시스템 공유 시트가 실행됩니다.
-            플랫폼 규정에 따라 <strong>버튼 클릭만으로는 메시지가 배포 완료로 처리되지 않으며</strong>,
-            카카오톡에서 전송을 마친 후 아래의 <em>'카카오톡 전송 완료로 기록하기'</em>를 눌러 완료 상태를 확정할 수 있습니다.
+            먼저 <strong>카카오톡으로 공유하기</strong>를 눌러 공유를 시작하세요.
+            카카오톡에서 메시지를 보낸 뒤 <strong>카카오톡 전송 완료로 기록하기</strong>를 누르면 공유 이력에 기록됩니다.
           </p>
           <p class="policy-notice-subtext">
             📱 <strong>오픈채팅방 지원 안내:</strong>
@@ -496,7 +501,7 @@ async function handleConfirmShared() {
         <button
           type="button"
           class="prominent-kakao-btn"
-          :disabled="isSharing || isFailed"
+          :disabled="isSharing || isFailed || isMarkingShared"
           aria-label="카카오톡으로 공유하기 (카카오 공유 창 열기)"
           @click="handleKakaoShare"
         >
@@ -512,7 +517,7 @@ async function handleConfirmShared() {
           v-if="isPending"
           type="button"
           class="mark-shared-btn"
-          :disabled="isMarkingShared || isFailed"
+          :disabled="!canConfirmShare"
           aria-label="카카오톡 전송 완료로 기록하기"
           @click="handleConfirmShared"
         >

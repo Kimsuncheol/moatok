@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import MessageDetailView from '@/views/MessageDetailView.vue'
+import ShareModal from '@/components/ShareModal.vue'
 import { useMessagesStore } from '@/stores/messages'
 import { useAuthStore } from '@/stores/auth'
 import * as kakaoService from '@/services/kakao'
@@ -58,6 +59,7 @@ describe('MessageDetailView Component', () => {
   })
 
   beforeEach(() => {
+    sessionStorage.clear()
     setActivePinia(createPinia())
     mockRouterPush.mockReset()
     mockRouterBack.mockReset()
@@ -185,10 +187,16 @@ describe('MessageDetailView Component', () => {
     await new Promise((r) => setTimeout(r, 10))
     await wrapper.vm.$nextTick()
 
+    const confirmBtn = wrapper.get('.mark-shared-btn')
+    expect(confirmBtn.attributes('disabled')).toBeDefined()
+    await confirmBtn.trigger('click')
+    expect(markSharedSpy).not.toHaveBeenCalled()
+
     // 1. Click the prominent Kakao Share button
     const kakaoBtn = wrapper.find('.prominent-kakao-btn')
     expect(kakaoBtn.exists()).toBe(true)
     await kakaoBtn.trigger('click')
+    await flushPromises()
 
     // Verified: Kakao service function was invoked
     expect(kakaoService.initiateKakaoShare).toHaveBeenCalledWith(
@@ -206,8 +214,7 @@ describe('MessageDetailView Component', () => {
     )
 
     // 2. Explicit confirmation: User taps '카카오톡 전송 완료로 기록하기'
-    const confirmBtn = wrapper.find('.mark-shared-btn')
-    expect(confirmBtn.exists()).toBe(true)
+    expect(confirmBtn.attributes('disabled')).toBeUndefined()
 
     markSharedSpy.mockResolvedValue({
       ...sampleMessage,
@@ -224,5 +231,36 @@ describe('MessageDetailView Component', () => {
 
     // Status updates to shared
     expect(wrapper.find('.status-badge').text()).toBe('카카오톡 공유 완료')
+  })
+
+  it('keeps confirmation disabled after a canceled or failed first share', async () => {
+    vi.spyOn(useMessagesStore(), 'fetchById').mockResolvedValue(sampleMessage)
+    const share = vi.mocked(kakaoService.initiateKakaoShare)
+    share.mockResolvedValueOnce({ success: false, channel: 'web_share', notice: '공유가 취소되었습니다.' })
+    share.mockRejectedValueOnce(new Error('공유 실패'))
+    const wrapper = mount(MessageDetailView, { props: { id: sampleMessage.id } })
+    await flushPromises()
+    for (const notice of ['공유가 취소되었습니다.', '공유 실패']) {
+      await wrapper.get('.prominent-kakao-btn').trigger('click')
+      await flushPromises()
+      expect(wrapper.get('.share-feedback-notice').text()).toBe(notice)
+      expect(wrapper.get('.mark-shared-btn').attributes('disabled')).toBeDefined()
+    }
+  })
+
+  it('remembers a share started from Pending for only that briefing after a reload', async () => {
+    const modal = mount(ShareModal, { props: { modelValue: true, message: sampleMessage } })
+    await modal.get('.share-primary-btn').trigger('click')
+    await flushPromises()
+    modal.unmount()
+
+    setActivePinia(createPinia())
+    vi.spyOn(useMessagesStore(), 'fetchById').mockImplementation(async id => ({ ...sampleMessage, id }))
+    for (const id of [sampleMessage.id, 'another-briefing']) {
+      const detail = mount(MessageDetailView, { props: { id } })
+      await flushPromises()
+      expect((detail.get('.mark-shared-btn').element as HTMLButtonElement).disabled).toBe(id !== sampleMessage.id)
+      detail.unmount()
+    }
   })
 })

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import type { ShareMessage } from '@/types'
-import { initiateKakaoShare } from '@/services/kakao'
+import { useShareAttemptsStore } from '@/stores/shareAttempts'
 import { useMessagesStore } from '@/stores/messages'
 
 const props = defineProps<{
@@ -18,6 +18,7 @@ const isSharing = ref(false)
 const copied = ref(false)
 const noticeText = ref<string | null>(null)
 const messagesStore = useMessagesStore()
+const shareAttempts = useShareAttemptsStore()
 watch(() => messagesStore.historyMessages.find(m => m.id === props.message?.id), message => {
   if (message?.last_share_channel !== 'kakao_verified_webhook') return
   noticeText.value = '✓ 카카오톡 전송이 확인되었습니다. History에 기록되었습니다.'
@@ -50,7 +51,7 @@ async function handleKakaoShare() {
   noticeText.value = null
 
   try {
-    const res = await initiateKakaoShare(props.message)
+    const res = await shareAttempts.startShare(props.message)
     noticeText.value = res.notice
 
     // Picker launch, clipboard copying, and cancellation are not delivery proof.
