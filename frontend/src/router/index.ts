@@ -34,6 +34,7 @@ const router = createRouter({
       name: 'registed_api',
       component: () => import('@/views/RegisteredEndpointsView.vue')
     },
+    { path: '/settings/api-schedules', name: 'api-schedules', component: () => import('@/views/ApiSchedulesView.vue') },
     {
       path: '/register-api',
       name: 'register-api',

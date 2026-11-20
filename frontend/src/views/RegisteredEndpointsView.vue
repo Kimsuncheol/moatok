@@ -87,7 +87,10 @@ function handleDelete(endpointId: string) {
     <section class="registered-endpoints settings-card" aria-labelledby="registered-endpoints-heading">
       <div class="card-title-row">
         <h3 id="registered-endpoints-heading" class="card-title">엔드포인트 목록 ({{ endpointsStore.endpoints.length }})</h3>
-        <RouterLink to="/register-api" class="item-action-btn btn-fetch">+ API 등록</RouterLink>
+        <div class="endpoint-list-actions">
+          <RouterLink :to="{ name: 'api-schedules' }" class="item-action-btn btn-schedules">수집 일정 보기</RouterLink>
+          <RouterLink to="/register-api" class="item-action-btn btn-fetch">+ API 등록</RouterLink>
+        </div>
       </div>
       <p v-if="actionFeedback" role="status" class="notif-feedback-box">{{ actionFeedback }}</p>
       <p v-if="!endpointsStore.endpoints.length" class="empty-endpoints-box">등록된 API 엔드포인트가 없습니다.</p>

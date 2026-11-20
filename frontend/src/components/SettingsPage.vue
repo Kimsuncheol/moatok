@@ -1,9 +1,12 @@
 <script setup lang="ts">
-defineProps<{ title: string }>()
+withDefaults(defineProps<{ title: string; backTo?: string; backLabel?: string }>(), {
+  backTo: '/settings',
+  backLabel: '환경 설정'
+})
 </script>
 <template>
   <div class="settings-view">
-    <RouterLink to="/settings" class="settings-back-link">‹ 환경 설정</RouterLink>
+    <RouterLink :to="backTo" class="settings-back-link">‹ {{ backLabel }}</RouterLink>
     <header class="view-header"><h2 class="view-title">{{ title }}</h2></header>
     <slot />
   </div>
