@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import SettingsPage from '@/components/SettingsPage.vue'
 import EnglishScheduleFields from '@/components/EnglishScheduleFields.vue'
-import { englishScraperApi, type ScraperSchedule } from '@/services/api'
+import { ApiError, englishScraperApi, type ScraperSchedule } from '@/services/api'
 import { useEndpointsStore, englishScheduleTime, isEnglishEndpoint, type EnglishScheduleDraft } from '@/stores/endpoints'
 import type { ApiEndpoint, ApiSchedule } from '@/types'
 
@@ -27,6 +27,14 @@ function scheduleLabel(ep: ApiEndpoint) {
   return schedule.enabled ? `${englishScheduleTime(schedule)} (${schedule.timezone})` : '서버 예약 비활성'
 }
 
+function scheduleErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof ApiError) {
+    if (error.status === 401) return '서버 수집 예약을 변경하려면 로그인하세요.'
+    if (error.status === 403) return '이 계정에는 서버 수집 예약 변경 권한이 없습니다.'
+  }
+  return error instanceof Error ? error.message : fallback
+}
+
 async function editSchedule(id: string) {
   scheduleBusy.value = true
   editingId.value = null
@@ -43,7 +51,7 @@ async function editSchedule(id: string) {
     editingId.value = id
     actionFeedback.value = ''
   } catch (error) {
-    actionFeedback.value = error instanceof Error ? error.message : '서버 예약을 불러오지 못했습니다.'
+    actionFeedback.value = scheduleErrorMessage(error, '서버 예약을 불러오지 못했습니다.')
   } finally {
     scheduleBusy.value = false
   }
@@ -57,7 +65,7 @@ async function saveSchedule() {
     editingId.value = null
     actionFeedback.value = '수집 예약이 서버에 저장되었습니다.'
   } catch (error) {
-    actionFeedback.value = error instanceof Error ? error.message : '서버 예약을 저장하지 못했습니다.'
+    actionFeedback.value = scheduleErrorMessage(error, '서버 예약을 저장하지 못했습니다.')
   } finally {
     scheduleBusy.value = false
   }
@@ -125,6 +133,7 @@ function handleDelete(endpointId: string) {
           <button v-if="isEnglishEndpoint(ep)" type="button" class="setting-sub-btn"
             :disabled="scheduleBusy" @click="editSchedule(ep.id)">서버 수집 예약 변경</button>
           <form v-if="editingId === ep.id && draft" class="schedule-editor" @submit.prevent="saveSchedule">
+            <p>이 예약은 모든 영어 스크래퍼 등록에 적용됩니다.</p>
             <label><input v-model="draft.enableSchedule" type="checkbox" class="switch-input" :disabled="scheduleBusy" /> 자동 수집 스케줄 활성화</label>
             <EnglishScheduleFields v-if="draft.enableSchedule"
               v-model:time="draft.scheduledTime" v-model:timezone="draft.timezone"

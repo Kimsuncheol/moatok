@@ -5,7 +5,7 @@ import RegisteredEndpointsView from '@/views/RegisteredEndpointsView.vue'
 import RegisterEndpointView from '@/views/RegisterEndpointView.vue'
 import { useEndpointsStore, DEFAULT_ENGLISH_SCRAPPER_URL } from '@/stores/endpoints'
 import { useMessagesStore } from '@/stores/messages'
-import { api } from '@/services/api'
+import { api, ApiError } from '@/services/api'
 
 const mockSchedule = vi.hoisted(() => ({ save: vi.fn(), read: vi.fn() }))
 vi.mock('@/services/api', async (original) => {
@@ -294,6 +294,15 @@ describe('Moatok server schedule bridge', () => {
     expect(mockSchedule.save).toHaveBeenCalledWith(expect.objectContaining({enabled:false,hour:6,minute:0}))
     expect(useEndpointsStore().endpoints[0].schedule.enabled).toBe(false)
     expect(wrapper.get('.notif-feedback-box').text()).toContain('서버에 저장')
+    wrapper.unmount()
+  })
+  it('explains when an account cannot edit the shared schedule', async () => {
+    mockSchedule.read.mockRejectedValueOnce(new ApiError(403, 'Administrator privileges required.'))
+    const wrapper = mount(RegisteredEndpointsView)
+    await wrapper.get('button.setting-sub-btn').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[role="status"]').text()).toContain('서버 수집 예약 변경 권한이 없습니다.')
+    expect(wrapper.find('.schedule-editor').exists()).toBe(false)
     wrapper.unmount()
   })
 })
