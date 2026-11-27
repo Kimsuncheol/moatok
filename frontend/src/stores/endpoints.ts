@@ -62,6 +62,7 @@ export const useEndpointsStore = defineStore('endpoints', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const testing = ref(false)
+  const fetchingEndpointIds = ref(new Set<string>())
   const testResult = ref<{
     success: boolean
     message: string
@@ -70,13 +71,13 @@ export const useEndpointsStore = defineStore('endpoints', () => {
   } | null>(null)
 
   function loadEndpoints() {
+    if (fetchingEndpointIds.value.size > 0) return
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
         const raw = window.localStorage.getItem(STORAGE_KEY)
         if (raw) {
           const parsed = JSON.parse(raw)
           if (Array.isArray(parsed)) {
-            // Navigation can reload the list while a fetch is updating its endpoint.
             if (JSON.stringify(endpoints.value) !== raw) endpoints.value = parsed
             return
           }
@@ -286,11 +287,13 @@ export const useEndpointsStore = defineStore('endpoints', () => {
     if (!endpoint) {
       return { success: false, message: '해당 엔드포인트를 찾을 수 없습니다.' }
     }
+    if (isFetching(endpointId)) {
+      return { success: false, message: '이미 수집 중입니다.' }
+    }
 
     const messagesStore = useMessagesStore()
-    endpoint.schedule.lastStatus = 'fetching'
+    fetchingEndpointIds.value.add(endpointId)
     endpoint.schedule.lastRunAt = new Date().toISOString()
-    saveEndpoints()
 
     try {
       if (isChosunDaily(endpoint.url)) {
@@ -430,7 +433,13 @@ export const useEndpointsStore = defineStore('endpoints', () => {
         success: false,
         message: `데이터 수집 실패 (${endpoint.schedule.currentAttempts}/${endpoint.schedule.maxRetries}회 시도): ${errorMsg}`
       }
+    } finally {
+      fetchingEndpointIds.value.delete(endpointId)
     }
+  }
+
+  function isFetching(endpointId: string) {
+    return fetchingEndpointIds.value.has(endpointId)
   }
 
   /**
@@ -484,6 +493,7 @@ export const useEndpointsStore = defineStore('endpoints', () => {
     updateEndpoint,
     deleteEndpoint,
     testEndpoint,
+    isFetching,
     triggerFetch,
     simulateFiveFailedAttempts
   }

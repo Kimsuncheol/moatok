@@ -4,7 +4,7 @@ import SettingsPage from '@/components/SettingsPage.vue'
 import EnglishScheduleFields from '@/components/EnglishScheduleFields.vue'
 import { englishScraperApi, type ScraperSchedule } from '@/services/api'
 import { useEndpointsStore, englishScheduleTime, isEnglishEndpoint, type EnglishScheduleDraft } from '@/stores/endpoints'
-import type { ApiEndpoint } from '@/types'
+import type { ApiEndpoint, ApiSchedule } from '@/types'
 
 const endpointsStore = useEndpointsStore()
 onMounted(() => endpointsStore.loadEndpoints())
@@ -14,6 +14,11 @@ const editingId = ref<string | null>(null)
 const scheduleBusy = ref(false)
 const draft = ref<EnglishScheduleDraft | null>(null)
 const cloudSchedule = ref<ScraperSchedule | null>(null)
+
+function collectionStatus(ep: ApiEndpoint): ApiSchedule['lastStatus'] {
+  if (endpointsStore.isFetching(ep.id)) return 'fetching'
+  return ep.schedule.lastStatus === 'fetching' ? 'idle' : ep.schedule.lastStatus
+}
 
 function scheduleLabel(ep: ApiEndpoint) {
   if (!isEnglishEndpoint(ep)) return ep.schedule.enabled ? `매일 ${ep.schedule.scheduledTime}` : '비활성'
@@ -59,6 +64,7 @@ async function saveSchedule() {
 }
 
 async function handleFetchNow(endpointId: string) {
+  if (endpointsStore.isFetching(endpointId)) return
   actionFeedback.value = '수집 요청 중...'
   const res = await endpointsStore.triggerFetch(endpointId, true)
   if (res.success) {
@@ -106,10 +112,10 @@ function handleDelete(endpointId: string) {
               <span class="method-badge">{{ ep.method }}</span>
               <strong class="item-name">{{ ep.name }}</strong>
             </div>
-            <span class="status-pill" :class="`status-${ep.schedule.lastStatus}`">
-              <template v-if="ep.schedule.lastStatus === 'failed'">수집 실패 ({{ ep.schedule.currentAttempts }}/{{ ep.schedule.maxRetries }})</template>
+            <span class="status-pill" :class="`status-${collectionStatus(ep)}`">
+              <template v-if="endpointsStore.isFetching(ep.id)">수집 중</template>
+              <template v-else-if="ep.schedule.lastStatus === 'failed'">수집 실패 ({{ ep.schedule.currentAttempts }}/{{ ep.schedule.maxRetries }})</template>
               <template v-else-if="ep.schedule.lastStatus === 'success'">수집 정상</template>
-              <template v-else-if="ep.schedule.lastStatus === 'fetching'">수집 중</template>
               <template v-else>스케줄 대기</template>
             </span>
           </div>
@@ -145,6 +151,7 @@ function handleDelete(endpointId: string) {
               type="button"
               class="item-action-btn btn-fetch"
               aria-label="지금 즉시 데이터 가져오기"
+              :disabled="endpointsStore.isFetching(ep.id)"
               @click="handleFetchNow(ep.id)"
             >
               Fetch 지금 실행
@@ -172,3 +179,10 @@ function handleDelete(endpointId: string) {
     </section>
   </SettingsPage>
 </template>
+
+<style scoped>
+.registered-endpoints button.btn-fetch:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+</style>

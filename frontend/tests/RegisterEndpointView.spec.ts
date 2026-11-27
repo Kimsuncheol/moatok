@@ -5,6 +5,7 @@ import RegisteredEndpointsView from '@/views/RegisteredEndpointsView.vue'
 import RegisterEndpointView from '@/views/RegisterEndpointView.vue'
 import { useEndpointsStore, DEFAULT_ENGLISH_SCRAPPER_URL } from '@/stores/endpoints'
 import { useMessagesStore } from '@/stores/messages'
+import { api } from '@/services/api'
 
 const mockSchedule = vi.hoisted(() => ({ save: vi.fn(), read: vi.fn() }))
 vi.mock('@/services/api', async (original) => {
@@ -184,6 +185,44 @@ describe('RegisterEndpointView Component', () => {
     await wrapper.find('.endpoint-form').trigger('submit.prevent')
 
     expect(wrapper.find('.error-alert').exists()).toBe(true)
+  })
+
+  it('disables Fetch until the endpoint finishes saving its briefing', async () => {
+    const endpointsStore = useEndpointsStore()
+    const endpoint = endpointsStore.addEndpoint({ name: 'Weather', url: 'https://weather.test/alerts' })
+    let finishSaving!: () => void
+    const saving = new Promise<void>(resolve => { finishSaving = resolve })
+    const save = vi.spyOn(api, 'saveFetchedMessage').mockImplementation(async message => {
+      await saving
+      return { message }
+    })
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ title: 'Weather alert' }))
+    )
+    const wrapper = mount(RegisteredEndpointsView)
+    try {
+      const button = wrapper.get<HTMLButtonElement>('button.btn-fetch')
+      expect(button.element.disabled).toBe(false)
+      await button.trigger('click')
+      await flushPromises()
+      expect(save).toHaveBeenCalledOnce()
+      expect(button.element.disabled).toBe(true)
+      expect(wrapper.get('.status-fetching').text()).toBe('수집 중')
+      await button.trigger('click')
+      expect(await endpointsStore.triggerFetch(endpoint.id, true)).toMatchObject({ success: false })
+      expect(fetch).toHaveBeenCalledOnce()
+
+      finishSaving()
+      await flushPromises()
+      expect(button.element.disabled).toBe(false)
+      expect(wrapper.get('.status-success').text()).toBe('수집 정상')
+    } finally {
+      finishSaving()
+      await flushPromises()
+      wrapper.unmount()
+      fetch.mockRestore()
+      save.mockRestore()
+    }
   })
 
   it('simulates 5 failed attempts and generates card in Pending view with Fetch button', async () => {
