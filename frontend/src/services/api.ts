@@ -237,10 +237,10 @@ export interface ScraperSchedule {
 }
 
 export const englishScraperApi = {
-  schedule: () => request<ScraperSchedule>('/api/v1/admin/integrations/english-scrapper/schedule'),
+  schedule: () => request<ScraperSchedule>('/api/v1/integrations/english-scrapper/schedule'),
   saveSchedule: (schedule: ScraperSchedule) => {
     const { enabled, hour, minute, timezone, weekdays } = schedule
-    return request<ScraperSchedule>('/api/v1/admin/integrations/english-scrapper/schedule', {
+    return request<ScraperSchedule>('/api/v1/integrations/english-scrapper/schedule', {
       method: 'PUT', body: JSON.stringify({ enabled, hour, minute, timezone, weekdays })
     })
   },

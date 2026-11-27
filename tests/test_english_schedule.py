@@ -1,6 +1,6 @@
 import json
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 from urllib.request import Request
 
 import pytest
@@ -23,6 +23,22 @@ def test_schedule_requires_moatok_administrator(client, mock_firebase_auth, monk
     assert result.status_code == 200 and result.json['hour'] == 9
     invoke.assert_called_once_with('PUT', SCHEDULE)
     assert client.get(PATH, headers=HEADERS).status_code == 200
+
+
+def test_signed_in_users_can_read_and_update_shared_schedule(client, mock_firebase_auth, monkeypatch):
+    path = '/api/v1/integrations/english-scrapper/schedule'
+    invoke = Mock(return_value={**SCHEDULE, 'next_scheduled_at': None})
+    monkeypatch.setattr('app.services.english_schedule.cloud_schedule', invoke)
+    assert client.get(path).status_code == 401
+    assert client.put(path, json=SCHEDULE).status_code == 401
+    invoke.assert_not_called()
+
+    headers = {'Authorization': 'Bearer valid-token-user-1'}
+    assert client.get(path, headers=headers).json['hour'] == 9
+    response = client.put(path, headers=headers, json=SCHEDULE)
+    assert response.status_code == 200
+    assert response.json['weekdays'] == SCHEDULE['weekdays']
+    assert invoke.call_args_list == [call('GET', None), call('PUT', SCHEDULE)]
 
 
 @pytest.mark.parametrize('change', [{'enabled':'true'}, {'hour':24}, {'hour':True}, {'minute':-1},

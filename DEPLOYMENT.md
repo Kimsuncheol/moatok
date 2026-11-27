@@ -167,9 +167,9 @@ schedule. The same schedule applies to all English registrations; it is not a
 per-device schedule. The shared TimePicker is reused. The old generic API
 five-attempt timeline is not presented as the cloud scraper's retry policy.
 
-The browser calls `GET`/`PUT /api/v1/admin/integrations/english-scrapper/schedule`
-using its normal Firebase session. These endpoints require an administrator
-custom claim. The backend validates settings, generates its own Google ID token,
+The browser calls `GET`/`PUT /api/v1/integrations/english-scrapper/schedule`
+using its normal Firebase session. Any signed-in user can read or change the
+shared schedule. The backend validates settings, generates its own Google ID token,
 and forwards them to the private scraper's `/api/v1/jobs/schedule` endpoint.
 Browser-provided Google tokens, URLs, or administrator secrets are never used
 as server credentials or upstream targets.
@@ -187,5 +187,5 @@ Production integration:
 
 Preserve existing Cloud Run environment and secret bindings when deploying.
 The prior 06:00 Asia/Seoul weekday schedule remains in effect until an
-administrator saves a different schedule from Moatok. Do not place the schedule
+signed-in user saves a different schedule from Moatok. Do not place the schedule
 token in frontend environment variables or browser local storage.
