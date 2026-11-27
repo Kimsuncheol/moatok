@@ -81,13 +81,8 @@ function openReviewModal(msg: ShareMessage) {
   isModalOpen.value = true
 }
 
-const isPreviewMode = ref(false)
-const hasFetchedCards = computed(() => messagesStore.pendingMessages.some(message => !!message.endpoint_id))
-
-function dismissErrorToPreview() {
-  messagesStore.error = null
-  isPreviewMode.value = true
-}
+const hasPendingCards = computed(() => messagesStore.pendingCount > 0)
+const isLoadingPending = computed(() => authStore.isLoading || messagesStore.loading)
 
 async function handleFetchCard(msg: ShareMessage) {
   fetchFeedback.value = null
@@ -167,6 +162,7 @@ watch(() => [authStore.isLoading, authStore.isAuthenticated, authStore.userUid],
         <div class="header-titles">
           <h1 class="view-title">공유 대기 브리핑</h1>
           <span
+            v-if="hasPendingCards || (!isLoadingPending && !messagesStore.error)"
             class="count-pill"
             :aria-label="`대기 중인 브리핑 ${messagesStore.pendingCount}건`"
           >
@@ -223,11 +219,11 @@ watch(() => [authStore.isLoading, authStore.isAuthenticated, authStore.userUid],
       <RouterLink to="/settings/account">로그인</RouterLink>
       <RouterLink to="/register-api">API에서 새 브리핑 가져오기</RouterLink>
     </div>
-    <p v-if="authStore.isAuthenticated && messagesStore.error && hasFetchedCards" role="status" class="fetch-feedback-banner">서버 목록을 불러오지 못했습니다. 이 기기에 저장된 브리핑을 표시합니다.</p>
+    <p v-if="authStore.isAuthenticated && messagesStore.error && hasPendingCards" role="status" class="fetch-feedback-banner">서버 목록을 불러오지 못했습니다. 이미 불러온 브리핑을 표시합니다.</p>
     <p v-if="messagesStore.storageWarning" role="status">{{ messagesStore.storageWarning }}</p>
     <!-- 1. Loading State (Accessible Skeleton Cards) -->
     <div
-      v-if="(authStore.isLoading || messagesStore.loading) && !messagesStore.refreshing && !hasFetchedCards"
+      v-if="isLoadingPending && !messagesStore.refreshing && !hasPendingCards"
       class="loading-skeleton-list"
       role="status"
       aria-label="공유 대기 브리핑을 불러오는 중입니다"
@@ -250,7 +246,7 @@ watch(() => [authStore.isLoading, authStore.isAuthenticated, authStore.userUid],
 
     <!-- 2. Error State -->
     <div
-      v-else-if="authStore.isAuthenticated && messagesStore.error && !messagesStore.loading && !hasFetchedCards"
+      v-else-if="authStore.isAuthenticated && messagesStore.error && !messagesStore.loading && !hasPendingCards"
       class="error-state-card"
       role="alert"
     >
@@ -267,14 +263,6 @@ watch(() => [authStore.isLoading, authStore.isAuthenticated, authStore.userUid],
           @click="refresh"
         >
           Fetch
-        </button>
-        <button
-          v-if="messagesStore.pendingCount > 0"
-          type="button"
-          class="preview-sample-btn"
-          @click="dismissErrorToPreview"
-        >
-          샘플 브리핑 둘러보기 ({{ messagesStore.pendingCount }}건)
         </button>
       </div>
     </div>
@@ -307,13 +295,6 @@ watch(() => [authStore.isLoading, authStore.isAuthenticated, authStore.userUid],
       role="feed"
       aria-label="공유 대기 브리핑 목록"
     >
-      <div v-if="isPreviewMode" class="preview-mode-banner" role="status">
-        <div class="preview-banner-text">
-          <span class="preview-badge">미리보기</span>
-          <span>서버 연결 전 로컬 샘플 브리핑을 표시 중입니다.</span>
-        </div>
-        <button type="button" class="preview-dismiss-btn" aria-label="안내 닫기" @click="isPreviewMode = false">✕</button>
-      </div>
       <MessageCard
         v-for="msg in messagesStore.pendingMessages"
         :key="msg.id"
@@ -654,64 +635,6 @@ watch(() => [authStore.isLoading, authStore.isAuthenticated, authStore.userUid],
 
 .retry-btn:hover {
   opacity: 0.85;
-}
-
-.preview-sample-btn {
-  padding: 8px 16px;
-  border-radius: 6px;
-  background-color: var(--bg-surface-elevated);
-  color: var(--text-primary);
-  border: 1px solid var(--border-default);
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  min-height: 40px;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-}
-
-.preview-sample-btn:hover {
-  background-color: var(--bg-surface-hover);
-  border-color: var(--border-strong);
-}
-
-.preview-mode-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 8px;
-  background-color: var(--bg-surface-elevated);
-  border: 1px solid var(--border-default);
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-}
-
-.preview-banner-text {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.preview-badge {
-  font-size: 10.5px;
-  font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background-color: var(--badge-bg);
-  color: var(--badge-text);
-}
-
-.preview-dismiss-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 13px;
-  cursor: pointer;
-  padding: 2px 6px;
-  margin-left: auto;
 }
 
 /* Empty State */

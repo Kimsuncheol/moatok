@@ -3,62 +3,6 @@ import { ref, computed } from 'vue'
 import type { ShareMessage } from '@/types'
 import { api } from '@/services/api'
 
-const SAMPLE_INITIAL_MESSAGES: ShareMessage[] = [
-  {
-    id: 'smsg_sample_1',
-    article_id: 'art_sample_1',
-    source_name: 'Tech Briefing',
-    title: '구글 클라우드 런 배포 및 보안 권한 가이드',
-    body: `[모아톡 브리핑] 구글 클라우드 런 배포 및 보안 권한 가이드\n\n최소 권한 원칙(Least Privilege)에 따른 전용 서비스 계정 분리와 OIDC 기반 Cloud Scheduler 인증 체계를 안내합니다.\n\n🔗 https://feeds.example.com/articles/cloud-run-iam`,
-    target_url: 'https://feeds.example.com/articles/cloud-run-iam',
-    status: 'pending',
-    kakao_shared: false,
-    created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    updated_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    notification_attempts: 1,
-    last_notification_status: 'sent',
-    items: [
-      {
-        title: '구글 클라우드 런 배포 및 보안 권한 가이드',
-        url: 'https://feeds.example.com/articles/cloud-run-iam',
-        source_name: 'Tech Briefing',
-        summary: '최소 권한 원칙(Least Privilege)에 따른 전용 서비스 계정 분리와 OIDC 기반 Cloud Scheduler 인증 체계를 안내합니다.'
-      }
-    ],
-    kakao_share_payload: {
-      template_type: 'text',
-      title: '구글 클라우드 런 배포 및 보안 권한 가이드',
-      description: '최소 권한 원칙에 따른 전용 서비스 계정과 OIDC 스케줄러 인증 가이드',
-      text: `[모아톡 브리핑] 구글 클라우드 런 배포 및 보안 권한 가이드\n\n최소 권한 원칙(Least Privilege)에 따른 전용 서비스 계정 분리와 OIDC 기반 Cloud Scheduler 인증 체계를 안내합니다.\n\n🔗 https://feeds.example.com/articles/cloud-run-iam`,
-      primary_web_url: 'https://feeds.example.com/articles/cloud-run-iam',
-      button_title: '원문 확인하기',
-      requires_user_action_in_flutter: true
-    }
-  },
-  {
-    id: 'smsg_sample_2',
-    article_id: 'art_sample_2',
-    source_name: 'Frontend Hub',
-    title: '모바일 우선 Vue 3 PWA 카카오톡 공유 아키텍처',
-    body: `[모아톡 브리핑] 모바일 우선 Vue 3 PWA 카카오톡 공유 아키텍처\n\n백엔드 자동 게시가 아닌 사용자 주도형 카카오톡 공유 워크플로우를 제공합니다.\n\n🔗 https://feeds.example.com/articles/vue3-pwa-kakao`,
-    target_url: 'https://feeds.example.com/articles/vue3-pwa-kakao',
-    status: 'pending',
-    kakao_shared: false,
-    created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
-    updated_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
-    notification_attempts: 1,
-    last_notification_status: 'sent',
-    items: [
-      {
-        title: '모바일 우선 Vue 3 PWA 카카오톡 공유 아키텍처',
-        url: 'https://feeds.example.com/articles/vue3-pwa-kakao',
-        source_name: 'Frontend Hub',
-        summary: '백엔드 자동 게시가 아닌 사용자 주도형 카카오톡 공유 워크플로우를 제공합니다.'
-      }
-    ]
-  }
-]
-
 export const LOCAL_MESSAGES_KEY = 'moatok_local_fetched_messages_v1'
 function readLocalMessages(): ShareMessage[] {
   try {
@@ -89,8 +33,7 @@ export const useMessagesStore = defineStore('messages', () => {
   }
   const storageWarning = ref<string | null>(null)
   const localMessages = ref<ShareMessage[]>(readLocalMessages())
-  const pendingMessages = ref<ShareMessage[]>(localMessages.value.length ? localMessages.value.filter(m => !isShared(m)) : [...SAMPLE_INITIAL_MESSAGES])
-  pendingMessages.value = pendingMessages.value.filter(m => !deletedIds.value.includes(m.id))
+  const pendingMessages = ref<ShareMessage[]>(mergePending([]))
   const historyMessages = ref<ShareMessage[]>(localMessages.value.filter(isShared))
   const selectedMessage = ref<ShareMessage | null>(null)
   const loading = ref<boolean>(false)
@@ -119,7 +62,7 @@ export const useMessagesStore = defineStore('messages', () => {
     const saved = result.message
     // Replace the browser-only copy when the same article is fetched again.
     persistLocal(localMessages.value.filter(m => m.target_url !== saved.target_url))
-    pendingMessages.value = pendingMessages.value.filter(m => !m.id.startsWith('smsg_sample_') && m.target_url !== saved.target_url && m.id !== saved.id && !(m.endpoint_id === message.endpoint_id && m.fetch_status === 'failed'))
+    pendingMessages.value = pendingMessages.value.filter(m => m.target_url !== saved.target_url && m.id !== saved.id && !(m.endpoint_id === message.endpoint_id && m.fetch_status === 'failed'))
     if (!saved.kakao_shared && !['shared', 'shared_by_user'].includes(saved.status || '')) pendingMessages.value.unshift(saved)
     return saved
   }
@@ -138,15 +81,14 @@ export const useMessagesStore = defineStore('messages', () => {
     const next = localMessages.value.filter(m => m.id !== message.id &&
       !(m.endpoint_id === message.endpoint_id && m.fetch_status === 'failed'))
     persistLocal([message, ...next])
-    pendingMessages.value = mergePending(pendingMessages.value.filter(m => !m.id.startsWith('smsg_sample_') &&
-      !(m.endpoint_id === message.endpoint_id && m.fetch_status === 'failed')))
+    pendingMessages.value = mergePending(pendingMessages.value.filter(m => !(m.endpoint_id === message.endpoint_id && m.fetch_status === 'failed')))
     return message
   }
   if (typeof window !== 'undefined') {
     window.addEventListener('storage', event => {
       if (event.key !== LOCAL_MESSAGES_KEY) return
       localMessages.value = readLocalMessages()
-      pendingMessages.value = mergePending(pendingMessages.value.filter(m => !m.endpoint_id && !m.id.startsWith('smsg_sample_')))
+      pendingMessages.value = mergePending(pendingMessages.value.filter(m => !m.endpoint_id))
       historyMessages.value = mergeHistory(historyMessages.value.filter(m => !m.endpoint_id))
     })
   }

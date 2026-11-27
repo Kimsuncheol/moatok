@@ -4,40 +4,41 @@ import { useMessagesStore } from '@/stores/messages'
 import { api } from '@/services/api'
 import type { ShareMessage } from '@/types'
 
+const pendingMessage: ShareMessage = {
+  id: 'smsg_fetched_1',
+  title: '신규 수집된 브리핑',
+  body: '내용입니다.',
+  source_name: 'Tech News',
+  status: 'pending',
+  kakao_shared: false,
+  created_at: '2026-11-06T00:00:00Z',
+  updated_at: '2026-11-06T00:00:00Z'
+}
+
 describe('Messages Store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.restoreAllMocks()
   })
 
-  it('initializes with sample pending messages and correct counts', () => {
+  it('starts with an empty pending queue on a fresh device', () => {
     const store = useMessagesStore()
-    expect(store.pendingCount).toBeGreaterThanOrEqual(1)
+    expect(store.pendingCount).toBe(0)
     expect(store.historyCount).toBe(0)
   })
 
   it('fetches pending messages from API via fetchPending', async () => {
     const store = useMessagesStore()
 
-    const mockPending: ShareMessage[] = [
-      {
-        id: 'smsg_fetched_1',
-        title: '신규 수집된 브리핑',
-        body: '내용입니다.',
-        source_name: 'Tech News',
-        status: 'pending',
-        kakao_shared: false,
-        created_at: '2026-11-06T00:00:00Z',
-        updated_at: '2026-11-06T00:00:00Z'
-      }
-    ]
-
     vi.spyOn(api, 'getPendingMessages').mockResolvedValue({
-      messages: mockPending,
+      messages: [pendingMessage],
       count: 1
     })
 
-    await store.fetchPending()
+    const fetch = store.fetchPending()
+    expect(store.loading).toBe(true)
+    expect(store.pendingCount).toBe(0)
+    await fetch
 
     expect(api.getPendingMessages).toHaveBeenCalledTimes(1)
     expect(store.pendingCount).toBe(1)
@@ -53,6 +54,7 @@ describe('Messages Store', () => {
 
     await store.fetchPending()
 
+    expect(store.pendingCount).toBe(0)
     expect(store.error).toBe('Network failure')
     expect(store.loading).toBe(false)
 
@@ -62,8 +64,9 @@ describe('Messages Store', () => {
 
   it('marks a message as shared and moves it from pending to history', async () => {
     const store = useMessagesStore()
-    const targetMsg = store.pendingMessages[0]
-    expect(targetMsg).toBeDefined()
+    const targetMsg = pendingMessage
+    vi.spyOn(api, 'getPendingMessages').mockResolvedValue({ messages: [targetMsg], count: 1 })
+    await store.fetchPending()
     const targetId = targetMsg.id
 
     vi.spyOn(api, 'markMessageShared').mockResolvedValue({
